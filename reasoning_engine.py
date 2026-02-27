@@ -37,6 +37,23 @@ class ATCReasoningEngine:
         client = self.get_client()
         if not client:
             return "Reasoning: Offline (Check .env for keys)."
+        # Example: Select best command from available options
+        available_commands = state_data.get("available_commands", [])
+        situation = state_data.get("situation", "")
+        # Simple logic: prioritize safety, then efficiency
+        if "conflict" in situation.lower():
+            if "HOLD POSITION" in available_commands:
+                return "HOLD POSITION"
+            elif "GO AROUND" in available_commands:
+                return "GO AROUND"
+        if "arrival" in situation.lower() and "CLEARED TO LAND" in available_commands:
+            return "CLEARED TO LAND"
+        if "departure" in situation.lower() and "CLEARED FOR TAKEOFF" in available_commands:
+            return "CLEARED FOR TAKEOFF"
+        # Fallback: pick first available
+        if available_commands:
+            return available_commands[0]
+        return "NO DECISION"
 
         prompt = f"""
         ROLE: Expert ATC Instructor & Neuro-Systems Researcher.

@@ -32,13 +32,42 @@ class TowerNeuroATC:
             self.audio.start()
         self.sct = mss.mss()
         self.monitor = self.sct.monitors[1] if len(self.sct.monitors) > 1 else self.sct.monitors[0]
-        
         self.layout = {
             "command": {"top": 0, "left": 0, "width": 800, "height": 180},
             "dbrite": {"top": 0, "left": 960, "width": 406, "height": 350},
             "strips": {"top": 360, "left": 960, "width": 406, "height": 408},
             "dialog": {"top": 180, "left": 0, "width": 400, "height": 300} # Common area for pilot text
         }
+
+    def run_live_decision_loop(self):
+        print("Starting real-time ATC decision loop...")
+        while True:
+            # 1. Capture command panel
+            top_panel_monitor = {
+                "top": self.monitor["top"],
+                "left": self.monitor["left"],
+                "width": self.monitor["width"],
+                "height": int(self.monitor["height"] * 0.15)
+            }
+            sct_img = self.sct.grab(top_panel_monitor)
+            img = np.array(sct_img)
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+            # 2. Extract available commands (vision)
+            from vision_bot import read_text_from_image
+            panel_text = read_text_from_image(img)
+            # Simple split for demo
+            available_commands = [cmd for cmd in self.world.valid_commands if cmd in panel_text]
+            # 3. Analyze situation (reasoning)
+            state_data = {
+                "available_commands": available_commands,
+                "situation": panel_text
+            }
+            decision = self.brain.analyze_situation(state_data)
+            # 4. Issue command (action)
+            from action_module import send_command
+            if decision and decision != "NO DECISION":
+                send_command(decision)
+            time.sleep(2)
         
         self.last_dialog_text = ""
         self.current_full_frame = None

@@ -12,6 +12,10 @@ def send_command(text):
     Simulates a human clicking the command bar and typing a command.
     """
     print(f"Executing Decision: {text}")
+    # Add support for context-specific commands
+    # Example: If text is a tuple/list, join it
+    if isinstance(text, (list, tuple)):
+        text = " ".join(str(t) for t in text)
     
     # 1. Store current mouse position to return it later (human-like behavior)
     old_x, old_y = pyautogui.position()

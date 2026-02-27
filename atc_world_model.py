@@ -9,71 +9,77 @@ class ATCWorldModel:
     def __init__(self, resolution=(1366, 768)):
         self.res = resolution
         self.valid_commands = [
-            "CLEARED TO LAND", "CLEARED FOR TAKEOFF", "PUSHBACK APPROVED",
-            "CONTACT GROUND", "CONTACT TOWER", "TAXI TO RUNWAY",
-            "HOLD SHORT", "LINE UP AND WAIT"
+            "CLEARED TO", "CLEARED FOR", "GO AROUND", "ENTER FINAL", "TURN", "REPORT",
+            "TAKE NEXT", "CONTACT", "PUSHBACK", "TAXI TO", "HOLD POSITION", "LINE UP AND WAIT",
+            "CONTINUE TAXI", "FOLLOW", "DELETE AIRPLANE", "LOW APPROACH", "AVAILABLE EXIT",
+            "LEFT", "RIGHT", "HEADING", "POSITION", "AIRSPEED", "RUNWAY", "SHORT OF TAXIWAY",
+            "LINE UP AND", "CONTINUE", "ON LEFT", "ON RIGHT"
         ]
         
         # Exact ATC Zones for 1366x768 DBRITE Area
         self.zones = {
-            "RUNWAY_09R": {"rect": (0, 160, 400, 30), "type": "RUNWAY"},
-            "RUNWAY_09L": {"rect": (0, 120, 400, 30), "type": "RUNWAY"},
-            "TAXIWAY_ALPHA": {"rect": (50, 200, 300, 40), "type": "TAXIWAY"},
+            "KJFK_04L": {"rect": (50, 50, 100, 20), "heading": 44},
+            "KJFK_04R": {"rect": (150, 50, 100, 20), "heading": 44},
+            "KJFK_22L": {"rect": (50, 100, 100, 20), "heading": 224},
+            "KJFK_22R": {"rect": (150, 100, 100, 20), "heading": 224},
+            "KJFK_13L": {"rect": (50, 150, 100, 20), "heading": 134},
+            "KJFK_13R": {"rect": (150, 150, 100, 20), "heading": 134},
+            "KJFK_31L": {"rect": (50, 200, 100, 20), "heading": 314},
+            "KJFK_31R": {"rect": (150, 200, 100, 20), "heading": 314},
             "FINAL_APPROACH": {"rect": (350, 50, 56, 250), "type": "FINAL"}
         }
+        self.current_wind = {"dir": 0, "speed": 0}
 
-    def extract_callsign(self, text):
-        if not isinstance(text, str): return None
-        match = re.search(r'([A-Z]{2,4}\d{1,4})', text.upper())
-        return match.group(1) if match else None
-
-    def match_intent(self, visible_callsign, heard_requests):
-        """Disambiguates multiple voices by matching to current UI selection."""
-        if not visible_callsign or visible_callsign == "NONE":
-            return "NO_SELECTION"
-            
-        relevant = []
-        for req in heard_requests:
-            audio_cs = self.extract_callsign(req)
-            if audio_cs == visible_callsign:
-                relevant.append(f"[DIRECT] {req}")
-            elif visible_callsign in req:
-                relevant.append(f"[PARTIAL] {req}")
+    def parse_wind(self, text):
+        """Attempts to find wind info like 'WIND 230 AT 12' or '230/12'."""
+        match = re.search(r'WIND (\d{3}) AT (\d{1,2})', text.upper())
+        if not match:
+            match = re.search(r'(\d{3})/(\d{1,2})', text)
         
-        if not relevant and heard_requests:
-            return f"[LAST_HEARD] {heard_requests[-1]}"
-            
-        return " | ".join(relevant) if relevant else "SILENCE"
+        if match:
+            self.current_wind["dir"] = int(match.group(1))
+            self.current_wind["speed"] = int(match.group(2))
+            return True
+        return False
 
-    def get_runway_occupancy(self, blips):
-        occ = {k: "CLEAR" for k in self.zones if "RUNWAY" in k}
-        for b in blips:
-            pos = b.get("pos", (0, 0))
-            bx, by = pos
-            for z_name, z_data in self.zones.items():
-                if "RUNWAY" not in z_name: continue
-                zx, zy, zw, zh = z_data["rect"]
-                if zx < bx < zx + zw and zy < by < zy + zh:
-                    occ[z_name] = "OCCUPIED"
-        return occ
+    def get_tailwind_component(self, runway_name):
+        """Calculates component based on runway heading vs wind dir."""
+        if runway_name not in self.zones: return 0
+        r_hdg = self.zones[runway_name].get("heading", 0)
+        w_dir = self.current_wind["dir"]
+        w_spd = self.current_wind["speed"]
+        
+        # Difference in angles
+        diff = math.radians(w_dir - r_hdg)
+        # Cosine gives headwind (positive) or tailwind (negative)
+        component = w_spd * math.cos(diff)
+        return -component # Return positive value for TAILWIND
 
-    def get_situation_summary(self, blips):
+    def get_situation_summary(self, blips, full_ocr_text=""):
+        # Update wind first
+        self.parse_wind(full_ocr_text)
+        
         occ = self.get_runway_occupancy(blips)
         arrivals = len([b for b in blips if b.get('color') == 'green'])
         
-        # Conflict Detection (Final vs Runway)
-        conflict = False
-        for b in blips:
-            pos = b.get("pos", (0, 0))
-            if b.get('color') == 'green' and 350 < pos[0] < 406:
-                if any(v == "OCCUPIED" for v in occ.values()):
-                    conflict = True
-                    break
+        summary = f"WIND: {self.current_wind['dir']}/{self.current_wind['speed']}kts. "
+        
+        # Check tailwinds for active (occupied) runways
+        for r_name, status in occ.items():
+            if status == "OCCUPIED":
+                tailwind = self.get_tailwind_component(r_name)
+                if tailwind > 5:
+                    summary += f"!! TAILWIND {tailwind:.1f}kts on {r_name} !! "
 
-        status = f"TRAFFIC: {arrivals} Arrivals."
-        if conflict: status += " !! CONFLICT RISK !!"
-        status += " | " + " ".join([f"{k}:{v}" for k,v in occ.items()])
-        return status
+        # Conflict Detection
+        conflict = False
+        on_final = any(350 < b.get("pos", (0,0))[0] < 406 for b in blips if b.get('color') == 'green')
+        if on_final and any(v == "OCCUPIED" for v in occ.values()):
+            conflict = True
+
+        if conflict: summary += " !! RUNWAY CONFLICT RISK !!"
+        summary += f" | {arrivals} Arrivals."
+        return summary
 
     def clean_command(self, raw_ocr):
         if not raw_ocr or len(str(raw_ocr)) < 3: return "NONE"

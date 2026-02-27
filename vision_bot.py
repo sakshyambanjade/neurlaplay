@@ -77,6 +77,23 @@ def main():
             
         finally:
             cv2.destroyAllWindows()
+                # OCR for command panel text
+                text = read_text_from_image(img)
+                print(f"Command Panel OCR: {text}")
+                # Template matching for button options
+                # Example: Find rectangles/buttons and extract their text
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+                contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                button_texts = []
+                for cnt in contours:
+                    x, y, w, h = cv2.boundingRect(cnt)
+                    if w > 60 and h > 20 and y > 20: # Filter likely buttons
+                        button_crop = img[y:y+h, x:x+w]
+                        btn_text = read_text_from_image(button_crop)
+                        if btn_text:
+                            button_texts.append(btn_text)
+                print(f"Detected Command Buttons: {button_texts}")
 
 if __name__ == "__main__":
     main()

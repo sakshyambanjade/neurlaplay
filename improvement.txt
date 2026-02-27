@@ -1,0 +1,72 @@
+1. What We Have in the Code
+Vision Module: Captures game screen, extracts command panel options, reads text/buttons using OCR.
+World Model: Lists all valid ATC commands, tracks runways/taxiways/gates/aircraft states.
+Reasoning Engine: Chooses commands based on game state and available options (can be rule-based or learn from your actions).
+Action Module: Types commands into the game using mouse/keyboard automation.
+Training Logger: Logs every action, screenshot, and game state for learning.
+Dataset Analyser: Breaks down logged data for patterns, safety, and action types.
+2. What We Have in the Game
+Command Panel: Accepts typed ATC instructions (e.g., CLEARED TO LAND, HOLD POSITION, etc.).
+Visual Feedback: Shows aircraft, runways, taxiways, strips, radar, and command options.
+Game Events: Aircraft movements, conflicts, requests, and responses.
+3. How to Improve the AI Bot (for Training)
+Maximize Data Collection: Log every possible game event, command, and outcome while you play. The more data, the better the model learns.
+Imitation Learning: Use your logged actions as training data. The bot should mimic your decisions in similar situations.
+Automate Retraining: After each session, retrain the bot’s decision logic using the new data—no manual tweaks needed.
+Context Awareness: Ensure the bot uses all available game context (command panel options, aircraft positions, strips, radar) for decision-making.
+Error Handling: If the bot is unsure, default to safe actions (e.g., HOLD POSITION).
+Continuous Feedback: Analyze performance after each session and update the model automatically.
+4. What to Focus On
+Only use game data and your actions for training.
+Don’t add external features or commands—stick to what the game provides.
+Make the bot learn and improve from your gameplay, not from outside sources.
+5. Detailed Roadmap & Questions for Collaborators
+
+---
+**A. Vision Module**
+- Are we capturing all relevant screen regions (command panel, radar, strips, aircraft)?
+- Is OCR accurate enough for all command options and aircraft IDs? Should we improve preprocessing or try other OCR engines?
+- Can we reliably detect button states and context (e.g., which commands are available for each aircraft)?
+- Should we add object detection for obstacles, vehicles, or weather effects?
+
+**B. World Model**
+- Is our list of valid ATC commands complete and up-to-date with the game?
+- Are we tracking all necessary game entities (aircraft, runways, taxiways, gates, wind, conflicts)?
+- Should we model more complex interactions (e.g., sequencing, runway occupancy, taxiway congestion)?
+
+**C. Reasoning Engine**
+- Should we use rule-based, imitation, or reinforcement learning for decision-making?
+- How do we handle ambiguous or conflicting situations? Should we always default to safety (e.g., HOLD POSITION)?
+- How often should the bot retrain itself using new data? Should retraining be automatic or manual?
+- Should the bot explain its decisions for research transparency?
+
+**D. Action Module**
+- Is command input reliable and fast enough? Are there edge cases where the bot fails to type or send commands?
+- Should we add error recovery (e.g., retry failed commands, log errors)?
+- Is mouse/keyboard automation robust across different screen resolutions and layouts?
+
+**E. Training Logger & Dataset Analyser**
+- Are we logging all relevant data (actions, screenshots, game state, outcomes)?
+- Is the dataset rich enough for effective learning? Should we log more context (e.g., pilot requests, weather, time of day)?
+- How do we measure bot performance (safety, efficiency, realism)?
+- Should we visualize learning progress and action breakdowns?
+
+**F. Learning Pipeline**
+- How do we automate retraining and deployment of improved models?
+- Should we use ensemble methods or combine rule-based and learned logic?
+- How do we ensure the bot generalizes well from your play style?
+
+**G. Integration & Continuous Improvement**
+- Are all modules communicating efficiently in real time?
+- Is the bot responsive enough for live gameplay?
+- How do we handle module updates and bug fixes without breaking the pipeline?
+- Should we add a feedback loop for continuous improvement (e.g., bot reviews its own performance after each session)?
+
+**H. Research & Collaboration**
+- What are the main research questions you want to answer (e.g., human-AI imitation, safety, learning speed)?
+- What feedback do you want from collaborators (e.g., command coverage, learning methods, error handling)?
+- Should we document all decisions and improvements for future reference?
+
+---
+**Summary:**
+The AI bot should see the game, log your actions, learn from your decisions, and act in real time. Improvements should focus on better data collection, imitation learning, automated retraining, and robust integration—using only the game and your play. Use this roadmap and questions to guide collaboration and make the bot truly capable and self-improving.
