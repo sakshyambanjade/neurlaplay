@@ -1,0 +1,8 @@
+opencv-python
+mss
+numpy
+pytesseract
+pyautogui
+pynput
+python-dotenv
+groq

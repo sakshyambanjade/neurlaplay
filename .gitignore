@@ -1,0 +1,28 @@
+# Security
+.env
+api_keys.json
+
+# Training Data (Very large files)
+imitation_learning_data/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.so
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+atc_diagnostics_*.txt
