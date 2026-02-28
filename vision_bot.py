@@ -1,26 +1,94 @@
+import easyocr
+import pyautogui
 import cv2
 import numpy as np
-import mss
-import time
-import pytesseract
-import pyautogui
 
-def read_text_from_image(image):
-    # Convert image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    # Thresholding to get white text more clearly against a dark background
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-    
-    # Needs Tesseract installed on Windows to work
-    # Default install path shown below:
-    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-    
-    try:
-        text = pytesseract.image_to_string(thresh)
-        return text.strip()
-    except Exception as e:
-        return f"Error reading text: {e}\n(Make sure Tesseract OCR is installed on Windows: https://github.com/UB-Mannheim/tesseract/wiki)"
+class VisionBot:
+        def load_schedule_callsigns(self, schedule_path):
+            """
+            Loads callsigns from a schedule file for smarter aircraft identification.
+            """
+            self.callsign_map = set()
+            try:
+                with open(schedule_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        parts = line.strip().split(',')
+                        if len(parts) >= 5:
+                            self.callsign_map.add(parts[4].upper())
+            except Exception as e:
+                print(f"Error loading schedule: {e}")
+
+        def match_callsign(self, text):
+            """
+            Returns True if text matches a known callsign from the schedule.
+            """
+            if hasattr(self, 'callsign_map'):
+                return text.upper() in self.callsign_map
+            return False
+
+        def detect_radar_blips(self):
+            """
+            Detects aircraft blips on the radar panel using color and shape analysis.
+            Returns a list of detected blip positions and (optionally) colors.
+            """
+            img = self.capture_region('radar')
+            # Convert to HSV for color detection
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            # Example: Detect green blips (arrivals)
+            lower_green = np.array([40, 40, 40])
+            upper_green = np.array([80, 255, 255])
+            mask = cv2.inRange(hsv, lower_green, upper_green)
+            # Find contours (blips)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            blips = []
+            for cnt in contours:
+                x, y, w, h = cv2.boundingRect(cnt)
+                if w > 5 and h > 5:  # Filter out noise
+                    blips.append({'pos': (x + w//2, y + h//2), 'size': (w, h)})
+            return blips
+    def __init__(self):
+        self.reader = easyocr.Reader(['en'], gpu=False)
+        # Calibrated for 1366x768 resolution (update as needed)
+        self.REGIONS = {
+            'command_panel': (1000, 600, 350, 120),  # x, y, width, height
+            'radar':         (0,    0,   800, 600),
+            'strips':        (0,    600, 400, 168),
+        }
+
+    def template_match_commands(self, img, templates):
+        # templates: dict of {command: template_image}
+        found = []
+        for cmd, template in templates.items():
+            res = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
+            loc = np.where(res >= 0.8)
+            if len(loc[0]) > 0:
+                found.append(cmd)
+        return found
+
+    def capture_region(self, region_name):
+        x, y, w, h = self.REGIONS[region_name]
+        screenshot = pyautogui.screenshot(region=(x, y, w, h))
+        return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+    def get_available_commands(self, templates=None):
+        img = self.capture_region('command_panel')
+        commands = []
+        # Fast template matching for known commands
+        if templates:
+            commands += self.template_match_commands(img, templates)
+        # OCR fallback for dynamic text
+        results = self.reader.readtext(img)
+        commands += [text.upper() for (_, text, conf) in results if conf > 0.5]
+        return list(set(commands))
+
+    def get_active_aircraft(self):
+        img = self.capture_region('strips')
+        results = self.reader.readtext(img)
+        aircraft = []
+        for (_, text, conf) in results:
+            if conf > 0.6 and self.match_callsign(text):
+                aircraft.append(text)
+        return aircraft
 
 def main():
     print("Starting Tower!3D Pro Vision Bot...")
@@ -77,23 +145,6 @@ def main():
             
         finally:
             cv2.destroyAllWindows()
-                # OCR for command panel text
-                text = read_text_from_image(img)
-                print(f"Command Panel OCR: {text}")
-                # Template matching for button options
-                # Example: Find rectangles/buttons and extract their text
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
-                contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                button_texts = []
-                for cnt in contours:
-                    x, y, w, h = cv2.boundingRect(cnt)
-                    if w > 60 and h > 20 and y > 20: # Filter likely buttons
-                        button_crop = img[y:y+h, x:x+w]
-                        btn_text = read_text_from_image(button_crop)
-                        if btn_text:
-                            button_texts.append(btn_text)
-                print(f"Detected Command Buttons: {button_texts}")
 
 if __name__ == "__main__":
     main()

@@ -3,6 +3,46 @@ import re
 import time
 
 class ATCWorldModel:
+
+    def update(self, game_state):
+        # Example: update runway occupancy and conflict detection
+        aircraft = game_state.get('aircraft', [])
+        self.runway_occupied = len(aircraft) > 0  # Simplified: occupied if any aircraft
+        self.conflict_detected = False
+        # Add more logic for real conflict detection
+        # Example: if more than one aircraft, set conflict
+        if len(aircraft) > 1:
+            self.conflict_detected = True
+
+    def get_state(self):
+        return {
+            'runway_occupied': getattr(self, 'runway_occupied', False),
+            'conflict_detected': getattr(self, 'conflict_detected', False),
+            # Add more fields as needed
+        }
+    def to_vector(self, blips=None):
+            """
+            Converts the current game state to a fixed-length numeric vector for ML training.
+            Optionally accepts blips (aircraft/radar objects) for richer state.
+            """
+            # Example fields: number of aircraft, conflicts, runway occupancy, wind, arrivals
+            blips = blips if blips is not None else []
+            occ = self.get_runway_occupancy(blips) if hasattr(self, 'get_runway_occupancy') else {}
+            arrivals = len([b for b in blips if b.get('color') == 'green'])
+            conflicts = 1 if any(350 < b.get("pos", (0,0))[0] < 406 for b in blips if b.get('color') == 'green') and any(v == "OCCUPIED" for v in occ.values()) else 0
+            vector = [
+                len(blips),
+                arrivals,
+                conflicts,
+                self.current_wind.get("dir", 0),
+                self.current_wind.get("speed", 0),
+                occ.get("KJFK_04L", 0) == "OCCUPIED",
+                occ.get("KJFK_04R", 0) == "OCCUPIED",
+                occ.get("KJFK_22L", 0) == "OCCUPIED",
+                occ.get("KJFK_22R", 0) == "OCCUPIED",
+                # Add more fields as needed
+            ]
+            return [int(v) if isinstance(v, bool) else v for v in vector]
     """
     Handles higher-level airport logic and data cleaning.
     """

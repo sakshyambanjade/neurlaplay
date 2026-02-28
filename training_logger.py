@@ -24,7 +24,8 @@ class TrainingLogger:
             "situation",
             "pilot_request",
             "user_action_type", 
-            "user_action_content"
+            "user_action_content",
+            "outcome"
         ]
         
         if not os.path.exists(self.csv_file):
@@ -32,7 +33,18 @@ class TrainingLogger:
                 writer = csv.writer(f)
                 writer.writerow(self.headers)
 
-    def log_event(self, screenshot, state_data, action_type, action_content):
+    def log_event(self, screenshot, state_data, action_type, action_content, outcome=None):
+        timestamp = int(time.time() * 1000)
+        # Log outcome and timestamp
+        entry = {
+            "timestamp": timestamp,
+            "action": action_content,
+            "outcome": outcome,
+            "state": state_data,
+        }
+        # Optionally log to a JSONL file
+        with open(os.path.join(self.log_dir, "agent_actions.jsonl"), 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry) + '\n')
         timestamp = int(time.time() * 1000)
         filename = f"event_{timestamp}.jpg"
         filepath = os.path.join(self.img_dir, filename)
@@ -60,7 +72,8 @@ class TrainingLogger:
                 clean(state_data.get("situation", "")),
                 clean(state_data.get("pilot_request", "")),
                 action_type,
-                clean(action_content)
+                clean(action_content),
+                outcome if outcome is not None else ""
             ])
         
         print(f"Captured Human Action: {action_type} -> {action_content}")

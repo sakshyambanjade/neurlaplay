@@ -2,6 +2,33 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+def auto_retrain_if_ready(min_samples=200):
+    from reasoning_engine import ATCReasoningEngine
+    import csv
+    csv_path = r"d:\Tower.3D.Pro.v7927862\Tower3D_AI_Bot\imitation_learning_data\human_actions.csv"
+    if not os.path.exists(csv_path):
+        print("No dataset found for retraining.")
+        return False
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        dataset = list(reader)
+    if len(dataset) < min_samples:
+        print(f"Not enough data yet: {len(dataset)}/{min_samples}")
+        return False
+    # Prepare dummy state/action objects for ML
+    class DummyState:
+        def __init__(self, row):
+            self.row = row
+        def to_vector(self):
+            # Example: use numeric fields
+            return [int(self.row.get('radar_green_count', 0)), int(self.row.get('radar_pink_count', 0))]
+    states = [DummyState(row) for row in dataset]
+    actions = [row.get('user_action_content', '') for row in dataset]
+    engine = ATCReasoningEngine()
+    engine.train_ml(type('Dataset', (), {'states': states, 'actions': actions}))
+    print(f"Retrained on {len(dataset)} samples ✓")
+    return True
+
 def analyze_session(csv_path):
     print(f"--- ATC Neuro-Dataset Analysis: {csv_path} ---")
     if not os.path.exists(csv_path):

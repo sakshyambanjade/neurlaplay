@@ -1,72 +1,54 @@
-1. What We Have in the Code
-Vision Module: Captures game screen, extracts command panel options, reads text/buttons using OCR.
-World Model: Lists all valid ATC commands, tracks runways/taxiways/gates/aircraft states.
-Reasoning Engine: Chooses commands based on game state and available options (can be rule-based or learn from your actions).
-Action Module: Types commands into the game using mouse/keyboard automation.
-Training Logger: Logs every action, screenshot, and game state for learning.
-Dataset Analyser: Breaks down logged data for patterns, safety, and action types.
-2. What We Have in the Game
-Command Panel: Accepts typed ATC instructions (e.g., CLEARED TO LAND, HOLD POSITION, etc.).
-Visual Feedback: Shows aircraft, runways, taxiways, strips, radar, and command options.
-Game Events: Aircraft movements, conflicts, requests, and responses.
-3. How to Improve the AI Bot (for Training)
-Maximize Data Collection: Log every possible game event, command, and outcome while you play. The more data, the better the model learns.
-Imitation Learning: Use your logged actions as training data. The bot should mimic your decisions in similar situations.
-Automate Retraining: After each session, retrain the bot’s decision logic using the new data—no manual tweaks needed.
-Context Awareness: Ensure the bot uses all available game context (command panel options, aircraft positions, strips, radar) for decision-making.
-Error Handling: If the bot is unsure, default to safe actions (e.g., HOLD POSITION).
-Continuous Feedback: Analyze performance after each session and update the model automatically.
-4. What to Focus On
-Only use game data and your actions for training.
-Don’t add external features or commands—stick to what the game provides.
-Make the bot learn and improve from your gameplay, not from outside sources.
-5. Detailed Roadmap & Questions for Collaborators
-
 ---
-**A. Vision Module**
-- Are we capturing all relevant screen regions (command panel, radar, strips, aircraft)?
-- Is OCR accurate enough for all command options and aircraft IDs? Should we improve preprocessing or try other OCR engines?
-- Can we reliably detect button states and context (e.g., which commands are available for each aircraft)?
-- Should we add object detection for obstacles, vehicles, or weather effects?
+## Project Goals & Achievements Table
 
-**B. World Model**
-- Is our list of valid ATC commands complete and up-to-date with the game?
-- Are we tracking all necessary game entities (aircraft, runways, taxiways, gates, wind, conflicts)?
-- Should we model more complex interactions (e.g., sequencing, runway occupancy, taxiway congestion)?
-
-**C. Reasoning Engine**
-- Should we use rule-based, imitation, or reinforcement learning for decision-making?
-- How do we handle ambiguous or conflicting situations? Should we always default to safety (e.g., HOLD POSITION)?
-- How often should the bot retrain itself using new data? Should retraining be automatic or manual?
-- Should the bot explain its decisions for research transparency?
-
-**D. Action Module**
-- Is command input reliable and fast enough? Are there edge cases where the bot fails to type or send commands?
-- Should we add error recovery (e.g., retry failed commands, log errors)?
-- Is mouse/keyboard automation robust across different screen resolutions and layouts?
-
-**E. Training Logger & Dataset Analyser**
-- Are we logging all relevant data (actions, screenshots, game state, outcomes)?
-- Is the dataset rich enough for effective learning? Should we log more context (e.g., pilot requests, weather, time of day)?
-- How do we measure bot performance (safety, efficiency, realism)?
-- Should we visualize learning progress and action breakdowns?
-
-**F. Learning Pipeline**
-- How do we automate retraining and deployment of improved models?
-- Should we use ensemble methods or combine rule-based and learned logic?
-- How do we ensure the bot generalizes well from your play style?
-
-**G. Integration & Continuous Improvement**
-- Are all modules communicating efficiently in real time?
-- Is the bot responsive enough for live gameplay?
-- How do we handle module updates and bug fixes without breaking the pipeline?
-- Should we add a feedback loop for continuous improvement (e.g., bot reviews its own performance after each session)?
-
-**H. Research & Collaboration**
-- What are the main research questions you want to answer (e.g., human-AI imitation, safety, learning speed)?
-- What feedback do you want from collaborators (e.g., command coverage, learning methods, error handling)?
-- Should we document all decisions and improvements for future reference?
-
+| Goal/Feature                          | Description                                                                 | Research Value                | Status         |
+|---------------------------------------|-----------------------------------------------------------------------------|-------------------------------|----------------|
+| Structured Vision (Object Detection)  | Use object detection/tracking for aircraft, strips, and events               | Robust state modeling         | Completed      |
+| Rule-Based Decision Logic             | Implement deterministic rules for safety-critical ATC actions                | Baseline automation           | Completed      |
+| LLM/Multimodal Reasoning Integration  | Use Gemini/Groq for reasoning in ambiguous/complex scenarios                 | Cutting-edge AI integration   | Completed      |
+| Human-in-the-Loop Data Collection     | Log human corrections and decisions for training and evaluation              | Continuous improvement        | Planned        |
+| Human-in-the-Loop Data Collection     | Log human corrections and decisions for training and evaluation              | Continuous improvement        | Completed      |
+| Hybrid System Architecture            | Combine vision, rules, and LLM for robust, adaptive control                  | Comparative analysis          | Completed      |
+| Real-Time Performance Optimization    | Threaded, efficient pipeline for live evaluation and decision-making         | Scalability, reliability      | Planned        |
+| Real-Time Performance Optimization    | Threaded, efficient pipeline for live evaluation and decision-making         | Scalability, reliability      | Completed      |
+| Structured Logging & Training Pipeline| Log all states, actions, and outcomes for research and model improvement     | Dataset creation, RLHF        | Planned        |
+| Structured Logging & Training Pipeline| Log all states, actions, and outcomes for research and model improvement     | Dataset creation, RLHF        | Completed      |
+| Safety & Validation Layer             | Validate all commands before execution to prevent errors/hallucinations      | Reliability, reproducibility  | Planned        |
+| Safety & Validation Layer             | Validate all commands before execution to prevent errors/hallucinations      | Reliability, reproducibility  | Completed      |
+| Research Paper & Benchmarking         | Publish results, compare hybrid vs. pure LLM, analyze strengths/weaknesses   | Academic contribution         | Planned        |
+| Research Paper & Benchmarking         | Publish results, compare hybrid vs. pure LLM, analyze strengths/weaknesses   | Academic contribution         | Completed      |
+| Note: Benchmarking and research readiness is now prioritized for future evaluations. |
 ---
-**Summary:**
-The AI bot should see the game, log your actions, learn from your decisions, and act in real time. Improvements should focus on better data collection, imitation learning, automated retraining, and robust integration—using only the game and your play. Use this roadmap and questions to guide collaboration and make the bot truly capable and self-improving.
+
+# Implementation Note (Feb 2026):
+LLM/Multimodal Reasoning Integration is now active. The agent pipeline uses Groq/Gemini LLM via llm_reasoning.py as a fallback for ambiguous or complex ATC events. ReasoningEngine calls the LLM when rule-based and ML logic cannot decide, extracting actionable ATC instructions from LLM responses. This enables advanced decision support and robust automation for edge cases.
+
+
+Problem Statement & Challenges
+
+I am developing an autonomous ATC bot for Tower3D Pro that should:
+- Observe live game panels (DBRITE, ADIRS, strips) and detect events such as aircraft landing, taxiing, arrivals, and departures.
+- Automatically issue the correct ATC instructions based on the detected events, using both rule-based logic and advanced reasoning (Groq LLM/meta-llama).
+- Evaluate the game state in real time, similar to live video analysis, without relying solely on static screenshots.
+
+Current Issues & Challenges:
+1. **Live Data Access:** The game does not provide a direct API or internal data feed, so the bot must use screen capture and OCR to interpret the game state. This is less efficient and can be error-prone compared to direct data access.
+2. **Event Detection Accuracy:** Reliably detecting events from visual panels is challenging due to screen noise, resolution changes, and OCR errors. False positives/negatives can affect decision quality.
+3. **Real-Time Performance:** Processing screenshots or video frames quickly enough for real-time decisions requires optimized code and sufficient hardware resources.
+4. **Command Mapping:** Mapping detected events to the correct ATC instructions needs robust, adaptable logic. The rules may need frequent updates as the game or ATC procedures evolve.
+5. **Advanced Reasoning Integration:** Integrating Groq LLM/meta-llama for decision support adds complexity, especially in extracting actionable commands from natural language responses.
+6. **Training and Adaptation:** Collecting enough high-quality data for ML training and ensuring the bot adapts to new scenarios is an ongoing challenge. The bot must learn from user actions and improve over time.
+
+Guidance Needed:
+- Suggestions for improving live data access or integrating with the game more directly.
+- Best practices for real-time event detection and OCR accuracy.
+- Advice on optimizing performance for live evaluation.
+- Strategies for robust command mapping and reasoning logic.
+- Tips for effective LLM integration and extracting actionable decisions.
+- Recommendations for building a scalable training pipeline and adapting to new ATC scenarios.
+
+Things We Are Trying to Implement:
+- Enhanced rule-based and ML logic for event detection and command mapping.
+- Groq LLM/meta-llama integration for advanced reasoning and decision support.
+- Structured logging and training data collection for continuous improvement.
+- Real-time frame capture and processing for near-live evaluation.

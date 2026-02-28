@@ -1,0 +1,15 @@
+vision:
+  screen_regions:
+    command_panel: [100, 800, 400, 200]
+    radar: [50, 50, 600, 600]
+  ocr_engine: "easyocr"
+world_model:
+  valid_commands:
+    - CLEARED TO LAND
+    - HOLD POSITION
+    - GO AROUND
+    - CLEARED FOR TAKEOFF
+reasoning:
+  learning_mode: "imitation"
+logger:
+  log_dir: "imitation_learning_data"
