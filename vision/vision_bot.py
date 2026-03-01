@@ -5,13 +5,24 @@ import os
 import yaml
 import numpy as np
 import time
+import torch
  # Removed broken import
  # Removed unused import mss
  # Fix: If read_text_from_image is not available, comment out or provide fallback
 
 class VisionBot:
     def __init__(self):
-        self.reader = easyocr.Reader(['en'], gpu=False)
+        # Auto-detect GPU availability
+        use_gpu = torch.cuda.is_available()
+        if use_gpu:
+            print(f"✓ GPU detected: {torch.cuda.get_device_name(0)}")
+            print(f"  CUDA version: {torch.version.cuda}")
+            print(f"  GPU memory: {torch.cuda.get_device_properties(0).total_memory // (1024**3)} GB")
+        else:
+            print("⚠ No GPU detected - using CPU (slower)")
+            print("  Install CUDA-enabled PyTorch for better performance")
+        
+        self.reader = easyocr.Reader(['en'], gpu=use_gpu)
         self.REGIONS = self._load_regions_from_config()
         self.KNOWN_COMMANDS = [
             "CLEARED TO LAND", "GO AROUND", "HOLD POSITION", "CLEARED FOR TAKEOFF",
