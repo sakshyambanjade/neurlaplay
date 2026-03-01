@@ -30,7 +30,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from core.atc_world_model import ATCWorldModel
 from core.reasoning_engine import ATCReasoningEngine
 from core.action_module import send_command
-from vision.vision_bot import VisionBot
+# Lightweight version - no PyTorch/GPU required
+from vision.vision_bot_lightweight import VisionBot
 from vision.radar_tracking import find_aircraft_blips
 from vision.strip_reader import read_strips
 from utils.training_logger import TrainingLogger
