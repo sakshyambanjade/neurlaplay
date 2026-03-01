@@ -5,18 +5,24 @@ Tower 3D AI ATC Bot - Main Entry Point
 A self-learning AI system that plays Tower 3D, logging gameplay data for neurology research.
 
 Usage:
-    python run_atc_bot.py [--mode live|interactive|training]
+    python run_atc_bot.py [--mode live|interactive|training] [--launch] [--airport KJFK]
 
 Modes:
     - live: Fully autonomous mode (AI makes all decisions)
     - interactive: User confirms each ATC decision
     - training: Record human decisions for imitation learning
+
+Options:
+    --launch: Automatically launch Tower 3D Pro (optional)
+    --airport: Airport code to load (default: KJFK)
+    --auto-nav: Try to click through menus automatically (experimental)
 """
 
 import sys
 import os
 import argparse
 import time
+import logging
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +35,13 @@ from vision.radar_tracking import find_aircraft_blips
 from vision.strip_reader import read_strips
 from utils.training_logger import TrainingLogger
 from utils.human_feedback_logger import HumanFeedbackLogger
+from utils.game_launcher import GameLauncher
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 class TowerAIBot:
@@ -255,16 +268,84 @@ def main():
         default="live",
         help="Operating mode"
     )
+    parser.add_argument(
+        "--launch",
+        action="store_true",
+        help="Automatically launch Tower 3D Pro"
+    )
+    parser.add_argument(
+        "--airport",
+        default="KJFK",
+        help="Airport code to load (default: KJFK)"
+    )
+    parser.add_argument(
+        "--auto-nav",
+        action="store_true",
+        help="Try automatic menu navigation (experimental)"
+    )
     args = parser.parse_args()
     
-    bot = TowerAIBot(mode=args.mode)
+    # Launch game if requested
+    launcher = None
+    if args.launch:
+        print("\n" + "=" * 60)
+        print("LAUNCHING TOWER 3D PRO")
+        print("=" * 60)
+        
+        try:
+            launcher = GameLauncher()
+            success = launcher.full_auto_launch(
+                airport_code=args.airport,
+                auto_navigate=args.auto_nav
+            )
+            
+            if not success:
+                print("\n⚠ Game launch may have failed")
+                response = input("Continue anyway? (y/n): ")
+                if response.lower() != 'y':
+                    print("Aborted")
+                    return
+            
+            print("\n✓ Game is running and ready")
+            print("Starting bot in 3 seconds...\n")
+            time.sleep(3)
+            
+        except Exception as e:
+            print(f"\n✗ Failed to launch game: {e}")
+            print("Please start Tower 3D manually and try again.")
+            return
+    else:
+        print("\n⚠ Running without auto-launch")
+        print("Make sure Tower 3D Pro is already running with a session started!\n")
+        time.sleep(2)
     
-    if args.mode == "live":
-        bot.run_live_mode()
-    elif args.mode == "interactive":
-        bot.run_interactive_mode()
-    elif args.mode == "training":
-        bot.run_training_mode()
+    # Start the bot
+    try:
+        bot = TowerAIBot(mode=args.mode)
+        
+        if args.mode == "live":
+            bot.run_live_mode()
+        elif args.mode == "interactive":
+            bot.run_interactive_mode()
+        elif args.mode == "training":
+            bot.run_training_mode()
+    
+    except KeyboardInterrupt:
+        print("\n\n⊠ Bot stopped by user")
+    except Exception as e:
+        print(f"\n\n✗ Bot error: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # Clean up: optionally close game
+        if launcher:
+            print("\n" + "=" * 60)
+            response = input("Close Tower 3D Pro? (y/n): ")
+            if response.lower() == 'y':
+                launcher.close_game()
+                print("Game closed")
+            else:
+                print("Game left running")
 
 
 if __name__ == "__main__":
