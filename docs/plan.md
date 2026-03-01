@@ -1,0 +1,1 @@
+the new plan is that we are going to first train the model in the image to identify where is what after that we are going to train it how and what are the different buttons then after that it should start giving instructions for now make it feel what button does what 

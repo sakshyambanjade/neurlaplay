@@ -46,6 +46,18 @@ class VisionBot:
         ]
         self.schedule_callsigns = set()
 
+    def load_schedule_callsigns(self, schedule_path):
+        """Load expected callsigns from a schedule file"""
+        try:
+            with open(schedule_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    cs = line.strip().split()[0] if line.strip() else None
+                    if cs:
+                        self.schedule_callsigns.add(cs.upper())
+            print(f"✓ Loaded {len(self.schedule_callsigns)} callsigns from schedule")
+        except Exception as e:
+            print(f"⚠ Error loading schedule: {e}")
+
     def _load_regions_from_config(self):
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
         try:
@@ -124,6 +136,13 @@ class VisionBot:
         except Exception as e:
             print(f"Error reading flight strips: {e}")
             return []
+
+    def get_active_aircraft(self):
+        """
+        Get list of active aircraft callsigns
+        (For compatibility with original vision_bot)
+        """
+        return self.read_flight_strips()
 
     def detect_radar_blips(self):
         """Detect aircraft on radar (color-based detection)"""
