@@ -17,3 +17,9 @@ scikit-learn
 matplotlib
 fuzzywuzzy
 python-Levenshtein
+networkx
+rapidfuzz
+pynput
+mss
+pyyaml
+click
