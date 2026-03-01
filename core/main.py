@@ -1,10 +1,12 @@
 
 import time
-from vision_bot import VisionBot
-from atc_world_model import ATCWorldModel
-from reasoning_engine import ATCReasoningEngine
-from action_module import send_command
-from training_logger import TrainingLogger
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from vision.vision_bot import VisionBot
+from core.atc_world_model import ATCWorldModel
+from core.reasoning_engine import ATCReasoningEngine
+from core.action_module import send_command
+from utils.training_logger import TrainingLogger
 
 
 def run_agent():

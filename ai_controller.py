@@ -7,12 +7,13 @@ import re
 import os
 import threading
 from pynput import keyboard, mouse
-
-from radar_tracking import find_aircraft_blips
-from strip_reader import read_strips
-from training_logger import TrainingLogger
-from reasoning_engine import ATCReasoningEngine
-from atc_world_model import ATCWorldModel
+from vision.radar_tracking import find_aircraft_blips
+from vision.strip_reader import read_strips
+from vision.vision_bot import VisionBot
+from utils.training_logger import TrainingLogger
+from core.reasoning_engine import ATCReasoningEngine
+from core.atc_world_model import ATCWorldModel
+from core.action_module import send_command
 try:
     from speech_module import ATCAudioObserver
 except ImportError:

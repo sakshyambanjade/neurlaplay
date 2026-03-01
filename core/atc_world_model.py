@@ -1,51 +1,22 @@
+
 from fuzzywuzzy import process
 import re
-import time
+import math
 
 class ATCWorldModel:
 
-    def update(self, game_state):
-        # Example: update runway occupancy and conflict detection
-        aircraft = game_state.get('aircraft', [])
-        self.runway_occupied = len(aircraft) > 0  # Simplified: occupied if any aircraft
-        self.conflict_detected = False
-        # Add more logic for real conflict detection
-        # Example: if more than one aircraft, set conflict
-        if len(aircraft) > 1:
-            self.conflict_detected = True
+    ZONES = {
+        "KJFK_04L": {"rect": (50, 50, 100, 20), "heading": 44},
+        "KJFK_04R": {"rect": (150, 50, 100, 20), "heading": 44},
+        "KJFK_22L": {"rect": (50, 100, 100, 20), "heading": 224},
+        "KJFK_22R": {"rect": (150, 100, 100, 20), "heading": 224},
+        "KJFK_13L": {"rect": (50, 150, 100, 20), "heading": 134},
+        "KJFK_13R": {"rect": (150, 150, 100, 20), "heading": 134},
+        "KJFK_31L": {"rect": (50, 200, 100, 20), "heading": 314},
+        "KJFK_31R": {"rect": (150, 200, 100, 20), "heading": 314},
+        "FINAL_APPROACH": {"rect": (350, 50, 56, 250), "type": "FINAL"}
+    }
 
-    def get_state(self):
-        return {
-            'runway_occupied': getattr(self, 'runway_occupied', False),
-            'conflict_detected': getattr(self, 'conflict_detected', False),
-            # Add more fields as needed
-        }
-    def to_vector(self, blips=None):
-            """
-            Converts the current game state to a fixed-length numeric vector for ML training.
-            Optionally accepts blips (aircraft/radar objects) for richer state.
-            """
-            # Example fields: number of aircraft, conflicts, runway occupancy, wind, arrivals
-            blips = blips if blips is not None else []
-            occ = self.get_runway_occupancy(blips) if hasattr(self, 'get_runway_occupancy') else {}
-            arrivals = len([b for b in blips if b.get('color') == 'green'])
-            conflicts = 1 if any(350 < b.get("pos", (0,0))[0] < 406 for b in blips if b.get('color') == 'green') and any(v == "OCCUPIED" for v in occ.values()) else 0
-            vector = [
-                len(blips),
-                arrivals,
-                conflicts,
-                self.current_wind.get("dir", 0),
-                self.current_wind.get("speed", 0),
-                occ.get("KJFK_04L", 0) == "OCCUPIED",
-                occ.get("KJFK_04R", 0) == "OCCUPIED",
-                occ.get("KJFK_22L", 0) == "OCCUPIED",
-                occ.get("KJFK_22R", 0) == "OCCUPIED",
-                # Add more fields as needed
-            ]
-            return [int(v) if isinstance(v, bool) else v for v in vector]
-    """
-    Handles higher-level airport logic and data cleaning.
-    """
     def __init__(self, resolution=(1366, 768)):
         self.res = resolution
         self.valid_commands = [
@@ -55,20 +26,55 @@ class ATCWorldModel:
             "LEFT", "RIGHT", "HEADING", "POSITION", "AIRSPEED", "RUNWAY", "SHORT OF TAXIWAY",
             "LINE UP AND", "CONTINUE", "ON LEFT", "ON RIGHT"
         ]
-        
-        # Exact ATC Zones for 1366x768 DBRITE Area
-        self.zones = {
-            "KJFK_04L": {"rect": (50, 50, 100, 20), "heading": 44},
-            "KJFK_04R": {"rect": (150, 50, 100, 20), "heading": 44},
-            "KJFK_22L": {"rect": (50, 100, 100, 20), "heading": 224},
-            "KJFK_22R": {"rect": (150, 100, 100, 20), "heading": 224},
-            "KJFK_13L": {"rect": (50, 150, 100, 20), "heading": 134},
-            "KJFK_13R": {"rect": (150, 150, 100, 20), "heading": 134},
-            "KJFK_31L": {"rect": (50, 200, 100, 20), "heading": 314},
-            "KJFK_31R": {"rect": (150, 200, 100, 20), "heading": 314},
-            "FINAL_APPROACH": {"rect": (350, 50, 56, 250), "type": "FINAL"}
-        }
+        self.zones = ATCWorldModel.ZONES.copy()
+        self.runway_occupied = False
+        self.conflict_detected = False
         self.current_wind = {"dir": 0, "speed": 0}
+
+    def update(self, game_state):
+        blips = game_state.get('radar_blips', [])
+        pink_blips = [b for b in blips if b.get('color') == 'pink']
+        self.runway_occupied = len(pink_blips) > 0
+        green_blips = [b for b in blips if b.get('color') == 'green']
+        on_final = any(300 < b['pos'][0] < 420 for b in green_blips)
+        self.conflict_detected = on_final and self.runway_occupied
+
+    def get_state(self):
+        return {
+            'runway_occupied': self.runway_occupied,
+            'conflict_detected': self.conflict_detected,
+            'wind_dir': self.current_wind.get('dir', 0),
+            'wind_speed': self.current_wind.get('speed', 0),
+        }
+
+    def to_vector(self, blips=None, strips=None):
+        blips = blips or []
+        strips = strips or []
+        green = [b for b in blips if b.get('color') == 'green']
+        pink = [b for b in blips if b.get('color') == 'pink']
+        on_final = any(300 < b['pos'][0] < 420 and b['pos'][1] > 200 for b in green)
+        return [
+            len(blips),
+            len(green),
+            len(pink),
+            1 if self.conflict_detected else 0,
+            1 if self.runway_occupied else 0,
+            1 if on_final else 0,
+            len(strips),
+            self.current_wind.get('dir', 0),
+            self.current_wind.get('speed', 0),
+            min(len(blips), 20),
+        ]
+
+    def get_runway_occupancy(self, blips):
+        occupancy = {name: 'CLEAR' for name in self.zones}
+        for blip in blips:
+            bx, by = blip.get('pos', (0, 0))
+            for name, zone in self.zones.items():
+                rx, ry, rw, rh = zone['rect']
+                if rx <= bx <= rx + rw and ry <= by <= ry + rh:
+                    occupancy[name] = 'OCCUPIED'
+        return occupancy
 
     def parse_wind(self, text):
         """Attempts to find wind info like 'WIND 230 AT 12' or '230/12'."""

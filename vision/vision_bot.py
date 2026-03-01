@@ -1,69 +1,62 @@
 import easyocr
 import pyautogui
 import cv2
+import os
+import yaml
 import numpy as np
+import time
+ # Removed broken import
+ # Removed unused import mss
+ # Fix: If read_text_from_image is not available, comment out or provide fallback
 
 class VisionBot:
-        def load_schedule_callsigns(self, schedule_path):
-            """
-            Loads callsigns from a schedule file for smarter aircraft identification.
-            """
-            self.callsign_map = set()
-            try:
-                with open(schedule_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        parts = line.strip().split(',')
-                        if len(parts) >= 5:
-                            self.callsign_map.add(parts[4].upper())
-            except Exception as e:
-                print(f"Error loading schedule: {e}")
-
-        def match_callsign(self, text):
-            """
-            Returns True if text matches a known callsign from the schedule.
-            """
-            if hasattr(self, 'callsign_map'):
-                return text.upper() in self.callsign_map
-            return False
-
-        def detect_radar_blips(self):
-            """
-            Detects aircraft blips on the radar panel using color and shape analysis.
-            Returns a list of detected blip positions and (optionally) colors.
-            """
-            img = self.capture_region('radar')
-            # Convert to HSV for color detection
-            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            # Example: Detect green blips (arrivals)
-            lower_green = np.array([40, 40, 40])
-            upper_green = np.array([80, 255, 255])
-            mask = cv2.inRange(hsv, lower_green, upper_green)
-            # Find contours (blips)
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            blips = []
-            for cnt in contours:
-                x, y, w, h = cv2.boundingRect(cnt)
-                if w > 5 and h > 5:  # Filter out noise
-                    blips.append({'pos': (x + w//2, y + h//2), 'size': (w, h)})
-            return blips
     def __init__(self):
         self.reader = easyocr.Reader(['en'], gpu=False)
-        # Calibrated for 1366x768 resolution (update as needed)
-        self.REGIONS = {
-            'command_panel': (1000, 600, 350, 120),  # x, y, width, height
-            'radar':         (0,    0,   800, 600),
-            'strips':        (0,    600, 400, 168),
-        }
+        self.REGIONS = self._load_regions_from_config()
+        self.KNOWN_COMMANDS = [
+            "CLEARED TO LAND", "GO AROUND", "HOLD POSITION", "CLEARED FOR TAKEOFF",
+            "TAXI TO GATE", "LINE UP AND WAIT", "PUSHBACK APPROVED",
+            "CONTACT GROUND"
+        ]
+        self.schedule_callsigns = set()
 
-    def template_match_commands(self, img, templates):
-        # templates: dict of {command: template_image}
-        found = []
-        for cmd, template in templates.items():
-            res = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
-            loc = np.where(res >= 0.8)
-            if len(loc[0]) > 0:
-                found.append(cmd)
-        return found
+    def _load_regions_from_config(self):
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            return config['vision']['screen_regions']
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            return {
+                'command_panel': (1000, 600, 350, 120),
+                'radar': (0, 0, 800, 600),
+                'strips': (0, 600, 400, 168),
+            }
+
+    def load_schedule_callsigns(self, schedule_path):
+        try:
+            with open(schedule_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    cs = line.strip().split()[0]
+                    if cs:
+                        self.schedule_callsigns.add(cs.upper())
+        except Exception as e:
+            print(f"Error loading schedule: {e}")
+
+    def match_callsign(self, text):
+        for cs in self.schedule_callsigns:
+            if cs in text.upper():
+                return cs
+        return None
+
+    def preprocess_for_ocr(self, img):
+        # Upscale and threshold for better OCR
+        img = cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 0, 255,
+                     cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
 
     def capture_region(self, region_name):
         x, y, w, h = self.REGIONS[region_name]
@@ -72,44 +65,50 @@ class VisionBot:
 
     def get_available_commands(self, templates=None):
         img = self.capture_region('command_panel')
-        commands = []
-        # Fast template matching for known commands
-        if templates:
-            commands += self.template_match_commands(img, templates)
-        # OCR fallback for dynamic text
+        img = self.preprocess_for_ocr(img)
         results = self.reader.readtext(img)
-        commands += [text.upper() for (_, text, conf) in results if conf > 0.5]
+        commands = [text.upper() for (_, text, conf) in results
+                if conf > 0.5 and text.upper() in self.KNOWN_COMMANDS]
         return list(set(commands))
 
     def get_active_aircraft(self):
         img = self.capture_region('strips')
+        img = self.preprocess_for_ocr(img)
         results = self.reader.readtext(img)
-        aircraft = []
-        for (_, text, conf) in results:
-            if conf > 0.6 and self.match_callsign(text):
-                aircraft.append(text)
+        aircraft = [text for (_, text, conf) in results if conf > 0.5]
         return aircraft
 
-def main():
-    print("Starting Tower!3D Pro Vision Bot...")
-    with mss.mss() as sct:
-        # Monitor 1 is usually the primary monitor
-        if len(sct.monitors) > 1:
-            monitor = sct.monitors[1]
-        else:
-            monitor = sct.monitors[0]
-            
-        print(f"Screen resolution: {monitor['width']}x{monitor['height']}")
-        
-        # We will capture the top 15% of the screen where the command panel is
-        top_panel_monitor = {
-            "top": monitor["top"],
-            "left": monitor["left"],
-            "width": monitor["width"],
-            "height": int(monitor["height"] * 0.15)
-        }
-
-        print("Press 'q' in the preview window to stop or Ctrl+C in terminal.")
+    def detect_radar_blips(self):
+        img = self.capture_region('radar')
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        lower_green = np.array([45, 100, 100])
+        upper_green = np.array([80, 255, 255])
+        mask_green = cv2.inRange(hsv, lower_green, upper_green)
+        lower_pink = np.array([140, 100, 100])
+        upper_pink = np.array([170, 255, 255])
+        mask_pink = cv2.inRange(hsv, lower_pink, upper_pink)
+        contours_green, _ = cv2.findContours(mask_green, cv2.RETR_EXTERNAL,
+                            cv2.CHAIN_APPROX_SIMPLE)
+        contours_pink, _ = cv2.findContours(mask_pink, cv2.RETR_EXTERNAL,
+                           cv2.CHAIN_APPROX_SIMPLE)
+        blips = []
+        for cnt in contours_green:
+            area = cv2.contourArea(cnt)
+            if 20 < area < 600:
+                M = cv2.moments(cnt)
+                if M["m00"] != 0:
+                    cx = int(M["m10"] / M["m00"])
+                    cy = int(M["m01"] / M["m00"])
+                    blips.append({"color": "green", "pos": (cx, cy)})
+        for cnt in contours_pink:
+            area = cv2.contourArea(cnt)
+            if 20 < area < 600:
+                M = cv2.moments(cnt)
+                if M["m00"] != 0:
+                    cx = int(M["m10"] / M["m00"])
+                    cy = int(M["m01"] / M["m00"])
+                    blips.append({"color": "pink", "pos": (cx, cy)})
+        return blips
         
         last_text = ""
         last_read_time = time.time()
@@ -124,14 +123,16 @@ def main():
                 # Try reading text every 2 seconds to save CPU initially
                 current_time = time.time()
                 if current_time - last_read_time > 2.0:
-                     text = read_text_from_image(img)
-                     if text and text != last_text and not text.startswith("Error"):
-                         print(f"--- Detected Text --- \n{text}\n---------------------")
-                         last_text = text
-                     elif text.startswith("Error") and last_text != "error":
-                         print(text)
-                         last_text = "error"
-                     last_read_time = current_time
+                    # TODO: Implement OCR reading here or use EasyOCR directly
+                    # text = read_text_from_image(img)
+                    text = None
+                    if text and text != last_text and not text.startswith("Error"):
+                        print(f"--- Detected Text --- \n{text}\n---------------------")
+                        last_text = text
+                    elif text and text.startswith("Error") and last_text != "error":
+                        print(text)
+                        last_text = "error"
+                    last_read_time = current_time
                 
                 # Show the cropped region which the AI sees
                 cv2.imshow('Command Panel Vision - AI EYES', img)

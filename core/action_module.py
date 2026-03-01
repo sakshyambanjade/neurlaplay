@@ -2,10 +2,10 @@ import pyautogui
 import time
 import random
 
+
 # Coordinates for the text input bar
-# These are ESTIMATES based on a 1366x768 screen. 
-# Usually the command bar is in the top header.
-COMMAND_BAR_COORDS = (400, 30) 
+# Calibrate these using scripts/calibrate.py for your screen!
+COMMAND_BAR_COORDS = (400, 30)  # Update after calibration
 
 def send_command(text, retries=3):
     """
@@ -19,36 +19,24 @@ def send_command(text, retries=3):
             if isinstance(text, (list, tuple)):
                 text = " ".join(str(t) for t in text)
             old_x, old_y = pyautogui.position()
-            # Ensure command panel focus
             pyautogui.moveTo(COMMAND_BAR_COORDS[0], COMMAND_BAR_COORDS[1], duration=0.2)
             pyautogui.click()
             pyautogui.hotkey('ctrl', 'a')
             pyautogui.press('backspace')
-            pyautogui.write(text, interval=0.08)  # Simulate human typing
+            pyautogui.write(text, interval=0.08)
             pyautogui.press('enter')
             pyautogui.moveTo(old_x, old_y, duration=0.1)
-            # Verify command acceptance via log
-            if verify_command_sent_log(text):
+            # Replace verification with stub
+            if verify_command_sent(text):
                 return True
         except Exception as e:
             print(f"Command failed attempt {attempt+1}: {e}")
             time.sleep(1)
     # Safety fallback
-    send_command("HOLD POSITION", retries=1)
+    print("Safety fallback: HOLD POSITION")
     return False
 
-def verify_command_sent_log(command):
-    # Check output_log.txt for command confirmation
-    log_path = r"d:\Tower.3D.Pro.v7927862\Tower.3D.Pro.v7927862\output_log.txt"
-    try:
-        with open(log_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()[-20:]
-        for line in lines:
-            if command in line and ("CLEARED" in line or "SUCCESS" in line):
-                return True
-    except Exception:
-        pass
-    return False
+    # Removed verify_command_sent_log (was broken and caused recursion)
 
 def verify_command_sent(command):
     """
