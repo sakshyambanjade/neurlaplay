@@ -33,11 +33,20 @@ class ATCWorldModel:
 
     def update(self, game_state):
         blips = game_state.get('radar_blips', [])
-        pink_blips = [b for b in blips if b.get('color') == 'pink']
-        self.runway_occupied = len(pink_blips) > 0
-        green_blips = [b for b in blips if b.get('color') == 'green']
-        on_final = any(300 < b['pos'][0] < 420 for b in green_blips)
-        self.conflict_detected = on_final and self.runway_occupied
+        
+        # Handle both tuple (x, y, area) and dict formats
+        if blips and isinstance(blips[0], tuple):
+            # Convert tuples to dicts for compatibility
+            # In Tower 3D, we can't distinguish colors from tuples, so assume green (aircraft)
+            self.runway_occupied = len(blips) > 0  # Simplified: any blip = potential occupation
+            self.conflict_detected = False  # Can't determine without color info
+        else:
+            # Original dict format with color info
+            pink_blips = [b for b in blips if b.get('color') == 'pink']
+            self.runway_occupied = len(pink_blips) > 0
+            green_blips = [b for b in blips if b.get('color') == 'green']
+            on_final = any(300 < b['pos'][0] < 420 for b in green_blips)
+            self.conflict_detected = on_final and self.runway_occupied
 
     def get_state(self):
         return {

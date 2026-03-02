@@ -1,8 +1,10 @@
 vision:
   screen_regions:
-    command_panel: [100, 800, 400, 200]
-    radar: [50, 50, 600, 600]
-  ocr_engine: "easyocr"
+    flight_strip_panel: [6, 154, 917, 760]
+    radar_screen: [955, 3, 1364, 269]
+    message_log: [982, 282, 1337, 771]
+    command_bar: [8, 2, 856, 85]
+  ocr_engine: "pytesseract"
 world_model:
   valid_commands:
     - CLEARED TO LAND

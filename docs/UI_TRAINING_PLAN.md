@@ -1,13 +1,59 @@
 # UI Training Plan - Teaching AI to Understand Tower 3D Interface
 
+## 🎮 EASIEST APPROACH: Just Play the Game!
+
+**Tired of manual annotation?** → Use the **Passive Gameplay Recorder**
+
+Instead of tedious manual work, just PLAY Tower 3D normally for 1 hour. The AI watches everything you do and learns automatically!
+
+### Quick Start (Play & Learn):
+```bash
+python training/gameplay_recorder.py
+```
+
+That's it! Play the game normally. The AI learns by watching you.
+
+---
+
 ## New Strategy: Learn the Interface First
 
 Instead of hardcoding screen regions, we'll train the AI to **discover and understand** the Tower 3D UI on its own.
 
-## Three-Phase Training Plan
+## Two Training Approaches
 
-### Phase 1: UI Element Detection (WHERE things are)
-**Goal**: Teach the AI to locate buttons, panels, and UI elements
+### 🟢 Approach A: PASSIVE (Recommended - No Frustration!)
+
+**Just play the game, AI learns by watching**
+
+1. **Record gameplay** (1 hour):
+   ```bash
+   python training/gameplay_recorder.py
+   ```
+   - Play normally
+   - AI records every click with before/after screenshots
+   - Captures game state every 5 seconds
+   - Tracks timing and sequences
+
+2. **Automatic analysis**:
+   ```bash
+   python training/analyze_gameplay.py <session_id>
+   ```
+   - AI finds buttons from your clicks
+   - Learns what buttons do (before/after comparison)
+   - Builds UI knowledge base automatically
+   - Creates visualization of discovered buttons
+
+**Advantages**:
+- ✓ Zero manual work
+- ✓ Learn while playing naturally
+- ✓ Captures real decision patterns
+- ✓ No frustration!
+
+---
+
+### 🟡 Approach B: MANUAL (More accurate, more tedious)
+
+**Manual annotation for precise training data**
 
 **Steps**:
 1. ✓ Capture Tower 3D screenshots
@@ -20,6 +66,8 @@ Instead of hardcoding screen regions, we'll train the AI to **discover and under
 - `training/button_recognition_trainer.py` - Trains CNN to recognize elements
 
 **Data needed**: ~50-100 annotated screenshots with different game states
+
+**Use this when**: You want very precise button boundaries or need to label rare UI elements
 
 ---
 

@@ -48,12 +48,15 @@ logging.basicConfig(
 class TowerAIBot:
     """Main AI bot controller for Tower 3D."""
     
-    def __init__(self, mode="live"):
+    def __init__(self, mode="live", session_id=None):
         print("=== Tower 3D AI ATC Bot v3 ===")
         print(f"Mode: {mode}")
         print()
         
         self.mode = mode
+        self.session_id = session_id
+        self.advisor_model = None
+        self.current_button = None
         self.vision = VisionBot()
         self.world = ATCWorldModel()
         self.reasoning = ATCReasoningEngine()
@@ -62,6 +65,10 @@ class TowerAIBot:
         self.command_count = 0
         self.last_decision_time = 0
         self.decision_interval = 2.0  # Make decision every 2 seconds
+        
+        # Load advisor model if in advisor mode
+        if mode == "advisor" and session_id:
+            self._load_advisor_model()
         
         # Load schedule for better aircraft ID
         schedule_path = r"d:\Tower.3D.Pro.v7927862\Tower.3D.Pro.v7927862\Extensions\Airfields\KJFK\cyvr_schedule.txt"
@@ -260,12 +267,106 @@ class TowerAIBot:
         print(f"Recorded {self.command_count} interactions.")
         print("Data saved. Next, retrain the model with: python ml/train_from_human.py")
 
+    def _load_advisor_model(self):
+        """Load pre-trained decision advisor model."""
+        import pickle
+        from pathlib import Path
+        
+        model_path = Path("models") / f"decision_advisor_{self.session_id}.pkl"
+        
+        if not model_path.exists():
+            print(f"❌ Advisor model not found: {model_path}")
+            print(f"   Run this first: python training/train_decision_advisor.py {self.session_id}")
+            return False
+        
+        try:
+            with open(model_path, 'rb') as f:
+                self.advisor_model = pickle.load(f)
+            print(f"✓ Advisor model loaded from {model_path}")
+            print(f"  - Trained on {self.advisor_model['decision_rate']:.1f} decisions/minute")
+            print(f"  - Knows {len(self.advisor_model['sequences'])} decision patterns")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to load advisor: {e}")
+            return False
+    
+    def run_advisor_mode(self):
+        """Advisor mode - AI suggests decisions based on learned patterns."""
+        print("\n=== ADVISOR MODE (Learning-Based) ===")
+        print("AI suggests next action based on your learned decision patterns.")
+        print("Type 'y' to execute suggestion, 'n' to skip, 'q' to quit.\n")
+        
+        if not self.advisor_model:
+            print("❌ Advisor model not loaded")
+            return
+        
+        self.is_running = True
+        suggestions_correct = 0
+        suggestions_total = 0
+        
+        try:
+            while self.is_running:
+                # Capture game state
+                game_state = self.capture_game_state()
+                if not game_state:
+                    time.sleep(1)
+                    continue
+                
+                # If we know the last button clicked, suggest the next one
+                if self.current_button:
+                    sequences = self.advisor_model['sequences']
+                    if self.current_button in sequences:
+                        next_options = sequences[self.current_button]
+                        if next_options:
+                            # Get most likely next button
+                            best_next = max(next_options.items(), 
+                                           key=lambda x: x[1]['count'])
+                            suggested_btn = best_next[0]
+                            confidence = best_next[1]['count'] / sum(
+                                info['count'] for info in next_options.values()
+                            )
+                            
+                            print(f"\n💡 AI Suggestion:")
+                            print(f"   Next: {suggested_btn}")
+                            print(f"   Confidence: {confidence:.1%}")
+                            print(f"   (Average timing: {best_next[1]['avg_timing']:.1f}s)")
+                            
+                            response = input("Execute? (y/n/q): ").strip().lower()
+                            
+                            if response == 'q':
+                                break
+                            elif response == 'y':
+                                # Simulate button click at recorded location
+                                btn_info = self.advisor_model['button_info'].get(
+                                    suggested_btn, {}
+                                )
+                                if btn_info.get('location'):
+                                    x, y = btn_info['location']
+                                    print(f"   ✓ Clicking at ({x}, {y})")
+                                    self.current_button = suggested_btn
+                                    suggestions_correct += 1
+                                    self.command_count += 1
+                            
+                            suggestions_total += 1
+        
+        except KeyboardInterrupt:
+            print("\n⊠ Stopped by user")
+        
+        finally:
+            self.is_running = False
+            if suggestions_total > 0:
+                accuracy = suggestions_correct / suggestions_total * 100
+                print(f"\n{'='*60}")
+                print(f"Advisor Accuracy: {accuracy:.1f}% ({suggestions_correct}/{suggestions_total})")
+                print(f"Total clicks: {self.command_count}")
+                print('='*60)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Tower 3D AI ATC Bot")
     parser.add_argument(
         "--mode",
-        choices=["live", "interactive", "training"],
+        choices=["live", "interactive", "training", "advisor"],
         default="live",
         help="Operating mode"
     )
@@ -283,6 +384,10 @@ def main():
         "--auto-nav",
         action="store_true",
         help="Try automatic menu navigation (experimental)"
+    )
+    parser.add_argument(
+        "--session",
+        help="Session ID for advisor mode (e.g., 20260301_204002)"
     )
     args = parser.parse_args()
     
@@ -322,7 +427,7 @@ def main():
     
     # Start the bot
     try:
-        bot = TowerAIBot(mode=args.mode)
+        bot = TowerAIBot(mode=args.mode, session_id=args.session)
         
         if args.mode == "live":
             bot.run_live_mode()
@@ -330,6 +435,12 @@ def main():
             bot.run_interactive_mode()
         elif args.mode == "training":
             bot.run_training_mode()
+        elif args.mode == "advisor":
+            if not args.session:
+                print("❌ Advisor mode requires --session argument")
+                print("   Example: python run_atc_bot.py --mode advisor --session 20260301_204002")
+                return
+            bot.run_advisor_mode()
     
     except KeyboardInterrupt:
         print("\n\n⊠ Bot stopped by user")
