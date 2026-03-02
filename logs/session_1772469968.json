@@ -1,0 +1,10 @@
+{
+  "callsign": "KAP8051",
+  "incoming_runway": "28",
+  "distance_on_final": 1.0,
+  "planes_on_runway_28": 0,
+  "planes_in_queue": 3,
+  "taxi_clear": true,
+  "safe_to_land": true,
+  "recommended_command": "KAP8051 RUNWAY 28 CLEARED TO LAND"
+}

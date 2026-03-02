@@ -41,7 +41,11 @@ class TrainingLogger:
 		timestamp = int(time.time() * 1000)
 		filename = f"event_{timestamp}.jpg"
 		filepath = os.path.join(self.img_dir, filename)
-		cv2.imwrite(filepath, screenshot)
+		# Only save if screenshot is valid
+		if screenshot is not None and screenshot.size > 0:
+			cv2.imwrite(filepath, screenshot)
+		else:
+			filename = None
 		green_count = len([b for b in state_data.get("blips", []) if b.get("color") == "green"])
 		pink_count = len([b for b in state_data.get("blips", []) if b.get("color") == "pink"])
 		def clean(txt):

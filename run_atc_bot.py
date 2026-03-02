@@ -30,8 +30,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from core.atc_world_model import ATCWorldModel
 from core.reasoning_engine import ATCReasoningEngine
 from core.action_module import send_command
+from reasoning.decide import decide_command
 # Lightweight version - no PyTorch/GPU required
 from vision.vision_bot_lightweight import VisionBot
+from vision.full_ui_parser import parse_full_screen
 from vision.radar_tracking import find_aircraft_blips
 from vision.strip_reader import read_strips
 from utils.training_logger import TrainingLogger
@@ -71,7 +73,7 @@ class TowerAIBot:
             self._load_advisor_model()
         
         # Load schedule for better aircraft ID
-        schedule_path = r"d:\Tower.3D.Pro.v7927862\Tower.3D.Pro.v7927862\Extensions\Airfields\KJFK\cyvr_schedule.txt"
+        schedule_path = r"d:\Tower.3D.Pro.v7927862\Extensions\Airfields\KJFK\cyvr_schedule.txt"
         try:
             self.vision.load_schedule_callsigns(schedule_path)
             print("✓ Schedule loaded")
@@ -86,6 +88,32 @@ class TowerAIBot:
     def capture_game_state(self):
         """Capture and extract current game state."""
         try:
+            vision_state = parse_full_screen()
+            if vision_state and not vision_state.get("error"):
+                strip_list = vision_state.get('strip_list', [])
+                aircraft = [
+                    strip.get('callsign') for strip in strip_list
+                    if isinstance(strip, dict)
+                ]
+                return {
+                    'available_commands': vision_state.get(
+                        'visible_buttons', []
+                    ),
+                    'aircraft': aircraft,
+                    'radar_blips': vision_state.get('radar_blips', []),
+                    'strip_list': strip_list,
+                    'adirs_taxiways': vision_state.get('adirs_taxiways', []),
+                    'safety_assessment': vision_state.get(
+                        'safety_assessment', ''
+                    ),
+                    'recommended_command': vision_state.get(
+                        'recommended_command', ''
+                    ),
+                    'callsign': vision_state.get('callsign', ''),
+                    'progress_bar': vision_state.get('progress_bar', {}),
+                    'timestamp': time.time()
+                }
+
             available_commands = self.vision.get_available_commands()
             aircraft = self.vision.get_active_aircraft()
             radar_blips = self.vision.detect_radar_blips()
@@ -102,8 +130,15 @@ class TowerAIBot:
     
     def make_decision(self, game_state):
         """Use reasoning engine to decide best ATC command."""
-        if not game_state or not game_state['available_commands']:
+        if not game_state:
             return None
+
+        rule_decision = decide_command(game_state)
+        if rule_decision and rule_decision != "STANDBY":
+            return rule_decision
+
+        if not game_state.get('available_commands'):
+            return rule_decision
         
         # Update world model
         self.world.update(game_state)
@@ -112,6 +147,52 @@ class TowerAIBot:
         decision = self.reasoning.decide(game_state)
         
         return decision
+
+    def print_debug_summary(self, state, command):
+        """Print concise state + decision debugging info."""
+        progress = (
+            state.get('progress_bar', {})
+            if isinstance(state, dict) else {}
+        )
+        green = progress.get('green', '?')
+        white = progress.get('white', '?')
+        safety = (
+            str(state.get('safety_assessment', ''))
+            if isinstance(state, dict) else ''
+        )
+        safety_short = (safety[:50] + '...') if len(safety) > 50 else safety
+
+        radar_blips = (
+            state.get('radar_blips', [])
+            if isinstance(state, dict) else []
+        )
+        radar_conflicts = any(
+            isinstance(blip, dict) and blip.get('conflict')
+            for blip in radar_blips
+        )
+
+        recommended_command = ''
+        if isinstance(state, dict):
+            recommended_command = str(
+                state.get('recommended_command', '')
+            ).strip()
+
+        decision_source = (
+            'LLM rec'
+            if recommended_command and recommended_command == command
+            else 'rules/fallback'
+        )
+
+        print(
+            "[DEBUG] State summary: "
+            f"callsign={(
+                state.get('callsign') if isinstance(state, dict) else None
+            )}, "
+            f"progress={green}/{white}, "
+            f"safety={safety_short}, "
+            f"radar_conflicts={radar_conflicts}"
+        )
+        print(f"[DECISION] Chose: '{command}'  (from {decision_source})")
     
     def execute_command(self, command):
         """Issue the ATC command to the game."""
@@ -152,6 +233,8 @@ class TowerAIBot:
                 decision = self.make_decision(game_state)
                 if not decision:
                     continue
+
+                self.print_debug_summary(game_state, decision)
                 
                 # Execute command
                 self.execute_command(decision)
@@ -195,6 +278,8 @@ class TowerAIBot:
                 if not decision:
                     time.sleep(1)
                     continue
+
+                self.print_debug_summary(game_state, decision)
                 
                 # Ask user
                 print(f"Suggestion: {decision}")

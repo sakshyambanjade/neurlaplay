@@ -1,0 +1,15 @@
+{
+  "callsign": "N380MO",
+  "command_line_text": "",
+  "progress_bar": {
+    "green": 0,
+    "white": 0,
+    "meaning": ""
+  },
+  "visible_buttons": [],
+  "radar_blips": [],
+  "strip_list": [],
+  "adirs_taxiways": [],
+  "safety_assessment": "",
+  "recommended_command": ""
+}
