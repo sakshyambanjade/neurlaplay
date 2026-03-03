@@ -1,106 +1,69 @@
-/**
- * Bot registration and management routes
- */
-
+// server/src/routes/bots.ts
 import { Router } from 'express';
-import { createBot, createBotToken, getBotBySlug, getBotStats } from '../db/bots';
+import { createBot, createBotToken, getBotBySlug } from '../db/bots';
+import { supabase } from '../db/client';
 
 export const botRoutes = Router();
 
-// For now, use a fake owner ID (would be replaced with real auth)
+// TODO: replace with real auth; for now a fixed UUID owner
 const FAKE_OWNER_ID = '00000000-0000-0000-0000-000000000000';
 
-/**
- * POST /api/bots - Register a new bot
- */
+// POST /api/bots  -> create bot + bot token
 botRoutes.post('/', async (req, res) => {
   try {
-    const { name, model, provider, description } = req.body;
+    const { name, model, endpointUrl, endpointType } = req.body;
 
-    if (!name || !model) {
-      return res.status(400).json({ error: 'Missing required fields: name, model' });
+    if (!name || !model || !endpointUrl || !endpointType) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Create the bot
     const bot = await createBot({
       ownerId: FAKE_OWNER_ID,
       name,
       model,
-      provider: provider || 'openai',
-      description: description || ''
+      endpointUrl,
+      endpointType
     });
 
-    // Generate a token for the bot
-    const botToken = await createBotToken(bot.id, 'initial_token');
+    const botToken = await createBotToken(bot.id);
 
-    // Return bot info and a ready-to-use .env example
     res.json({
-      success: true,
-      bot: {
-        id: bot.id,
-        name: bot.name,
-        slug: bot.slug,
-        model: bot.model,
-        elo: bot.elo_rating
-      },
+      bot,
       botToken,
-      envExample: `# Add to bot-runner/.env
-BOT_TOKEN=${botToken}
-API_KEY=your_llm_api_key_here
-MODEL=${model}
-PROVIDER=${provider || 'openai'}
-LLMARENA_SERVER=${process.env.LLMARENA_SERVER || 'http://localhost:3001'}`,
-      message: 'Bot registered! Save the botToken - it will not be shown again.'
+      runnerEnv: {
+        BOT_TOKEN: botToken,
+        API_KEY: '<your-llm-api-key-here>',
+        ENDPOINT_URL: endpointUrl,
+        MODEL: model,
+        LLMARENA_SERVER: process.env.PUBLIC_SERVER_URL || `http://localhost:${process.env.PORT || 3001}`
+      }
     });
-
-    console.log(`[API] Bot registered: ${name} (${bot.id})`);
   } catch (err: any) {
-    console.error('[API] Error creating bot:', err);
-    res.status(500).json({ error: err.message || 'Failed to create bot' });
+    console.error('Error creating bot:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * GET /api/bots/:slug - Get bot profile with stats
- */
+// GET /api/bots/:slug  -> public profile + recent matches
 botRoutes.get('/:slug', async (req, res) => {
   try {
-    const { slug } = req.params;
+    const bot = await getBotBySlug(req.params.slug);
+    if (!bot) return res.status(404).json({ error: 'Bot not found' });
 
-    const bot = await getBotBySlug(slug);
-    if (!bot) {
-      return res.status(404).json({ error: 'Bot not found' });
-    }
-
-    // Get recent matches
-    const { data: recentMatches } = await (
-      await import('../db/client')
-    ).supabase
+    const { data: recentMatches, error } = await supabase
       .from('matches')
-      .select('id, result, white_bot_id, black_bot_id')
+      .select('id, result, termination, total_moves, started_at, ended_at')
       .or(`white_bot_id.eq.${bot.id},black_bot_id.eq.${bot.id}`)
-      .order('created_at', { ascending: false })
+      .order('started_at', { ascending: false })
       .limit(10);
 
-    // Get stats
-    const stats = await getBotStats(bot.id);
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
 
-    res.json({
-      bot: {
-        id: bot.id,
-        name: bot.name,
-        slug: bot.slug,
-        model: bot.model,
-        elo: bot.elo_rating,
-        isActive: bot.is_active,
-        createdAt: bot.created_at
-      },
-      stats,
-      recentMatches: recentMatches || []
-    });
+    res.json({ bot, recentMatches: recentMatches || [] });
   } catch (err: any) {
-    console.error('[API] Error getting bot:', err);
-    res.status(500).json({ error: err.message || 'Failed to get bot' });
+    res.status(500).json({ error: err.message });
   }
 });
 
