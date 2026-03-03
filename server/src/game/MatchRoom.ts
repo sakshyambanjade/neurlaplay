@@ -157,7 +157,14 @@ export class MatchRoom {
    * Clear/reset the timeout
    */
   clearTimeout() {
-    iStart the game - transition to in_progress
+    if (this.activeTimeout) {
+      clearTimeout(this.activeTimeout);
+      this.activeTimeout = null;
+    }
+  }
+
+  /**
+   * Start the game - transition to in_progress
    */
   start() {
     this.status = 'in_progress';
@@ -187,13 +194,6 @@ export class MatchRoom {
    * @deprecated Use complete() instead
    */
   end() {
-    this.complete()
-  /**
-   * Force end the game
-   */
-  end() {
-    this.clearTimeout();
-    this.endedAt = new Date();
-    this.status = 'completed';
+    this.complete();
   }
 }

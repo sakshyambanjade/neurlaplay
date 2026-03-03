@@ -81,7 +81,12 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       san: lastMove.san,
       fenBefore,
       fenAfter: room.chess.fen(),
-      reasoning: data.reasonithe match room (both players and spectators)
+      reasoning: data.reasoning
+    };
+
+    room.moves.push(moveRecord);
+
+    // Broadcast to the match room (both players and spectators)
     io.to(data.matchId).emit('moveMade', {
       ...moveRecord,
       fen: room.chess.fen(),
@@ -91,12 +96,6 @@ export function registerGameHandlers(io: Server, socket: Socket) {
     });
 
     // Save move to database
-   fen: room.chess.fen(),
-      isCheck: room.chess.isCheck(),
-      legalMoves: room.legalMovesUCI,
-      pgn: room.chess.pgn()
-    });
-
     // TODO: Save move to Supabase
     // await saveMove(data.matchId, moveRecord);
 
@@ -105,8 +104,18 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       const termination: Termination = room.termination;
       let winner: PlayerColor | null = null;
 
-      if (roomove cap
-    if (room.hasReachedMoveCap) {        result: '1/2-1/2',
+      if (room.chess.isCheckmate()) {
+        winner = room.currentTurn === 'white' ? 'black' : 'white';
+      }
+
+      await handleGameEnd(io, room, winner, termination);
+      return;
+    }
+
+    // Check for move cap
+    if (room.hasReachedMoveCap) {
+      io.to(data.matchId).emit('gameOver', {
+        result: '1/2-1/2',
         termination: 'move_cap' as Termination,
         finalFen: room.chess.fen(),
         pgn: room.chess.pgn(),
@@ -124,12 +133,11 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       if (room.status !== 'in_progress') return;
 
       const loser = nextPlayerColor;
-      const winner = loser === 'white' ? 'black' : 'white';
-
-      io.to(data.matchId).emit('forfeit', {
-        loserColor: loser,
+      
       await handleForfeit(io, room, loser, 'timeout', 
-        `${loser} exceeded the ${room.moveTimeoutSeconds}s time limit`
+        `${loser} exceeded the ${room.moveTimeoutSeconds}s time limit`);
+    }, room.moveTimeoutSeconds * 1000);
+
     // Notify both players of the next turn
     io.to(data.matchId).emit('turnStart', {
       color: room.currentTurn,

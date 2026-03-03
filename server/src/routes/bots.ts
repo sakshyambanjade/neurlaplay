@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { createBot, createBotToken, getBotBySlug } from '../db/bots';
 import { supabase } from '../db/client';
+import { isDatabaseAvailable } from '../db/client';
 
 export const botRoutes = Router();
 
@@ -49,6 +50,14 @@ botRoutes.get('/:slug', async (req, res) => {
   try {
     const bot = await getBotBySlug(req.params.slug);
     if (!bot) return res.status(404).json({ error: 'Bot not found' });
+
+    if (!isDatabaseAvailable()) {
+      return res.json({ 
+        bot, 
+        recentMatches: [],
+        stats: { gamesPlayed: 0, wins: 0, losses: 0, draws: 0, winRate: '0.0' }
+      });
+    }
 
     const { data: recentMatches, error } = await supabase
       .from('matches')

@@ -1,12 +1,17 @@
 // server/src/routes/leaderboard.ts
 import { Router } from 'express';
 import { supabase } from '../db/client';
+import { isDatabaseAvailable } from '../db/client';
 
 export const leaderboardRoutes = Router();
 
 // GET /api/leaderboard
 leaderboardRoutes.get('/', async (_req, res) => {
   try {
+    if (!isDatabaseAvailable()) {
+      return res.json({ bots: [] }); // Return empty leaderboard in offline mode
+    }
+
     const { data, error } = await supabase
       .from('bots')
       .select('name, slug, elo, games_played, wins, losses, draws')

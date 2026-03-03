@@ -1,161 +1,57 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 /**
  * Spectator game viewer
  */
-
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useSocket, GameState, Move, GameOverEvent } from '../hooks/useSocket';
-
+import { useSocket } from '../hooks/useSocket';
 export function SpectatorGame() {
-  const { matchId } = useParams<{ matchId: string }>();
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [moves, setMoves] = useState<Move[]>([]);
-  const [gameOver, setGameOver] = useState<GameOverEvent | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const { isConnected } = useSocket(matchId || '', {
-    onGameState: (state) => {
-      setGameState(state);
-      setMoves(state.moves || []);
-      setLoading(false);
-    },
-    onMoveMade: (move) => {
-      setMoves((prev) => [...prev, move]);
-      setGameState((prev) => {
-        if (!prev) return prev;
-        return { ...prev, moveCount: prev.moveCount + 1 };
-      });
-    },
-    onGameOver: (result) => {
-      setGameOver(result);
-      setGameState((prev) => {
-        if (!prev) return prev;
-        return { ...prev, status: 'completed' };
-      });
-    },
-    onError: (err) => {
-      setError(err.message);
-      setLoading(false);
+    const { matchId } = useParams();
+    const [gameState, setGameState] = useState(null);
+    const [moves, setMoves] = useState([]);
+    const [gameOver, setGameOver] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const { isConnected } = useSocket(matchId || '', {
+        onGameState: (state) => {
+            setGameState(state);
+            setMoves(state.moves || []);
+            setLoading(false);
+        },
+        onMoveMade: (move) => {
+            setMoves((prev) => [...prev, move]);
+            setGameState((prev) => {
+                if (!prev)
+                    return prev;
+                return { ...prev, moveCount: prev.moveCount + 1 };
+            });
+        },
+        onGameOver: (result) => {
+            setGameOver(result);
+            setGameState((prev) => {
+                if (!prev)
+                    return prev;
+                return { ...prev, status: 'completed' };
+            });
+        },
+        onError: (err) => {
+            setError(err.message);
+            setLoading(false);
+        }
+    });
+    if (!matchId) {
+        return _jsx("div", { className: "error", children: "No match ID provided" });
     }
-  });
-
-  if (!matchId) {
-    return <div className="error">No match ID provided</div>;
-  }
-
-  if (loading) {
-    return <div className="loading">Connecting to match...</div>;
-  }
-
-  if (error) {
-    return <div className="error">Error: {error}</div>;
-  }
-
-  if (!gameState) {
-    return <div className="error">Match not found</div>;
-  }
-
-  return (
-    <div className="spectator-game">
-      <header className="game-header">
-        <h1>Match {matchId}</h1>
-        <div className="status">
-          <span className={`connection ${isConnected ? 'connected' : 'disconnected'}`}>
-            {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
-          </span>
-          <span className="status-badge">{gameState.status}</span>
-        </div>
-      </header>
-
-      <div className="game-container">
-        {/* Left: Game info */}
-        <div className="game-info">
-          <div className="players">
-            <div className="player white">
-              <h3>{gameState.whiteBotName || 'White'}</h3>
-              <p className="model">{gameState.whiteModel || 'Unknown'}</p>
-            </div>
-            <div className="versus">VS</div>
-            <div className="player black">
-              <h3>{gameState.blackBotName || 'Black'}</h3>
-              <p className="model">{gameState.blackModel || 'Unknown'}</p>
-            </div>
-          </div>
-
-          <div className="game-stats">
-            <div className="stat">
-              <strong>Moves:</strong> {gameState.moveCount}
-            </div>
-            <div className="stat">
-              <strong>Turn:</strong> {gameState.currentTurn.toUpperCase()}
-            </div>
-            {gameState.startedAt && (
-              <div className="stat">
-                <strong>Started:</strong> {new Date(gameState.startedAt).toLocaleTimeString()}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Center: Board and move list */}
-        <div className="game-board">
-          <div className="fen-display">
-            <code>{gameState.fen}</code>
-          </div>
-
-          <div className="pgn-display">
-            <p>{gameState.pgn || 'No moves yet'}</p>
-          </div>
-
-          {gameOver && (
-            <div className="game-over-alert">
-              <h3>Game Over</h3>
-              <p>
-                <strong>Result:</strong> {gameOver.result}
-              </p>
-              <p>
-                <strong>Reason:</strong> {gameOver.termination}
-              </p>
-              {gameOver.winner && (
-                <p>
-                  <strong>Winner:</strong> {gameOver.winner.toUpperCase()}
-                </p>
-              )}
-              {gameOver.eloChanges && (
-                <div className="elo-changes">
-                  <p>White: {gameOver.eloChanges.white > 0 ? '+' : ''}{gameOver.eloChanges.white}</p>
-                  <p>Black: {gameOver.eloChanges.black > 0 ? '+' : ''}{gameOver.eloChanges.black}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Move list and reasoning */}
-        <div className="move-list">
-          <h3>Moves</h3>
-          <div className="moves">
-            {moves.length === 0 ? (
-              <p className="no-moves">Waiting for first move...</p>
-            ) : (
-              moves.map((move, idx) => (
-                <div key={idx} className={`move ${move.playerColor}`}>
-                  <span className="move-number">{move.moveNumber}</span>
-                  <span className="san">{move.san}</span>
-                  {move.reasoning && (
-                    <div className="reasoning">
-                      <small>{move.reasoning}</small>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      <style>{`
+    if (loading) {
+        return _jsx("div", { className: "loading", children: "Connecting to match..." });
+    }
+    if (error) {
+        return _jsxs("div", { className: "error", children: ["Error: ", error] });
+    }
+    if (!gameState) {
+        return _jsx("div", { className: "error", children: "Match not found" });
+    }
+    return (_jsxs("div", { className: "spectator-game", children: [_jsxs("header", { className: "game-header", children: [_jsxs("h1", { children: ["Match ", matchId] }), _jsxs("div", { className: "status", children: [_jsx("span", { className: `connection ${isConnected ? 'connected' : 'disconnected'}`, children: isConnected ? '🟢 Connected' : '🔴 Disconnected' }), _jsx("span", { className: "status-badge", children: gameState.status })] })] }), _jsxs("div", { className: "game-container", children: [_jsxs("div", { className: "game-info", children: [_jsxs("div", { className: "players", children: [_jsxs("div", { className: "player white", children: [_jsx("h3", { children: gameState.whiteBotName || 'White' }), _jsx("p", { className: "model", children: gameState.whiteModel || 'Unknown' })] }), _jsx("div", { className: "versus", children: "VS" }), _jsxs("div", { className: "player black", children: [_jsx("h3", { children: gameState.blackBotName || 'Black' }), _jsx("p", { className: "model", children: gameState.blackModel || 'Unknown' })] })] }), _jsxs("div", { className: "game-stats", children: [_jsxs("div", { className: "stat", children: [_jsx("strong", { children: "Moves:" }), " ", gameState.moveCount] }), _jsxs("div", { className: "stat", children: [_jsx("strong", { children: "Turn:" }), " ", gameState.currentTurn.toUpperCase()] }), gameState.startedAt && (_jsxs("div", { className: "stat", children: [_jsx("strong", { children: "Started:" }), " ", new Date(gameState.startedAt).toLocaleTimeString()] }))] })] }), _jsxs("div", { className: "game-board", children: [_jsx("div", { className: "fen-display", children: _jsx("code", { children: gameState.fen }) }), _jsx("div", { className: "pgn-display", children: _jsx("p", { children: gameState.pgn || 'No moves yet' }) }), gameOver && (_jsxs("div", { className: "game-over-alert", children: [_jsx("h3", { children: "Game Over" }), _jsxs("p", { children: [_jsx("strong", { children: "Result:" }), " ", gameOver.result] }), _jsxs("p", { children: [_jsx("strong", { children: "Reason:" }), " ", gameOver.termination] }), gameOver.winner && (_jsxs("p", { children: [_jsx("strong", { children: "Winner:" }), " ", gameOver.winner.toUpperCase()] })), gameOver.eloChanges && (_jsxs("div", { className: "elo-changes", children: [_jsxs("p", { children: ["White: ", gameOver.eloChanges.white > 0 ? '+' : '', gameOver.eloChanges.white] }), _jsxs("p", { children: ["Black: ", gameOver.eloChanges.black > 0 ? '+' : '', gameOver.eloChanges.black] })] }))] }))] }), _jsxs("div", { className: "move-list", children: [_jsx("h3", { children: "Moves" }), _jsx("div", { className: "moves", children: moves.length === 0 ? (_jsx("p", { className: "no-moves", children: "Waiting for first move..." })) : (moves.map((move, idx) => (_jsxs("div", { className: `move ${move.playerColor}`, children: [_jsx("span", { className: "move-number", children: move.moveNumber }), _jsx("span", { className: "san", children: move.san }), move.reasoning && (_jsx("div", { className: "reasoning", children: _jsx("small", { children: move.reasoning }) }))] }, idx)))) })] })] }), _jsx("style", { children: `
         .spectator-game {
           padding: 20px;
           max-width: 1400px;
@@ -406,9 +302,6 @@ export function SpectatorGame() {
             grid-template-columns: 1fr;
           }
         }
-      `}</style>
-    </div>
-  );
+      ` })] }));
 }
-
 export default SpectatorGame;

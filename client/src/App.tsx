@@ -7,7 +7,7 @@ import { GamePage } from './pages/Game';
 import { SpectatorGame } from './pages/SpectatorGame';
 import { BotProfile } from './pages/BotProfile';
 import { Leaderboard } from './pages/Leaderboard';
-import { Home as HomeIcon, Play } from 'lucide-react';
+import { Home as HomeIcon } from 'lucide-react';
 
 /**
  * Home Page Component
@@ -17,6 +17,8 @@ function HomePage() {
   const setMatchId = useGameStore((s) => s.setMatchId);
   const setUserColor = useGameStore((s) => s.setUserColor);
   const navigate = useNavigate();
+  const [activeMatches, setActiveMatches] = React.useState<any[]>([]);
+  const [loadingMatches, setLoadingMatches] = React.useState(false);
 
   const handleCreateMatch = () => {
     socket?.emit('createMatch', {
@@ -25,6 +27,29 @@ function HomePage() {
       researchMode: false
     });
   };
+
+  // Fetch active matches
+  React.useEffect(() => {
+    const fetchActiveMatches = async () => {
+      try {
+        setLoadingMatches(true);
+        const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+        const response = await fetch(`${serverUrl}/api/matches/active`);
+        if (response.ok) {
+          const data = await response.json();
+          setActiveMatches(Array.isArray(data.matches) ? data.matches.slice(0, 5) : []);
+        }
+      } catch (err) {
+        console.error('Error fetching active matches:', err);
+      } finally {
+        setLoadingMatches(false);
+      }
+    };
+
+    fetchActiveMatches();
+    const interval = setInterval(fetchActiveMatches, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -99,6 +124,102 @@ function HomePage() {
                     <p className="text-muted mt-2" style={{ fontSize: '1.1rem' }}>Live</p>
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* Active Matches Section */}
+            <section className="py-5" style={{ backgroundColor: 'rgba(15, 23, 42, 0.8)', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
+              <div className="container-lg">
+                <div className="text-center mb-5">
+                  <h2 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: '900', color: '#fff', marginBottom: '0.5rem' }}>⚡ Watch Live</h2>
+                  <p style={{ fontSize: 'clamp(1.25rem, 2vw, 1.5rem)', color: '#d1d5db', marginBottom: '2rem' }}>
+                    {loadingMatches ? 'Loading active matches...' : activeMatches.length > 0 ? `${activeMatches.length} matches in progress` : 'No active matches at the moment'}
+                  </p>
+                </div>
+
+                {activeMatches.length > 0 ? (
+                  <div className="row g-3">
+                    {activeMatches.map((match, idx) => (
+                      <div key={idx} className="col-md-6 col-lg-4">
+                        <Link
+                                                    to={`/game/${match.matchId}`}
+                          style={{
+                            display: 'block',
+                            padding: '1.5rem',
+                            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)',
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            borderRadius: '1rem',
+                            textDecoration: 'none',
+                            color: 'white',
+                            transition: 'all 0.3s',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.8)';
+                            e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(168, 85, 247, 0.3)';
+                            e.currentTarget.style.transform = 'translateY(-4px)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{match.whiteBotName}</div>
+                            <div style={{ color: '#999', fontSize: '0.85rem' }}>vs</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', textAlign: 'right' }}>{match.blackBotName}</div>
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: '#d1d5db', textAlign: 'center', marginBottom: '0.5rem' }}>
+                            Move {match.moveCount || '?'}
+                          </div>
+                          <div style={{
+                            display: 'inline-block',
+                            padding: '0.5rem 1rem',
+                            background: 'rgba(168, 85, 247, 0.5)',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.85rem',
+                            fontWeight: '500',
+                            width: '100%',
+                            textAlign: 'center'
+                          }}>
+                            Watch Live →
+                          </div>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '3rem 2rem',
+                    textAlign: 'center',
+                    color: '#999',
+                    borderRadius: '1rem',
+                    border: '1px dashed rgba(168, 85, 247, 0.3)',
+                    background: 'rgba(15, 23, 42, 0.5)'
+                  }}>
+                    <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>🏁 No matches currently active</p>
+                    <p style={{ marginBottom: '1.5rem' }}>Create a new match to get started!</p>
+                    <button
+                      onClick={handleCreateMatch}
+                      style={{
+                        padding: '0.75rem 2rem',
+                        background: 'linear-gradient(to right, #9333ea, #a855f7)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        fontSize: '1rem',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)', e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(147, 51, 234, 0.5)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)', e.currentTarget.style.boxShadow = 'none')}
+                    >
+                      Create Match
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -251,14 +372,6 @@ function HomePage() {
  * Layout Component with Navbar
  */
 function Layout({ children }: { children: React.ReactNode }) {
-  const setMatchId = useGameStore((s) => s.setMatchId);
-  const navigate = useNavigate();
-
-  const handleBackHome = () => {
-    setMatchId(null);
-    navigate('/');
-  };
-
   return (
     <div className="d-flex flex-column" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)' }}>
       {/* Header/Navbar */}
@@ -352,7 +465,7 @@ function GamePageWrapper() {
       setGameState(data.fen, data.pgn, data.legalMoves, [], data.isCheck);
     });
 
-    socket.on('gameOver', (data) => {
+    socket.on('gameOver', () => {
       setStatus('completed');
     });
 
