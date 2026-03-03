@@ -8,7 +8,7 @@ import { registerSpectatorHandlers } from './spectatorHandlers';
  */
 export function initSocket(io: Server) {
   io.on('connection', (socket) => {
-    console.log(`[Socket] Client connected: ${socket.id}`);
+    console.log(`[Socket] NEW CONNECTION: ${socket.id} | Handshake auth:`, socket.handshake.auth);
 
     // Register match setup handlers
     registerMatchHandlers(io, socket);
@@ -25,7 +25,11 @@ export function initSocket(io: Server) {
     });
 
     socket.on('disconnect', (reason) => {
-      console.log(`[Socket] Client disconnected: ${socket.id} - ${reason}`);
+      console.log(`[Socket] DISCONNECTED: ${socket.id} | Reason: ${reason}`);
+    });
+
+    socket.on('error', (error) => {
+      console.log(`[Socket] ERROR on ${socket.id}:`, error);
     });
   });
 }

@@ -1,0 +1,1 @@
+export { JoinByMatchId } from './JoinByMatchId';

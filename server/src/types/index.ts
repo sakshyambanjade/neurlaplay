@@ -22,6 +22,7 @@ export interface PlayerConfig extends BotConfig {
   botId?: string;
   socketId?: string;
   userId?: string;
+  playerSessionId?: string; // Unique ID that persists across socket reconnects
   isReady?: boolean;
 }
 
@@ -84,6 +85,7 @@ export interface SetConfigPayload {
   model: string;
   endpointType: EndpointType;
   endpointUrl: string;
+  apiKey: string;
 }
 
 export interface SetReadyPayload {

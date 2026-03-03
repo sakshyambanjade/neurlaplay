@@ -8,6 +8,7 @@ import { SpectatorGame } from './pages/SpectatorGame';
 import { BotProfile } from './pages/BotProfile';
 import { Leaderboard } from './pages/Leaderboard';
 import { Home as HomeIcon } from 'lucide-react';
+import { JoinByMatchId } from './components/JoinByMatchId';
 
 /**
  * Home Page Component
@@ -19,6 +20,7 @@ function HomePage() {
   const navigate = useNavigate();
   const [activeMatches, setActiveMatches] = React.useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = React.useState(false);
+  const [showJoinModal, setShowJoinModal] = React.useState(false);
 
   const handleCreateMatch = () => {
     socket?.emit('createMatch', {
@@ -55,8 +57,13 @@ function HomePage() {
     if (!socket) return;
 
     socket.on('matchCreated', (data) => {
+      console.log('[Client] matchCreated received:', data);
       setMatchId(data.matchId);
       setUserColor(data.color);
+      if (data.playerSessionId) {
+        useGameStore.setState({ playerSessionId: data.playerSessionId });
+        console.log('[Client] Stored playerSessionId:', data.playerSessionId);
+      }
       navigate('/lobby');
     });
 
@@ -64,6 +71,24 @@ function HomePage() {
       socket.off('matchCreated');
     };
   }, [socket, setMatchId, setUserColor, navigate]);
+
+  // Listen for opponent joining
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('playerJoined', (data) => {
+      console.log(`[Client] Opponent joined as ${data.color}`);
+    });
+
+    socket.on('opponentConfigured', (data) => {
+      console.log(`[Client] Opponent configured:`, data);
+    });
+
+    return () => {
+      socket.off('playerJoined');
+      socket.off('opponentConfigured');
+    };
+  }, [socket]);
 
   return (
     <>
@@ -98,6 +123,17 @@ function HomePage() {
             >
               Create Match
             </button>
+
+            <button
+              onClick={() => setShowJoinModal(true)}
+              className="btn btn-lg fw-bold"
+              style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', backgroundColor: 'rgba(59, 130, 246, 0.3)', border: '2px solid rgba(59, 130, 246, 0.5)', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.5)', e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.8)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.3)', e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)')}
+            >
+              🎮 Join by Match ID
+            </button>
+
             <Link
               to="/leaderboard"
               className="btn btn-lg fw-bold"
@@ -108,6 +144,9 @@ function HomePage() {
               View Leaderboard
             </Link>
           </div>
+
+          {/* Join Modal */}
+          {showJoinModal && <JoinByMatchId onClose={() => setShowJoinModal(false)} />}
 
                 {/* Stats */}
                 <div className="row mt-5">
@@ -417,23 +456,83 @@ function Layout({ children }: { children: React.ReactNode }) {
 /**
  * Lobby Page Wrapper with Socket Listeners
  */
+/**
+ * Loading Overlay Component
+ */
+function LoadingOverlay() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+        backdropFilter: 'blur(4px)'
+      }}
+    >
+      <div style={{ textAlign: 'center' }}>
+        <div
+          style={{
+            width: '60px',
+            height: '60px',
+            border: '4px solid rgba(255, 255, 255, 0.2)',
+            borderTopColor: '#a78bfa',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 20px'
+          }}
+        />
+        <p style={{ color: '#fff', fontSize: '1.2rem', fontWeight: '600' }}>
+          Loading Game...
+        </p>
+        <p style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: '10px', fontSize: '0.9rem' }}>
+          Connecting players...
+        </p>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Lobby Page Wrapper with gameStart listener
+ */
 function LobbyPageWrapper() {
   const socket = useSocket();
   const setStatus = useGameStore((s) => s.setStatus);
   const setGameState = useGameStore((s) => s.setGameState);
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   useEffect(() => {
     if (!socket) return;
 
     socket.on('gameStart', (data) => {
+      console.log('[Client] gameStart received, navigating to /game', data);
+      setIsLoading(true);
       setStatus('in_progress');
       setGameState(data.fen, '', data.legalMoves, [], false);
-      navigate('/game');
+      
+      // Delay navigation slightly to show loading screen
+      setTimeout(() => {
+        navigate('/game');
+        setIsLoading(false);
+      }, 500);
     });
 
     socket.on('error', (data) => {
       console.error('Socket error:', data);
+      setIsLoading(false);
       alert(`Error: ${data.message}`);
     });
 
@@ -443,7 +542,12 @@ function LobbyPageWrapper() {
     };
   }, [socket, setStatus, setGameState, navigate]);
 
-  return <LobbyPage />;
+  return (
+    <>
+      {isLoading && <LoadingOverlay />}
+      <LobbyPage />
+    </>
+  );
 }
 
 /**

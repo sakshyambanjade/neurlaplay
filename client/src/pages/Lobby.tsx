@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSocket } from '../hooks';
 import { useGameStore } from '../store/gameStore';
 import { CheckCircle, AlertCircle, Zap, Copy, Shield } from 'lucide-react';
@@ -10,16 +10,32 @@ import Accordion from 'react-bootstrap/Accordion';
 export function LobbyPage() {
   const socket = useSocket();
   const matchId = useGameStore((s) => s.matchId);
+  const playerSessionId = useGameStore((s) => s.playerSessionId);
   const userColor = useGameStore((s) => s.userColor);
 
   const [botName, setBotName] = useState('');
-  const [model, setModel] = useState('gpt-4o');
-  const [endpointUrl, setEndpointUrl] = useState('https://api.openai.com/v1/chat/completions');
+  const [model, setModel] = useState('mixtral-8x7b-32768');
+  const [endpointUrl, setEndpointUrl] = useState('https://api.groq.com/openai/v1/chat/completions');
   const [apiKey, setApiKey] = useState('');
   const [isReady, setIsReady] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [copied, setCopied] = useState(false);
+  const [opponentJoined, setOpponentJoined] = useState(false);
+  const [opponentConfigured, setOpponentConfigured] = useState(false);
+  const [opponentReady, setOpponentReady] = useState(false);
+  const [opponentName, setOpponentName] = useState('');
+
+  // Auto-update endpoint URL based on model selected
+  useEffect(() => {
+    if (model.includes('gpt')) {
+      setEndpointUrl('https://api.openai.com/v1/chat/completions');
+    } else if (model.includes('claude')) {
+      setEndpointUrl('https://api.anthropic.com/v1/messages');
+    } else if (model.includes('mixtral')) {
+      setEndpointUrl('https://api.groq.com/openai/v1/chat/completions');
+    }
+  }, [model]);
 
   const handleTestConnection = async () => {
     setTestingConnection(true);
@@ -55,16 +71,33 @@ export function LobbyPage() {
       return;
     }
 
+    console.log('[Client] === I\'M READY FLOW ===');
+    console.log('[Client] Match ID:', matchId);
+    console.log('[Client] Player Session ID:', playerSessionId);
+    console.log('[Client] User Color:', userColor);
+    console.log('[Client] Bot Name:', botName);
+    console.log('[Client] Model:', model);
+    console.log('[Client] Endpoint:', endpointUrl);
+    console.log('[Client] Socket connected:', socket?.connected);
+
+    console.log('[Client] Emitting setConfig...');
     socket?.emit('setConfig', {
       matchId,
+      playerSessionId,
       botName,
       model,
       endpointType: 'openai',
-      endpointUrl
+      endpointUrl,
+      apiKey
     });
+    console.log('[Client] setConfig emitted');
 
-    socket?.emit('setReady', { matchId });
+    console.log('[Client] Emitting setReady...');
+    socket?.emit('setReady', { matchId, playerSessionId });
+    console.log('[Client] setReady emitted');
+    
     setIsReady(true);
+    console.log('[Client] Local state updated: isReady = true');
   };
 
   const handleCopyMatchId = () => {
@@ -74,6 +107,30 @@ export function LobbyPage() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // Listen for opponent events
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('playerJoined', () => {
+      setOpponentJoined(true);
+    });
+
+    socket.on('opponentConfigured', (data: any) => {
+      setOpponentConfigured(true);
+      setOpponentName(data.botName || 'Opponent');
+    });
+
+    socket.on('playerReady', () => {
+      setOpponentReady(true);
+    });
+
+    return () => {
+      socket.off('playerJoined');
+      socket.off('opponentConfigured');
+      socket.off('playerReady');
+    };
+  }, [socket]);
 
   return (
     <div className="py-5" style={{ minHeight: '100vh' }}>
@@ -135,10 +192,17 @@ export function LobbyPage() {
                         style={{ backgroundColor: 'rgba(30, 41, 59, 0.5)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '0.75rem', color: '#fff', padding: '0.75rem 1rem' }}
                         disabled={isReady}
                       >
-                        <option value="gpt-4o">GPT-4o (OpenAI)</option>
-                        <option value="gpt-4-turbo">GPT-4 Turbo (OpenAI)</option>
-                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Anthropic)</option>
-                        <option value="mixtral-8x7b-32768">Mixtral 8x7B (Groq)</option>
+                        <optgroup label="🚀 Groq (Free & Fast)">
+                          <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                          <option value="llama-2-70b-chat">Llama 2 70B</option>
+                        </optgroup>
+                        <optgroup label="📘 OpenAI">
+                          <option value="gpt-4o">GPT-4o</option>
+                          <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        </optgroup>
+                        <optgroup label="🧠 Anthropic">
+                          <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                        </optgroup>
                       </select>
                       <small className="form-text text-muted mt-2 d-block">Select which LLM to use for analysis</small>
                     </div>
@@ -191,6 +255,22 @@ export function LobbyPage() {
                         <Shield size={16} className="flex-shrink-0 mt-1" style={{ color: '#60a5fa' }} />
                         <small style={{ color: '#bfdbfe' }}>Your API key is encrypted and never leaves your browser.</small>
                       </div>
+
+                      {/* Groq Help Section */}
+                      {model.includes('mixtral') || model.includes('llama') ? (
+                        <div className="d-flex align-items-start gap-2 mt-3 p-3 rounded" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                          <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>🎉</span>
+                          <div>
+                            <p className="mb-2 fw-bold" style={{ color: '#bbf7d0' }}>Get Free Groq API Key</p>
+                            <ol className="mb-0 ps-3" style={{ color: '#bbf7d0', fontSize: '0.85rem' }}>
+                              <li>Visit <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80' }}>console.groq.com</a></li>
+                              <li>Sign up (free account)</li>
+                              <li>Create an API key</li>
+                              <li>Paste it above and click "Test Connection"</li>
+                            </ol>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </Accordion.Body>
@@ -395,6 +475,71 @@ export function LobbyPage() {
                         padding: '0.375rem 0.75rem'
                       }}>
                         {isReady ? '✓ Ready' : '⏳ Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Opponent Status Card */}
+            <div className="card mb-4" style={{ backgroundColor: 'rgba(30, 58, 138, 0.2)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '1rem', backdropFilter: 'blur(10px)' }}>
+              <div className="card-body" style={{ padding: '1.5rem' }}>
+                <div className="d-flex align-items-center gap-3 mb-3">
+                  <div className="d-flex align-items-center justify-content-center rounded-3" style={{ width: '2.5rem', height: '2.5rem', backgroundColor: 'rgba(59, 130, 246, 0.2)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                    <span style={{ fontSize: '1.25rem' }}>👥</span>
+                  </div>
+                  <h3 className="h5 fw-bold mb-0 text-white">Opponent</h3>
+                </div>
+                
+                <div className="d-flex flex-column gap-3">
+                  <div className="p-3 rounded-3" style={{ background: 'linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(15, 23, 42, 0.4))', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <span className="text-white d-block mb-1">Connection</span>
+                        <small className="text-muted">{opponentJoined ? (opponentName || 'Anonymous') : 'Waiting for opponent...'}</small>
+                      </div>
+                      <span className="badge fw-bold" style={{
+                        backgroundColor: opponentJoined ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
+                        color: opponentJoined ? '#bbf7d0' : '#fef08a',
+                        border: opponentJoined ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(234, 179, 8, 0.5)',
+                        padding: '0.375rem 0.75rem'
+                      }}>
+                        {opponentJoined ? '✓ Joined' : '⏳ Waiting'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 rounded-3" style={{ background: 'linear-gradient(to right, rgba(59, 130, 246, 0.2), rgba(15, 23, 42, 0.4))', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <span className="text-white d-block mb-1">Configuration</span>
+                        <small className="text-muted">Bot setup</small>
+                      </div>
+                      <span className="badge fw-bold" style={{
+                        backgroundColor: opponentConfigured ? 'rgba(34, 197, 94, 0.3)' : 'rgba(51, 65, 85, 0.5)',
+                        color: opponentConfigured ? '#bbf7d0' : '#9ca3af',
+                        border: opponentConfigured ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid #475569',
+                        padding: '0.375rem 0.75rem'
+                      }}>
+                        {opponentConfigured ? '✓ Ready' : '⏳ Pending'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 rounded-3" style={{ background: 'linear-gradient(to right, rgba(168, 85, 247, 0.2), rgba(15, 23, 42, 0.4))', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div>
+                        <span className="text-white d-block mb-1">Ready Status</span>
+                        <small className="text-muted">Game start</small>
+                      </div>
+                      <span className="badge fw-bold" style={{
+                        backgroundColor: opponentReady ? 'rgba(34, 197, 94, 0.3)' : 'rgba(51, 65, 85, 0.5)',
+                        color: opponentReady ? '#bbf7d0' : '#9ca3af',
+                        border: opponentReady ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid #475569',
+                        padding: '0.375rem 0.75rem'
+                      }}>
+                        {opponentReady ? '✓ Ready' : '⏳ Pending'}
                       </span>
                     </div>
                   </div>

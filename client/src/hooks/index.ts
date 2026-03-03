@@ -1,30 +1,59 @@
 import { useEffect, useRef, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
+import { useState } from 'react';
 
 /**
  * useSocket - Setup and manage Socket.io connection
  */
+let sharedSocket: Socket | null = null;
+let socketInitialized = false;
+
 export function useSocket() {
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(sharedSocket);
 
   useEffect(() => {
-    const serverUrl = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:3001';
-    const socket = io(serverUrl, {
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
-    });
+    if (!sharedSocket && !socketInitialized) {
+      socketInitialized = true;
+      const serverUrl = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:3001';
+      console.log('[Socket] Initializing singleton socket to:', serverUrl);
+      
+      sharedSocket = io(serverUrl, {
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity, // Infinite reconnection attempts
+        reconnectionDelayMax: 10000,
+        transports: ['websocket', 'polling']
+      });
 
-    socketRef.current = socket;
+      // Log socket events
+      sharedSocket.on('connect', () => {
+        console.log('[Socket] ✅ CONNECTED:', sharedSocket?.id);
+      });
+
+      sharedSocket.on('disconnect', (reason) => {
+        console.log('[Socket] ❌ DISCONNECTED - Reason:', reason);
+        console.trace('[Socket] Disconnect stack trace'); // Show where disconnect was triggered from
+      });
+
+      sharedSocket.on('connect_error', (error) => {
+        console.error('[Socket] Connection error:', error);
+      });
+
+      sharedSocket.on('error', (error) => {
+        console.error('[Socket] Error event:', error);
+      });
+    }
+
+    setSocket(sharedSocket);
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      // Intentionally keep shared socket alive across route/component changes
+      console.log('[Socket] Component unmounting but keeping socket alive');
     };
   }, []);
 
-  return socketRef.current;
+  return socket;
 }
 
 /**

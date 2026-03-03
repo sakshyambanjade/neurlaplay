@@ -8,7 +8,7 @@ export const leaderboardRoutes = Router();
 // GET /api/leaderboard
 leaderboardRoutes.get('/', async (_req, res) => {
   try {
-    if (!isDatabaseAvailable()) {
+    if (!isDatabaseAvailable() || !supabase) {
       return res.json({ bots: [] }); // Return empty leaderboard in offline mode
     }
 
@@ -23,6 +23,7 @@ leaderboardRoutes.get('/', async (_req, res) => {
 
     res.json({ bots: data || [] });
   } catch (err: any) {
+    console.error('Leaderboard error:', err);
     res.status(500).json({ error: err.message });
   }
 });

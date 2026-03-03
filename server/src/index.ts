@@ -4,8 +4,10 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import 'dotenv/config';
 import { initSocket } from './socket';
+import { setMatchmaker } from './socket/matchHandlers';
 import { registry } from './game/MatchRegistry';
 import { config } from './config';
+import { Matchmaker } from './matchmaking/Matchmaker';
 import botsRouter from './routes/bots';
 import matchesRouter from './routes/matches';
 import leaderboardRouter from './routes/leaderboard';
@@ -15,7 +17,15 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: config.CLIENT_URL,
+    origin: function(origin, callback) {
+      // Allow requests from localhost on any port (5173, 5174, etc.)
+      if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS not allowed'));
+      }
+    },
+    credentials: true,
     methods: ['GET', 'POST']
   }
 });
@@ -23,7 +33,17 @@ const io = new Server(server, {
 const PORT = config.PORT;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow localhost on any port
+    if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Health check
@@ -64,6 +84,11 @@ app.get('/api/matches/:matchId', (req, res) => {
 // Initialize Socket.io
 initSocket(io);
 
+// Create and start matchmaker
+const matchmaker = new Matchmaker(io);
+setMatchmaker(matchmaker);
+matchmaker.start();
+
 // Start server
 server.listen(PORT, () => {
   console.log(`
@@ -76,6 +101,7 @@ server.listen(PORT, () => {
 🎮 API: http://localhost:${PORT}/api
 
 Socket.IO enabled for real-time gameplay
+🎯 Matchmaker: Pairing bots every 60s
 
 Ready to play! ♟️
   `);

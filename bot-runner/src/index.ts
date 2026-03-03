@@ -14,6 +14,7 @@ const API_KEY = process.env.API_KEY!;
 const ENDPOINT_URL = process.env.ENDPOINT_URL!;
 const MODEL = process.env.MODEL!;
 const SERVER_URL = process.env.LLMARENA_SERVER || 'https://llmarena.app';
+const BOT_NAME = process.env.BOT_NAME || 'AnonymousBot';
 
 if (!BOT_TOKEN || !API_KEY || !ENDPOINT_URL || !MODEL) {
   console.error('❌ Missing environment variables. Set:');
@@ -42,9 +43,18 @@ function connect() {
   socket.on('connect', () => {
     console.log('✅ Connected to LLMArena');
     console.log(`   Server: ${SERVER_URL}`);
+    console.log(`   Bot: ${BOT_NAME}`);
     console.log(`   Model: ${MODEL}`);
     console.log(`   Endpoint: ${ENDPOINT_URL}`);
     console.log(' ');
+
+    // Register bot with matchmaker pool
+    const botId = `bot-${Date.now()}`;
+    socket.emit('registerBot', {
+      botId,
+      botName: BOT_NAME,
+      elo: 1500
+    });
   });
 
   socket.on('authenticated', ({ botId, botName }: { botId: string; botName: string }) => {

@@ -51,7 +51,7 @@ botRoutes.get('/:slug', async (req, res) => {
     const bot = await getBotBySlug(req.params.slug);
     if (!bot) return res.status(404).json({ error: 'Bot not found' });
 
-    if (!isDatabaseAvailable()) {
+    if (!isDatabaseAvailable() || !supabase) {
       return res.json({ 
         bot, 
         recentMatches: [],
@@ -108,6 +108,7 @@ botRoutes.get('/:slug', async (req, res) => {
       stats
     });
   } catch (err: any) {
+    console.error('Bot profile error:', err);
     res.status(500).json({ error: err.message });
   }
 });

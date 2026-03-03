@@ -7,6 +7,7 @@ import { MoveRecord, PlayerColor, BotConfig, GameStatus } from '../types';
 interface GameStore {
   // Match info
   matchId: string | null;
+  playerSessionId: string | null;
   status: GameStatus;
   userColor: PlayerColor | null;
   whiteBot: { botName: string; model: string; eloRating?: number } | null;
@@ -30,6 +31,7 @@ interface GameStore {
 
   // Actions
   setMatchId: (id: string) => void;
+  setPlayerSessionId: (id: string) => void;
   setUserColor: (color: PlayerColor) => void;
   setWhiteBot: (name: string, model: string) => void;
   setBlackBot: (name: string, model: string) => void;
@@ -43,6 +45,7 @@ interface GameStore {
 
 const initialState = {
   matchId: null,
+  playerSessionId: null,
   status: 'waiting' as GameStatus,
   userColor: null,
   whiteBot: null,
@@ -63,6 +66,8 @@ export const useGameStore = create<GameStore>((set) => ({
   ...initialState,
 
   setMatchId: (id) => set({ matchId: id }),
+
+  setPlayerSessionId: (id) => set({ playerSessionId: id }),
 
   setUserColor: (color) => set({ userColor: color }),
 
