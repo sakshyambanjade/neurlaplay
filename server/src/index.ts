@@ -9,6 +9,7 @@ import { config } from './config';
 import botsRouter from './routes/bots';
 import matchesRouter from './routes/matches';
 import leaderboardRouter from './routes/leaderboard';
+import challengesRouter from './routes/challenges';
 
 const app = express();
 const server = http.createServer(app);
@@ -39,6 +40,7 @@ app.get('/health', (req, res) => {
 app.use('/api/bots', botsRouter);
 app.use('/api/matches', matchesRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/challenges', challengesRouter);
 
 // Legacy route - get match status (kept for backwards compatibility)
 app.get('/api/matches/:matchId', (req, res) => {

@@ -1,11 +1,17 @@
 /**
  * Matchmaker - Autonomous bot pairing
  * Runs every 60 seconds and pairs eligible bots by Elo proximity
+ * Prioritizes accepted challenges first, then does random Elo-based pairing
  */
 
 import { Server } from 'socket.io';
 import { registry } from '../game/MatchRegistry';
 import { config } from '../config';
+import { createMatch } from '../db/matches';
+import {
+  getAcceptedUnmatchedChallenges,
+  attachMatchToChallenge
+} from '../db/challenges';
 
 const MATCHMAKING_INTERVAL_MS = config.MATCHMAKING_INTERVAL_MS;
 const ELO_WINDOW = config.ELO_WINDOW;
@@ -90,7 +96,102 @@ export class Matchmaker {
 
     console.log(`[Matchmaker] Cycle: ${eligible.length} active bots, ${activeMatches.length} active matches`);
 
-    // Shuffle to avoid always pairing the same bots
+    // 1) Handle accepted challenges first
+    await this.handleAcceptedChallenges(eligible);
+
+    // 2) Then do standard Elo-based pairing as fallback
+    await this.handleRandomPairing(eligible);
+  }
+
+  /**
+   * Consume accepted challenges (highest priority)
+   */
+  private async handleAcceptedChallenges(eligible: ActiveBot[]) {
+    const challenges = await getAcceptedUnmatchedChallenges();
+    if (!challenges.length) return;
+
+    for (const challenge of challenges) {
+      const a = eligible.find(b => b.id === challenge.challenger_bot_id);
+      const b = eligible.find(b => b.id === challenge.challenged_bot_id);
+      if (!a || !b) continue;
+
+      // Safety: both must not already be in active matches
+      if (registry.isBotInActiveMatch(a.id) || registry.isBotInActiveMatch(b.id)) {
+        continue;
+      }
+
+      // Create match
+      const matchId = generateMatchId();
+      const whiteColor = Math.random() > 0.5 ? a : b;
+      const blackColor = whiteColor.id === a.id ? b : a;
+
+      console.log(
+        `[Matchmaker] Challenge match: ${matchId} — ${whiteColor.name} vs ${blackColor.name}`
+      );
+
+      // Create DB record
+      await createMatch({
+        id: matchId,
+        game_type: 'chess',
+        white_bot_id: whiteColor.id,
+        black_bot_id: blackColor.id,
+        white_elo_before: whiteColor.elo,
+        black_elo_before: blackColor.elo,
+        move_timeout_seconds: config.DEFAULT_MOVE_TIMEOUT_SECONDS
+      });
+
+      // Create in-memory room
+      const room = registry.createReady(matchId, config.DEFAULT_MOVE_TIMEOUT_SECONDS);
+
+      // Store bot IDs in the room for tracking
+      room.white = {
+        botId: whiteColor.id,
+        socketId: whiteColor.socketId,
+        botName: whiteColor.name,
+        model: '',
+        endpointType: 'openai',
+        endpointUrl: '',
+        apiKey: '',
+        isReady: true
+      };
+
+      room.black = {
+        botId: blackColor.id,
+        socketId: blackColor.socketId,
+        botName: blackColor.name,
+        model: '',
+        endpointType: 'openai',
+        endpointUrl: '',
+        apiKey: '',
+        isReady: true
+      };
+
+      // Update challenge with match ID
+      await attachMatchToChallenge(challenge.id, matchId);
+
+      // Notify both bots
+      this.io.to(whiteColor.socketId).emit('matchFound', {
+        matchId,
+        color: 'white',
+        opponentName: blackColor.name,
+        opponentElo: blackColor.elo,
+        timeoutSeconds: config.DEFAULT_MOVE_TIMEOUT_SECONDS
+      });
+
+      this.io.to(blackColor.socketId).emit('matchFound', {
+        matchId,
+        color: 'black',
+        opponentName: whiteColor.name,
+        opponentElo: whiteColor.elo,
+        timeoutSeconds: config.DEFAULT_MOVE_TIMEOUT_SECONDS
+      });
+    }
+  }
+
+  /**
+   * Standard Elo-based random pairing (fallback after challenges)
+   */
+  private async handleRandomPairing(eligible: ActiveBot[]) {
     const shuffled = [...eligible].sort(() => Math.random() - 0.5);
     const paired = new Set<string>();
 
@@ -126,6 +227,17 @@ export class Matchmaker {
 
       console.log(`[Matchmaker] Created: ${matchId} — ${whiteColor.name} (${whiteColor.elo}) vs ${blackColor.name} (${blackColor.elo})`);
 
+      // Create DB record
+      await createMatch({
+        id: matchId,
+        game_type: 'chess',
+        white_bot_id: whiteColor.id,
+        black_bot_id: blackColor.id,
+        white_elo_before: whiteColor.elo,
+        black_elo_before: blackColor.elo,
+        move_timeout_seconds: config.DEFAULT_MOVE_TIMEOUT_SECONDS
+      });
+
       // Create the match room using the factory helper
       const room = registry.createReady(matchId, config.DEFAULT_MOVE_TIMEOUT_SECONDS);
 
@@ -134,7 +246,7 @@ export class Matchmaker {
         botId: whiteColor.id,
         socketId: whiteColor.socketId,
         botName: whiteColor.name,
-        model: '', // Will be set when bot connects
+        model: '',
         endpointType: 'openai',
         endpointUrl: '',
         apiKey: '',
