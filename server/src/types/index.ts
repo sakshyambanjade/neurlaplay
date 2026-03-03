@@ -19,6 +19,7 @@ export interface BotConfig {
 }
 
 export interface PlayerConfig extends BotConfig {
+  botId?: string;
   socketId?: string;
   userId?: string;
   isReady?: boolean;
@@ -156,6 +157,10 @@ export interface GameOverEvent {
   finalFen: string;
   pgn: string;
   totalMoves: number;
+  eloChanges?: {
+    white: number;
+    black: number;
+  };
 }
 
 export interface ErrorEvent {

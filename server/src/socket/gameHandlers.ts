@@ -9,6 +9,9 @@ import {
   GameResult,
   Termination
 } from '../types';
+import { config } from '../config';
+import { saveMove, getBotElo, updateBotElo, finalizeMatch } from '../db';
+import { newRatings } from '../rating/Elo';
 
 /**
  * Game event handlers - move submission, forfeit, disconnect
@@ -49,13 +52,20 @@ export function registerGameHandlers(io: Server, socket: Socket) {
     const isValid = room.applyMove(data.uci);
 
     if (!isValid) {
-      // Move validation failed - should be impossible if client validated correctly
-      await handleGameEnd(
+      // Invalid move - forfeit the player
+      console.log(`[Game ${data.matchId}] Invalid move from ${playerColor}: ${data.uci}`);
+      
+      socket.emit('error', { 
+        code: 'INVALID_MOVE', 
+        message: `Move ${data.uci} is not legal` 
+      });
+
+      await handleForfeit(
         io,
         room,
-        playerColor === 'white' ? 'black' : 'white',
-        'forfeit',
-        'Invalid move after client validation'
+        playerColor,
+        'invalid_move',
+        `Invalid move: ${data.uci}`
       );
       return;
     }
@@ -71,17 +81,17 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       san: lastMove.san,
       fenBefore,
       fenAfter: room.chess.fen(),
-      reasoning: data.reasoning,
-      timeTakenMs: data.timeTakenMs,
-      createdAt: new Date()
-    };
-
-    room.moves.push(moveRecord);
-
-    // Broadcast the move to both players
+      reasoning: data.reasonithe match room (both players and spectators)
     io.to(data.matchId).emit('moveMade', {
       ...moveRecord,
       fen: room.chess.fen(),
+      isCheck: room.chess.isCheck(),
+      legalMoves: room.legalMovesUCI,
+      pgn: room.chess.pgn()
+    });
+
+    // Save move to database
+   fen: room.chess.fen(),
       isCheck: room.chess.isCheck(),
       legalMoves: room.legalMovesUCI,
       pgn: room.chess.pgn()
@@ -95,17 +105,8 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       const termination: Termination = room.termination;
       let winner: PlayerColor | null = null;
 
-      if (room.result === '1-0') winner = 'white';
-      else if (room.result === '0-1') winner = 'black';
-
-      await handleGameEnd(io, room, winner, termination);
-      return;
-    }
-
-    // Check 200-move cap (400 half-moves)
-    if (room.moves.length >= 400) {
-      io.to(data.matchId).emit('gameOver', {
-        result: '1/2-1/2',
+      if (roomove cap
+    if (room.hasReachedMoveCap) {        result: '1/2-1/2',
         termination: 'move_cap' as Termination,
         finalFen: room.chess.fen(),
         pgn: room.chess.pgn(),
@@ -127,13 +128,8 @@ export function registerGameHandlers(io: Server, socket: Socket) {
 
       io.to(data.matchId).emit('forfeit', {
         loserColor: loser,
-        reason: 'timeout',
-        message: `${loser} exceeded the ${room.moveTimeoutSeconds}s time limit`
-      });
-
-      await handleGameEnd(io, room, winner, 'timeout');
-    }, room.moveTimeoutSeconds * 1000);
-
+      await handleForfeit(io, room, loser, 'timeout', 
+        `${loser} exceeded the ${room.moveTimeoutSeconds}s time limit`
     // Notify both players of the next turn
     io.to(data.matchId).emit('turnStart', {
       color: room.currentTurn,
@@ -164,15 +160,7 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       return;
     }
 
-    const winner = playerColor === 'white' ? 'black' : 'white';
-
-    io.to(data.matchId).emit('forfeit', {
-      loserColor: playerColor,
-      reason: data.reason,
-      message: `${playerColor} forfeited: ${data.reason}`
-    });
-
-    await handleGameEnd(io, room, winner, 'forfeit');
+    await handleForfeit(io, room, playerColor, data.reason);
   });
 
   /**
@@ -194,22 +182,17 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       // Notify opponent of disconnect
       io.to(room.matchId).emit('opponentDisconnected', {
         color: playerColor,
-        waitSeconds: 60
+        waitSeconds: config.DISCONNECT_GRACE_PERIOD_MS / 1000
       });
 
-      // Wait 60 seconds for reconnect, then auto-forfeit
+      // Wait for reconnect, then auto-forfeit
       const timeout = setTimeout(async () => {
         const current = registry.get(room.matchId);
         if (current?.status === 'in_progress') {
-          const winner = playerColor === 'white' ? 'black' : 'white';
-          io.to(room.matchId).emit('forfeit', {
-            loserColor: playerColor,
-            reason: 'disconnect',
-            message: `${playerColor} disconnected and did not reconnect`
-          });
-          await handleGameEnd(io, current, winner, 'disconnect');
+          await handleForfeit(io, current, playerColor, 'disconnect',
+            `${playerColor} disconnected and did not reconnect`);
         }
-      }, 60000);
+      }, config.DISCONNECT_GRACE_PERIOD_MS);
 
       // Store timeout for potential cleanup
       (room as any).disconnectTimeout = timeout;
@@ -218,7 +201,28 @@ export function registerGameHandlers(io: Server, socket: Socket) {
 }
 
 /**
- * Handle game end - save result, notify players, clean up
+ * Handle a player forfeit - emit event and trigger game end
+ */
+async function handleForfeit(
+  io: Server,
+  room: MatchRoom,
+  loserColor: PlayerColor,
+  reason: string,
+  message?: string
+) {
+  const winner = loserColor === 'white' ? 'black' : 'white';
+
+  io.to(room.matchId).emit('forfeit', {
+    loserColor,
+    reason,
+    message: message || `${loserColor} forfeited: ${reason}`
+  });
+
+  await handleGameEnd(io, room, winner, 'forfeit');
+}
+
+/**
+ * Handle game end - save result, update Elo, notify players, clean up
  */
 async function handleGameEnd(
   io: Server,
@@ -227,26 +231,68 @@ async function handleGameEnd(
   termination: Termination,
   message?: string
 ) {
-  room.end();
+  // Prevent multiple calls
+  if (room.status === 'completed') {
+    return;
+  }
 
+  room.complete();
+
+  // Calculate result
   let result: GameResult = '*';
   if (winner === 'white') result = '1-0';
   else if (winner === 'black') result = '0-1';
   else result = '1/2-1/2';
 
-  const summary = room.getSummary();
+  // Get bot IDs (if available)
+  const whiteBotId = room.white?.botId;
+  const blackBotId = room.black?.botId;
+  const winnerBotId = winner === 'white' ? whiteBotId : winner === 'black' ? blackBotId : null;
 
+  // Calculate Elo changes
+  let eloChanges: { white: number; black: number } | undefined;
+  
+  if (whiteBotId && blackBotId) {
+    // Get current Elo ratings from database
+    const whiteElo = await getBotElo(whiteBotId);
+    const blackElo = await getBotElo(blackBotId);
+
+    // Calculate new ratings
+    const { white: newWhiteElo, black: newBlackElo, whiteChange, blackChange } = 
+      newRatings(whiteElo, blackElo, result);
+
+    eloChanges = { white: whiteChange, black: blackChange };
+
+    // Update Elo in database
+    await updateBotElo(whiteBotId, newWhiteElo, whiteChange);
+    await updateBotElo(blackBotId, newBlackElo, blackChange);
+
+    // Finalize match in database
+    await finalizeMatch({
+      id: room.matchId,
+      result,
+      termination,
+      winner_bot_id: winnerBotId || null,
+      white_elo_after: newWhiteElo,
+      black_elo_after: newBlackElo,
+      final_fen: room.chess.fen(),
+      pgn: room.chess.pgn(),
+      total_moves: room.moves.length
+    });
+
+    console.log(`[Game ${room.matchId}] Ended - Result: ${result}, Elo changes: White ${whiteChange > 0 ? '+' : ''}${whiteChange}, Black ${blackChange > 0 ? '+' : ''}${blackChange}`);
+  }
+
+  // Emit game over event
   io.to(room.matchId).emit('gameOver', {
     result,
     winner,
     termination,
     finalFen: room.chess.fen(),
     pgn: room.chess.pgn(),
-    totalMoves: room.moves.length
+    totalMoves: room.moves.length,
+    eloChanges
   });
-
-  // TODO: Save final match result to Supabase
-  // await finalizeMatch(room.matchId, result, termination, winner, room);
 
   // Clean up the room after a brief delay
   setTimeout(() => {

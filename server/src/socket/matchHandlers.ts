@@ -9,6 +9,7 @@ import {
   PlayerConfig,
   GameStatus
 } from '../types';
+import { config } from '../config';
 
 /**
  * Match setup handlers - create, join, configure, ready
@@ -21,7 +22,7 @@ export function registerMatchHandlers(io: Server, socket: Socket) {
     // Generate 6-character match ID
     const matchId = Math.random().toString(36).slice(2, 8).toUpperCase();
 
-    const room = registry.create(matchId, data.timeoutSeconds || 30);
+    const room = registry.create(matchId, data.timeoutSeconds || config.DEFAULT_MOVE_TIMEOUT_SECONDS);
 
     socket.join(`match:${matchId}`);
 
@@ -158,8 +159,7 @@ export function registerMatchHandlers(io: Server, socket: Socket) {
  * Start a match - both players ready
  */
 function startGame(io: Server, room: any) {
-  room.status = 'in_progress';
-  room.startedAt = new Date();
+  room.start(); // Use the new status transition method
 
   io.to(`match:${room.matchId}`).emit('gameStart', {
     matchId: room.matchId,
@@ -201,7 +201,7 @@ function startGame(io: Server, room: any) {
       totalMoves: room.moves.length
     });
 
-    room.end();
+    room.complete(); // Use the new status transition method
     setTimeout(() => {
       registry.delete(room.matchId);
     }, 5000);

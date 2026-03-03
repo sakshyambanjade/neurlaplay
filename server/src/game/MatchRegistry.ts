@@ -17,6 +17,17 @@ export class MatchRegistry {
   }
 
   /**
+   * Create a match and immediately start it (transition to in_progress)
+   * Useful for matchmaker-created games
+   */
+  createReady(matchId: string, timeoutSeconds?: number): MatchRoom {
+    const room = new MatchRoom(matchId, timeoutSeconds);
+    room.start();
+    this.matches.set(matchId, room);
+    return room;
+  }
+
+  /**
    * Get a match by ID
    */
   get(matchId: string): MatchRoom | undefined {
@@ -54,6 +65,29 @@ export class MatchRegistry {
    */
   size(): number {
     return this.matches.size;
+  }
+
+  /**
+   * Check if a bot is currently in an active match
+   */
+  isBotInActiveMatch(botId: string): boolean {
+    for (const room of this.matches.values()) {
+      if (room.status === 'in_progress') {
+        if (room.white?.botId === botId || room.black?.botId === botId) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Find all matches for a specific bot
+   */
+  getMatchesForBot(botId: string): MatchRoom[] {
+    return Array.from(this.matches.values()).filter(
+      room => room.white?.botId === botId || room.black?.botId === botId
+    );
   }
 
   /**

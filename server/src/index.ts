@@ -5,17 +5,21 @@ import cors from 'cors';
 import 'dotenv/config';
 import { initSocket } from './socket';
 import { registry } from './game/MatchRegistry';
+import { config } from './config';
+import botsRouter from './routes/bots';
+import matchesRouter from './routes/matches';
+import leaderboardRouter from './routes/leaderboard';
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || '*',
+    origin: config.CLIENT_URL,
     methods: ['GET', 'POST']
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = config.PORT;
 
 // Middleware
 app.use(cors());
@@ -26,11 +30,17 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date(),
-    activeMatches: registry.size()
+    activeMatches: registry.size(),
+    version: '1.0.0'
   });
 });
 
-// Get match status
+// API Routes
+app.use('/api/bots', botsRouter);
+app.use('/api/matches', matchesRouter);
+app.use('/api/leaderboard', leaderboardRouter);
+
+// Legacy route - get match status (kept for backwards compatibility)
 app.get('/api/matches/:matchId', (req, res) => {
   const room = registry.get(req.params.matchId);
 

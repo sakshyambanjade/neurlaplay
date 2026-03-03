@@ -5,9 +5,10 @@
 
 import { Server } from 'socket.io';
 import { registry } from '../game/MatchRegistry';
+import { config } from '../config';
 
-const MATCHMAKING_INTERVAL_MS = 60_000;
-const ELO_WINDOW = 200; // Only match bots within 200 Elo points
+const MATCHMAKING_INTERVAL_MS = config.MATCHMAKING_INTERVAL_MS;
+const ELO_WINDOW = config.ELO_WINDOW;
 
 interface ActiveBot {
   id: string;
@@ -96,17 +97,27 @@ export class Matchmaker {
     for (const botA of shuffled) {
       if (paired.has(botA.id)) continue;
 
+      // Safety check: ensure bot is not already in an active match
+      if (registry.isBotInActiveMatch(botA.id)) {
+        console.log(`[Matchmaker] Skipping ${botA.name} - already in an active match`);
+        continue;
+      }
+
       // Find best opponent for botA
       const opponent = shuffled.find(botB => {
         if (botB.id === botA.id) return false;
         if (paired.has(botB.id)) return false;
+        if (registry.isBotInActiveMatch(botB.id)) return false;
         if (Math.abs(botA.elo - botB.elo) > ELO_WINDOW) return false;
         if (botA.preference?.minElo && botB.elo < botA.preference.minElo) return false;
         if (botA.preference?.maxElo && botB.elo > botA.preference.maxElo) return false;
         return true;
       });
 
-      if (!opponent) continue;
+      if (!opponent) {
+        console.log(`[Matchmaker] No suitable opponent found for ${botA.name} (${botA.elo})`);
+        continue;
+      }
 
       // Create match
       const matchId = generateMatchId();
@@ -115,10 +126,31 @@ export class Matchmaker {
 
       console.log(`[Matchmaker] Created: ${matchId} — ${whiteColor.name} (${whiteColor.elo}) vs ${blackColor.name} (${blackColor.elo})`);
 
-      // Create the match room
-      const room = registry.create(matchId, 30);
-      room.status = 'ready';
-      room.startedAt = new Date();
+      // Create the match room using the factory helper
+      const room = registry.createReady(matchId, config.DEFAULT_MOVE_TIMEOUT_SECONDS);
+
+      // Store bot IDs in the room for tracking
+      room.white = {
+        botId: whiteColor.id,
+        socketId: whiteColor.socketId,
+        botName: whiteColor.name,
+        model: '', // Will be set when bot connects
+        endpointType: 'openai',
+        endpointUrl: '',
+        apiKey: '',
+        isReady: true
+      };
+
+      room.black = {
+        botId: blackColor.id,
+        socketId: blackColor.socketId,
+        botName: blackColor.name,
+        model: '',
+        endpointType: 'openai',
+        endpointUrl: '',
+        apiKey: '',
+        isReady: true
+      };
 
       // Notify both bots via Socket.io
       this.io.to(whiteColor.socketId).emit('matchFound', {
@@ -126,7 +158,7 @@ export class Matchmaker {
         color: 'white',
         opponentName: blackColor.name,
         opponentElo: blackColor.elo,
-        timeoutSeconds: 30
+        timeoutSeconds: config.DEFAULT_MOVE_TIMEOUT_SECONDS
       });
 
       this.io.to(blackColor.socketId).emit('matchFound', {
@@ -134,7 +166,7 @@ export class Matchmaker {
         color: 'black',
         opponentName: whiteColor.name,
         opponentElo: whiteColor.elo,
-        timeoutSeconds: 30
+        timeoutSeconds: config.DEFAULT_MOVE_TIMEOUT_SECONDS
       });
 
       paired.add(botA.id);

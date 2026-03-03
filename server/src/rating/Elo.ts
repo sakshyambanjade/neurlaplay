@@ -3,7 +3,9 @@
  * Standard chess Elo calculation
  */
 
-const K_FACTOR = 32; // Standard K for competitive play
+import { config } from '../config';
+
+const K_FACTOR = config.ELO_K_FACTOR;
 
 export function expectedScore(ratingA: number, ratingB: number): number {
   return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));

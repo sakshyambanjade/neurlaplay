@@ -4,6 +4,7 @@ import { useSocket } from './hooks';
 import { useGameStore } from './store/gameStore';
 import { LobbyPage } from './pages/Lobby';
 import { GamePage } from './pages/Game';
+import { SpectatorGame } from './pages/SpectatorGame';
 import { Home as HomeIcon, Play } from 'lucide-react';
 
 /**
@@ -365,6 +366,7 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/lobby" element={<LobbyPageWrapper />} />
           <Route path="/game" element={<GamePageWrapper />} />
+          <Route path="/game/:matchId" element={<SpectatorGame />} />
         </Routes>
       </Layout>
     </Router>

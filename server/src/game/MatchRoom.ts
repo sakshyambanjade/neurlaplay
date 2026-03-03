@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { PlayerConfig, MoveRecord, GameStatus, PlayerColor, Termination } from '../types';
+import { config } from '../config';
 
 /**
  * MatchRoom - Core game state and chess logic
@@ -18,11 +19,11 @@ export class MatchRoom {
   public startedAt: Date | null = null;
   public endedAt: Date | null = null;
 
-  constructor(matchId: string, timeoutSeconds = 30) {
+  constructor(matchId: string, timeoutSeconds?: number) {
     this.matchId = matchId;
     this.status = 'waiting';
     this.chess = new Chess();
-    this.moveTimeoutSeconds = timeoutSeconds;
+    this.moveTimeoutSeconds = timeoutSeconds || config.DEFAULT_MOVE_TIMEOUT_SECONDS;
     this.createdAt = new Date();
   }
 
@@ -78,6 +79,13 @@ export class MatchRoom {
    */
   bothReady(): boolean {
     return !!this.white?.isReady && !!this.black?.isReady;
+  }
+
+  /**
+   * Check if the game has reached the maximum move limit
+   */
+  get hasReachedMoveCap(): boolean {
+    return this.moves.length >= config.MAX_MOVES_PER_GAME;
   }
 
   /**
@@ -149,12 +157,37 @@ export class MatchRoom {
    * Clear/reset the timeout
    */
   clearTimeout() {
-    if (this.activeTimeout) {
-      clearTimeout(this.activeTimeout);
-      this.activeTimeout = null;
-    }
+    iStart the game - transition to in_progress
+   */
+  start() {
+    this.status = 'in_progress';
+    this.startedAt = new Date();
   }
 
+  /**
+   * Complete the game - transition to completed
+   */
+  complete() {
+    this.status = 'completed';
+    this.endedAt = new Date();
+    this.clearTimeout();
+  }
+
+  /**
+   * Abort the game - transition to completed with abort
+   */
+  abort(reason?: string) {
+    this.status = 'completed';
+    this.endedAt = new Date();
+    this.clearTimeout();
+  }
+
+  /**
+   * Force end the game (legacy method, use complete() instead)
+   * @deprecated Use complete() instead
+   */
+  end() {
+    this.complete()
   /**
    * Force end the game
    */

@@ -178,6 +178,13 @@ async function callLLM(config: LLMConfig, prompt: string, timeoutMs: number): Pr
 }
 
 function parseResponse(text: string): MoveResult {
+  // Limit text length for logging/debugging
+  const MAX_TEXT_LENGTH = 5000;
+  if (text.length > MAX_TEXT_LENGTH) {
+    console.warn(`[LLM] Response too long (${text.length} chars), truncating for parsing`);
+    text = text.substring(0, MAX_TEXT_LENGTH);
+  }
+
   // Try to extract JSON from the response
   // Handle cases where LLM returns markdown code blocks or extra text
   
@@ -213,15 +220,20 @@ function parseResponse(text: string): MoveResult {
   // If we got JSON, validate it
   if (json && typeof json === 'object') {
     const move = json.move || json.uci || '';
-    const reasoning = json.reasoning || json.reason || '';
+    const reasoning = json.reasoning || json.reason || json.explanation || '';
 
     if (move && typeof move === 'string') {
       return {
         move: move.toLowerCase().trim(),
-        reasoning: reasoning && typeof reasoning === 'string' ? reasoning.substring(0, 200) : ''
+        reasoning: reasoning && typeof reasoning === 'string' 
+          ? reasoning.substring(0, 500).trim() 
+          : 'No reasoning provided'
       };
     }
   }
 
+  // If all parsing failed, log a helpful error with preview
+  const preview = text.substring(0, 200);
+  console.error('[LLM] Failed to parse response. Preview:', preview);
   throw new Error('Could not parse LLM response as valid JSON with "move" field');
 }
