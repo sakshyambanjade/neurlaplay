@@ -272,10 +272,10 @@ Expected response:
     {
       "matchId": "ABCD1234",
       "status": "in_progress",
-      "white_bot_id": "550e8400...",
-      "black_bot_id": "550e8401...",
-      "currentTurn": "white",
-      "moveCount": 0
+      "whiteBotName": "StockfishClassic",
+      "blackBotName": "GPT4Chess",
+      "moveCount": 0,
+      "startedAt": "2024-03-03T..."
     }
   ]
 }
@@ -449,14 +449,16 @@ Client (spectators see live game)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/health` | GET | Server health check |
+| `/health` | GET | Server health check |
 | `/api/bots` | POST | Register a bot |
 | `/api/bots/:slug` | GET | Bot profile & stats |
+| `/bot/:slug` | GET (browser) | Bot profile page (frontend) |
 | `/api/leaderboard` | GET | Top 50 bots by Elo |
 | `/api/matches/active` | GET | Active/pending matches |
 | `/api/challenges` | POST | Create a challenge |
 | `/api/challenges/:id/accept` | POST | Accept a challenge |
 | `/game/:matchId` | GET (browser) | Watch live game |
+| `/bot/:slug` | GET (browser) | Bot profile page |
 
 ---
 

@@ -5,6 +5,8 @@ import { useGameStore } from './store/gameStore';
 import { LobbyPage } from './pages/Lobby';
 import { GamePage } from './pages/Game';
 import { SpectatorGame } from './pages/SpectatorGame';
+import { BotProfile } from './pages/BotProfile';
+import { Leaderboard } from './pages/Leaderboard';
 import { Home as HomeIcon, Play } from 'lucide-react';
 
 /**
@@ -72,13 +74,13 @@ function HomePage() {
               Create Match
             </button>
             <Link
-              to="/lobby"
+              to="/leaderboard"
               className="btn btn-lg fw-bold"
               style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', backgroundColor: 'rgba(255, 255, 255, 0.15)', border: '2px solid rgba(255, 255, 255, 0.3)', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'none' }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)', e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)', e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)')}
             >
-              Configure Bot
+              View Leaderboard
             </Link>
           </div>
 
@@ -270,14 +272,23 @@ function Layout({ children }: { children: React.ReactNode }) {
               <div style={{ fontSize: '2.5rem', fontWeight: 'bold', background: 'linear-gradient(to right, #a78bfa, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>♟</div>
               <h1 className="h2 text-white mb-0">LLMArena</h1>
             </Link>
-            <Link
-              to="/"
-              className="btn d-flex align-items-center gap-2"
-              style={{ color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.3)', textDecoration: 'none' }}
-            >
-              <HomeIcon size={20} />
-              <span>Home</span>
-            </Link>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Link
+                to="/leaderboard"
+                className="btn d-flex align-items-center gap-2"
+                style={{ color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.3)', textDecoration: 'none' }}
+              >
+                <span>🏆 Leaderboard</span>
+              </Link>
+              <Link
+                to="/"
+                className="btn d-flex align-items-center gap-2"
+                style={{ color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.3)', textDecoration: 'none' }}
+              >
+                <HomeIcon size={20} />
+                <span>Home</span>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -367,6 +378,8 @@ export function App() {
           <Route path="/lobby" element={<LobbyPageWrapper />} />
           <Route path="/game" element={<GamePageWrapper />} />
           <Route path="/game/:matchId" element={<SpectatorGame />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/bot/:slug" element={<BotProfile />} />
         </Routes>
       </Layout>
     </Router>

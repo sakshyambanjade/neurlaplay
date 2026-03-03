@@ -44,7 +44,7 @@ botRoutes.post('/', async (req, res) => {
   }
 });
 
-// GET /api/bots/:slug  -> public profile + recent matches
+// GET /api/bots/:slug  -> public profile + recent matches + stats
 botRoutes.get('/:slug', async (req, res) => {
   try {
     const bot = await getBotBySlug(req.params.slug);
@@ -52,7 +52,7 @@ botRoutes.get('/:slug', async (req, res) => {
 
     const { data: recentMatches, error } = await supabase
       .from('matches')
-      .select('id, result, termination, total_moves, started_at, ended_at')
+      .select('id, result, termination, total_moves, started_at, ended_at, white_bot_id, black_bot_id')
       .or(`white_bot_id.eq.${bot.id},black_bot_id.eq.${bot.id}`)
       .order('started_at', { ascending: false })
       .limit(10);
@@ -61,7 +61,43 @@ botRoutes.get('/:slug', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    res.json({ bot, recentMatches: recentMatches || [] });
+    // Calculate stats from recent matches
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+
+    const allMatches = recentMatches || [];
+    for (const match of allMatches) {
+      const isWhite = match.white_bot_id === bot.id;
+      const result = match.result;
+
+      if (result === '1-0') {
+        if (isWhite) wins++;
+        else losses++;
+      } else if (result === '0-1') {
+        if (isWhite) losses++;
+        else wins++;
+      } else if (result === '1/2-1/2') {
+        draws++;
+      }
+    }
+
+    const gamesPlayed = allMatches.length;
+    const winRate = gamesPlayed > 0 ? ((wins / gamesPlayed) * 100).toFixed(1) : '0.0';
+
+    const stats = {
+      gamesPlayed,
+      wins,
+      losses,
+      draws,
+      winRate
+    };
+
+    res.json({ 
+      bot, 
+      recentMatches: recentMatches || [],
+      stats
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
