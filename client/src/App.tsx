@@ -1,39 +1,336 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useSocket } from './hooks';
 import { useGameStore } from './store/gameStore';
 import { LobbyPage } from './pages/Lobby';
 import { GamePage } from './pages/Game';
-import { Home, Play, Users, Zap, Award, Eye } from 'lucide-react';
+import { Home as HomeIcon, Play } from 'lucide-react';
 
 /**
- * Main App component - Route between pages
+ * Home Page Component
  */
-export function App() {
+function HomePage() {
   const socket = useSocket();
-  const matchId = useGameStore((s) => s.matchId);
   const setMatchId = useGameStore((s) => s.setMatchId);
   const setUserColor = useGameStore((s) => s.setUserColor);
-  const setStatus = useGameStore((s) => s.setStatus);
-  const setGameState = useGameStore((s) => s.setGameState);
+  const navigate = useNavigate();
 
-  const [page, setPage] = useState<'home' | 'lobby' | 'game'>('home');
-  const [matchCode, setMatchCode] = useState('');
+  const handleCreateMatch = () => {
+    socket?.emit('createMatch', {
+      timeoutSeconds: 30,
+      isPublic: true,
+      researchMode: false
+    });
+  };
 
-  // Socket event listeners
   useEffect(() => {
     if (!socket) return;
 
     socket.on('matchCreated', (data) => {
       setMatchId(data.matchId);
       setUserColor(data.color);
-      setPage('lobby');
+      navigate('/lobby');
     });
+
+    return () => {
+      socket.off('matchCreated');
+    };
+  }, [socket, setMatchId, setUserColor, navigate]);
+
+  return (
+    <>
+      {/* Hero Section */}
+      <section className="py-5" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div className="container-lg text-center position-relative" style={{ zIndex: 1 }}>
+          {/* Badge */}
+          <div className="mb-4 d-inline-block">
+            <span className="badge" style={{ padding: '0.75rem 1rem', backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#fff', fontSize: '0.95rem' }}>
+              🚀 AI Chess Battles in Real-Time
+            </span>
+          </div>
+
+          {/* Main Heading */}
+          <h1 style={{ fontSize: 'clamp(3rem, 10vw, 5.5rem)', fontWeight: '900', color: '#fff', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+            Battle of the <span style={{ background: 'linear-gradient(to right, #a78bfa, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Bots</span>
+          </h1>
+
+          {/* Description */}
+          <p style={{ fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', color: '#d1d5db', marginBottom: '3rem', maxWidth: '700px', margin: '0 auto 3rem auto', lineHeight: '1.6' }}>
+            Watch AI models powered by GPT-4, Claude, Mixtral, and more compete in real-time chess matches
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center mb-5">
+            <button
+              onClick={handleCreateMatch}
+              className="btn btn-lg fw-bold"
+              style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', background: 'linear-gradient(to right, #9333ea, #a855f7)', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(147, 51, 234, 0.5)', e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none', e.currentTarget.style.transform = 'scale(1)')}
+            >
+              Create Match
+            </button>
+            <Link
+              to="/lobby"
+              className="btn btn-lg fw-bold"
+              style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', backgroundColor: 'rgba(255, 255, 255, 0.15)', border: '2px solid rgba(255, 255, 255, 0.3)', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'none' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)', e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)', e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)')}
+            >
+              Configure Bot
+            </Link>
+          </div>
+
+                {/* Stats */}
+                <div className="row mt-5">
+                  <div className="col-md-4 mb-4">
+                    <div style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 'bold', background: 'linear-gradient(to right, #a78bfa, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>1000+</div>
+                    <p className="text-muted mt-2" style={{ fontSize: '1.1rem' }}>Games</p>
+                  </div>
+                  <div className="col-md-4 mb-4">
+                    <div style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 'bold', background: 'linear-gradient(to right, #60a5fa, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>15+</div>
+                    <p className="text-muted mt-2" style={{ fontSize: '1.1rem' }}>Models</p>
+                  </div>
+                  <div className="col-md-4 mb-4">
+                    <div style={{ fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 'bold', background: 'linear-gradient(to right, #4ade80, #10b981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>24/7</div>
+                    <p className="text-muted mt-2" style={{ fontSize: '1.1rem' }}>Live</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Features Section */}
+            <section className="py-5" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)', backgroundImage: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 1))' }}>
+              <div className="container-lg">
+                <div className="text-center mb-5">
+                  <h2 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: '900', color: '#fff', marginBottom: '1.5rem' }}>Powerful Features</h2>
+                  <p style={{ fontSize: 'clamp(1.25rem, 2vw, 1.5rem)', color: '#d1d5db' }}>Everything you need to compete with AI models</p>
+                </div>
+
+                <div className="row g-4">
+                  {[
+                    { icon: '🤖', title: 'Multi-Model Support', desc: 'Use GPT-4, Claude, Mixtral, and other LLMs' },
+                    { icon: '⚡', title: 'Real-Time Gameplay', desc: 'Watch moves happen as AI models think and respond' },
+                    { icon: '🏆', title: 'Elo Ratings', desc: 'Track and compare AI model performance' },
+                    { icon: '🔧', title: 'Easy Setup', desc: 'Simple configuration with API validation' },
+                    { icon: '🎮', title: 'Public & Private', desc: 'Create matches for yourself or share with others' },
+                    { icon: '📊', title: 'Analytics', desc: 'Detailed stats, move history, and analysis' },
+                  ].map((feature, i) => (
+                    <div key={i} className="col-md-6 col-lg-4">
+                      <div
+                        className="card h-100"
+                        style={{
+                          backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                          border: '1px solid rgba(71, 85, 105, 0.5)',
+                          borderRadius: '1rem',
+                          transition: 'all 0.3s',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                          e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(168, 85, 247, 0.2)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div className="card-body">
+                          <div style={{ fontSize: '3.5rem', marginBottom: '1.5rem' }}>{feature.icon}</div>
+                          <h5 className="card-title fw-bold" style={{ fontSize: '1.5rem', color: '#fff' }}>{feature.title}</h5>
+                          <p className="card-text text-muted" style={{ fontSize: '1.05rem', lineHeight: '1.6' }}>{feature.desc}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* How It Works */}
+            <section className="py-5" style={{ backgroundColor: 'linear-gradient(to bottom, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.5))' }}>
+              <div className="container-lg">
+                <div className="text-center mb-5">
+                  <h2 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: '900', color: '#fff', marginBottom: '1.5rem' }}>Get Started in Minutes</h2>
+                  <p style={{ fontSize: 'clamp(1.25rem, 2vw, 1.5rem)', color: '#d1d5db' }}>Three simple steps to compete</p>
+                </div>
+
+                <div className="row g-4">
+                  {[
+                    { num: '01', title: 'Configure', icon: '⚙️', items: ['Select AI model', 'Add API key', 'Set preferences'] },
+                    { num: '02', title: 'Test', icon: '🧪', items: ['Validate connection', 'Test API call', 'Verify response'] },
+                    { num: '03', title: 'Compete', icon: '🚀', items: ['Launch your bot', 'Get matched', 'Watch live'] }
+                  ].map((step, i) => (
+                    <div key={i} className="col-md-4">
+                      <div
+                        className="card h-100"
+                        style={{
+                          backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                          border: '1px solid rgba(71, 85, 105, 0.5)',
+                          borderRadius: '1rem',
+                          padding: '2rem',
+                          transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '4rem',
+                            height: '4rem',
+                            background: 'linear-gradient(to right, #9333ea, #ec4899)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            fontSize: '1.5rem',
+                            marginBottom: '1.5rem',
+                            boxShadow: '0 20px 25px -5px rgba(168, 85, 247, 0.5)'
+                          }}
+                        >
+                          {step.num}
+                        </div>
+                        <div style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>{step.icon}</div>
+                        <h3 className="fw-bold" style={{ fontSize: '1.75rem', color: '#fff', marginBottom: '1.5rem' }}>{step.title}</h3>
+                        <ul className="list-unstyled">
+                          {step.items.map((item, j) => (
+                            <li key={j} className="d-flex gap-3 mb-3" style={{ color: '#d1d5db', fontSize: '1.05rem' }}>
+                              <span style={{ color: '#4ade80', fontSize: '1.25rem' }}>✓</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* CTA Section */}
+            <section className="py-5">
+              <div className="container-lg text-center">
+                <h2 style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)', fontWeight: '900', color: '#fff', marginBottom: '2rem' }}>Ready to Battle?</h2>
+                <p style={{ fontSize: 'clamp(1.25rem, 2vw, 1.5rem)', color: '#d1d5db', marginBottom: '3rem' }}>Create your first match and experience competitive AI chess</p>
+                <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                  <button
+                    onClick={handleCreateMatch}
+                    className="btn btn-lg fw-bold"
+                    style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', background: 'linear-gradient(to right, #9333ea, #a855f7)', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(147, 51, 234, 0.5)', e.currentTarget.style.transform = 'scale(1.05)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none', e.currentTarget.style.transform = 'scale(1)')}
+                  >
+                    Create Match
+                  </button>
+                  <Link
+                    to="/lobby"
+                    className="btn btn-lg fw-bold"
+                    style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', backgroundColor: 'rgba(255, 255, 255, 0.15)', border: '2px solid rgba(255, 255, 255, 0.3)', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'none' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)', e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.5)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)', e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)')}
+                  >
+                    Configure Bot
+                  </Link>
+                </div>
+              </div>
+            </section>
+          </>
+  );
+}
+
+/**
+ * Layout Component with Navbar
+ */
+function Layout({ children }: { children: React.ReactNode }) {
+  const setMatchId = useGameStore((s) => s.setMatchId);
+  const navigate = useNavigate();
+
+  const handleBackHome = () => {
+    setMatchId(null);
+    navigate('/');
+  };
+
+  return (
+    <div className="d-flex flex-column" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)' }}>
+      {/* Header/Navbar */}
+      <nav className="navbar navbar-dark sticky-top" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(10px)', borderBottom: '1px solid rgba(168, 85, 247, 0.2)' }}>
+        <div className="container-lg">
+          <div className="d-flex justify-content-between align-items-center w-100">
+            <Link
+              to="/"
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', textDecoration: 'none' }}
+            >
+              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', background: 'linear-gradient(to right, #a78bfa, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>♟</div>
+              <h1 className="h2 text-white mb-0">LLMArena</h1>
+            </Link>
+            <Link
+              to="/"
+              className="btn d-flex align-items-center gap-2"
+              style={{ color: '#c084fc', backgroundColor: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.3)', textDecoration: 'none' }}
+            >
+              <HomeIcon size={20} />
+              <span>Home</span>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-grow-1">
+        {children}
+      </main>
+    </div>
+  );
+}
+
+/**
+ * Lobby Page Wrapper with Socket Listeners
+ */
+function LobbyPageWrapper() {
+  const socket = useSocket();
+  const setStatus = useGameStore((s) => s.setStatus);
+  const setGameState = useGameStore((s) => s.setGameState);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!socket) return;
 
     socket.on('gameStart', (data) => {
       setStatus('in_progress');
       setGameState(data.fen, '', data.legalMoves, [], false);
-      setPage('game');
+      navigate('/game');
     });
+
+    socket.on('error', (data) => {
+      console.error('Socket error:', data);
+      alert(`Error: ${data.message}`);
+    });
+
+    return () => {
+      socket.off('gameStart');
+      socket.off('error');
+    };
+  }, [socket, setStatus, setGameState, navigate]);
+
+  return <LobbyPage />;
+}
+
+/**
+ * Game Page Wrapper with Socket Listeners
+ */
+function GamePageWrapper() {
+  const socket = useSocket();
+  const setStatus = useGameStore((s) => s.setStatus);
+  const setGameState = useGameStore((s) => s.setGameState);
+
+  useEffect(() => {
+    if (!socket) return;
 
     socket.on('turnStart', (data) => {
       setGameState(data.fen, data.pgn, data.legalMoves, [], false);
@@ -47,153 +344,32 @@ export function App() {
       setStatus('completed');
     });
 
-    socket.on('error', (data) => {
-      console.error('Socket error:', data);
-      alert(`Error: ${data.message}`);
-    });
-
     return () => {
-      socket.off('matchCreated');
-      socket.off('gameStart');
       socket.off('turnStart');
       socket.off('moveMade');
       socket.off('gameOver');
-      socket.off('error');
     };
-  }, [socket, setMatchId, setUserColor, setStatus, setGameState]);
+  }, [socket, setStatus, setGameState]);
 
-  const handleCreateMatch = () => {
-    socket?.emit('createMatch', {
-      timeoutSeconds: 30,
-      isPublic: true,
-      researchMode: false
-    });
-  };
+  return <GamePage />;
+}
 
-  const handleJoinMatch = () => {
-    if (matchCode.trim()) {
-      socket?.emit('joinMatch', { matchId: matchCode });
-    }
-  };
-
-  const handleBackHome = () => {
-    setPage('home');
-    setMatchId(null);
-  };
-
+/**
+ * Main App Component with Router
+ */
+export function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-      {/* Header */}
-      <nav className="bg-black/40 backdrop-blur-md border-b border-purple-500/20 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onClick={handleBackHome}>
-              <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">♟</div>
-              <h1 className="text-2xl font-bold text-white hidden sm:block">LLMArena</h1>
-            </div>
-            {page !== 'home' && (
-              <button
-                onClick={handleBackHome}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/40 text-purple-200 rounded-lg transition duration-200"
-              >
-                <Home size={18} />
-                Home
-              </button>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {page === 'home' && (
-          <div className="space-y-12">
-            {/* Hero Section */}
-            <div className="text-center space-y-6">
-              <div className="space-y-4">
-                <h2 className="text-5xl sm:text-6xl font-bold text-white leading-tight">
-                  Battle of the <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Bots</span>
-                </h2>
-                <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-                  Watch AI models compete in chess. Real-time games powered by GPT-4, Claude, Mixtral, and more.
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-                <button
-                  onClick={handleCreateMatch}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-3 px-8 rounded-lg transition transform hover:scale-105 duration-200 shadow-lg shadow-purple-500/50 w-full sm:w-auto justify-center"
-                >
-                  <Play size={20} />
-                  Create Match
-                </button>
-              </div>
-            </div>
-
-            {/* Join Match Section */}
-            <div className="bg-gradient-to-br from-purple-900/30 to-slate-900/30 backdrop-blur border border-purple-500/30 rounded-xl p-8 max-w-md mx-auto w-full">
-              <h3 className="text-xl font-bold text-white mb-4">Join Existing Match</h3>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  placeholder="Enter match ID..."
-                  value={matchCode}
-                  onChange={(e) => setMatchCode(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleJoinMatch()}
-                  className="flex-1 px-4 py-3 bg-slate-800/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
-                />
-                <button
-                  onClick={handleJoinMatch}
-                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-lg transition transform hover:scale-105 duration-200"
-                >
-                  Join
-                </button>
-              </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-6 pt-8">
-              {[
-                { icon: <Users size={32} />, title: 'Multi-Model AI', desc: 'GPT-4, Claude, Mixtral, and more LLM providers' },
-                { icon: <Zap size={32} />, title: 'Real-Time Updates', desc: 'Watch moves happen as bots think and play' },
-                { icon: <Award size={32} />, title: 'Elo Ratings', desc: 'Track bot performance over time' },
-              ].map((feature, i) => (
-                <div
-                  key={i}
-                  className="group bg-gradient-to-br from-purple-900/40 to-slate-900/40 backdrop-blur border border-purple-500/20 rounded-lg p-6 hover:border-purple-500/60 transition duration-300 hover:shadow-lg hover:shadow-purple-500/20"
-                >
-                  <div className="text-purple-400 mb-3 group-hover:scale-110 transition duration-300">{feature.icon}</div>
-                  <h3 className="text-lg font-bold text-white mb-2">{feature.title}</h3>
-                  <p className="text-gray-400 text-sm">{feature.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Stats Section */}
-            <div className="grid md:grid-cols-4 gap-4 text-center py-8">
-              {[
-                { number: '1000+', label: 'Games Played' },
-                { number: '15+', label: 'AI Models' },
-                { number: '24/7', label: 'Live Matches' },
-                { number: 'Free', label: 'To Watch' }
-              ].map((stat, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                    {stat.number}
-                  </div>
-                  <div className="text-gray-400">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {page === 'lobby' && <LobbyPage />}
-        {page === 'game' && <GamePage />}
-      </main>
-    </div>
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/lobby" element={<LobbyPageWrapper />} />
+          <Route path="/game" element={<GamePageWrapper />} />
+        </Routes>
+      </Layout>
+    </Router>
   );
 }
 
 export default App;
+
