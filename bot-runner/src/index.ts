@@ -1,13 +1,15 @@
 /**
  * LLMArena Bot Runner
- * 
+ *
  * This is what bot owners run on their own machine.
  * It holds the API key, connects to LLMArena via Socket.io,
  * receives turn signals, calls the LLM, and sends moves back.
  */
 
+import 'dotenv/config';
 import { io, Socket } from 'socket.io-client';
 import { callLLMForMove } from './llm';
+import { detectEndpointType } from './endpoint';
 
 const BOT_TOKEN = process.env.BOT_TOKEN!;
 const API_KEY = process.env.API_KEY!;
@@ -27,9 +29,7 @@ if (!BOT_TOKEN || !API_KEY || !ENDPOINT_URL || !MODEL) {
 
 let socket: Socket;
 let currentMatchId: string | null = null;
-let currentColor: 'white' | 'black' | null = null;
 
-// Track match info for proper Elo logging
 const matchInfo: Record<string, { color: 'white' | 'black' }> = {};
 
 function connect() {
@@ -48,7 +48,6 @@ function connect() {
     console.log(`   Endpoint: ${ENDPOINT_URL}`);
     console.log(' ');
 
-    // Register bot with matchmaker pool
     const botId = `bot-${Date.now()}`;
     socket.emit('registerBot', {
       botId,
@@ -86,12 +85,10 @@ async function handleMatchFound({
   timeoutSeconds: number;
 }) {
   currentMatchId = matchId;
-  currentColor = color;
-  
-  // Store match info for Elo logging
+
   matchInfo[matchId] = { color };
-  
-  console.log(`⚔️  Match found!`);
+
+  console.log('⚔️  Match found!');
   console.log(`   Match ID: ${matchId}`);
   console.log(`   Playing as: ${color.toUpperCase()}`);
   console.log(`   vs. ${opponentName} (${opponentElo})`);
@@ -119,11 +116,11 @@ async function handleTurnStart({
   console.log(`   FEN: ${fen}`);
   console.log(`   Legal moves: ${legalMoves.length}`);
   console.log(`   Timeout: ${timeoutSeconds}s`);
-  
+
   const start = Date.now();
 
   try {
-    console.log(`   🤔 Thinking...`);
+    console.log('   🤔 Thinking...');
 
     const result = await callLLMForMove({
       fen,
@@ -136,7 +133,7 @@ async function handleTurnStart({
         model: MODEL,
         endpointType: detectEndpointType(ENDPOINT_URL)
       },
-      timeoutMs: (timeoutSeconds - 3) * 1000 // 3s buffer
+      timeoutMs: Math.max(1000, (timeoutSeconds - 3) * 1000)
     });
 
     const timeTaken = Date.now() - start;
@@ -164,7 +161,6 @@ async function handleTurnStart({
 }
 
 function handleMoveMade({
-  moveNumber,
   playerColor,
   uci,
   san,
@@ -201,19 +197,15 @@ function handleGameOver({
   if (winner) {
     console.log(`   Winner: ${winner.toUpperCase()}`);
   }
-  
-  // Show Elo change with correct color
+
   if (eloChanges && currentMatchId && matchInfo[currentMatchId]) {
     const myColor = matchInfo[currentMatchId].color;
     const myChange = eloChanges[myColor];
     console.log(`   Elo change (${myColor}): ${myChange > 0 ? '+' : ''}${myChange}`);
-    
-    // Clean up match info
     delete matchInfo[currentMatchId];
   }
 
   currentMatchId = null;
-  currentColor = null;
 }
 
 function handleForfeit({
@@ -235,18 +227,11 @@ function handleError({ code, message }: { code: string; message: string }) {
   console.error(`❌ Server error: ${code} - ${message}`);
 }
 
-fuif (url.includes('together.ai') || url.includes('together.xyz')) return 'openai'; // OpenAI-compatible
-  if (url.includes('localhost') || url.includes('127.0.0.1')) return 'custom'; // Local models
-  return 'custom';
-}
-
-// Start the runner
 connect();
 
 console.log('╔════════════════════════════════════════╗');
 console.log('║     LLMArena Bot Runner Started        ║');
-console.log('╚════════════════════════════════════════╝'
-console.log('🚀 LLMArena Bot Runner Started');
+console.log('╚════════════════════════════════════════╝');
 console.log(`   Server: ${SERVER_URL}`);
 console.log(`   Model: ${MODEL}`);
 console.log(`   Endpoint: ${ENDPOINT_URL}`);

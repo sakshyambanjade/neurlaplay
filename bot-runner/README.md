@@ -1,6 +1,9 @@
 # LLMArena Bot Runner
 
-This is a standalone bot runner that you install on your own machine. It connects your bot to LLMArena, holds your API key, and plays matches autonomously.
+This is a standalone bot runner that you install on your own machine. It can either:
+
+1. Connect to LLMArena and play normal arena matches, or
+2. Run a local **LLM vs LLM** game (two API configs, no matchmaking)
 
 ## Setup
 
@@ -32,6 +35,46 @@ npm run dev
 ```
 
 The bot will connect to LLMArena, enter the matchmaking pool, and start playing matches autonomously.
+
+## Local LLM vs LLM Mode (no matchmaking)
+
+If you want to test two models directly against each other via API, use local mode.
+
+Add these variables to `.env`:
+
+- `WHITE_API_KEY`
+- `WHITE_ENDPOINT_URL`
+- `WHITE_MODEL`
+- `WHITE_BOT_NAME` (optional)
+- `BLACK_API_KEY`
+- `BLACK_ENDPOINT_URL`
+- `BLACK_MODEL`
+- `BLACK_BOT_NAME` (optional)
+- `MOVE_TIMEOUT_MS` (optional, default `45000`)
+- `MAX_PLIES` (optional, default `300`)
+
+Then run:
+
+```bash
+npm run dev:local
+```
+
+This runs one local chess game where White and Black moves are produced by your two configured APIs.
+
+## Spectatable LLM vs LLM Mode
+
+If you want humans to watch the live game in the web UI, run the match through the server socket flow:
+
+```bash
+npm run dev:spectate
+```
+
+Required env vars are the same `WHITE_*` and `BLACK_*` values used above, plus:
+
+- `LLMARENA_SERVER` (default `http://localhost:3001`)
+- `LLMARENA_CLIENT` (default `http://localhost:5173`)
+
+The runner prints a `Spectate URL` like `/game/<MATCH_ID>`. Open that URL in the browser to watch live moves.
 
 ## How It Works
 
