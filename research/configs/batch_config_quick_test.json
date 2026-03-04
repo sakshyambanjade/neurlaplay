@@ -1,0 +1,23 @@
+{
+  "totalGames": 3,
+  "concurrentGames": 3,
+  "exportInterval": 1,
+  "games": [
+    {
+      "whiteModel": "gpt-4o",
+      "whiteEndpointUrl": "https://api.openai.com/v1",
+      "whiteApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      
+      "blackModel": "gpt-4o",
+      "blackEndpointUrl": "https://api.openai.com/v1",
+      "blackApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      
+      "enableRobotExecution": false,
+      "moveDelayMs": 100,
+      "maxMoves": 100,
+      "enableStockfish": false
+    }
+  ],
+  "outputDir": "./batch_results/quick_test",
+  "resumeOnFail": true
+}

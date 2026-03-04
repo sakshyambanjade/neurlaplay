@@ -70,21 +70,22 @@ export function registerGameHandlers(io: Server, socket: Socket) {
       return;
     }
 
-    // Store the move
+    // Store the move with Stockfish analysis
     const history = room.chess.history({ verbose: true });
     const lastMove = history[history.length - 1];
 
-    const moveRecord = {
-      moveNumber: room.moves.length + 1,
+    await room.recordMove(
+      room.moves.length + 1,
       playerColor,
-      uci: data.uci,
-      san: lastMove.san,
+      data.uci,
+      lastMove.san,
       fenBefore,
-      fenAfter: room.chess.fen(),
-      reasoning: data.reasoning
-    };
+      room.chess.fen(),
+      data.reasoning,
+      data.timeTakenMs || 0
+    );
 
-    room.moves.push(moveRecord);
+    const moveRecord = room.moves[room.moves.length - 1];
 
     // Broadcast to the match room (both players and spectators)
     io.to(data.matchId).emit('moveMade', {

@@ -1,84 +1,261 @@
 # ♟️ LLMArena
 
-**A chess arena where LLMs compete autonomously. Register a bot once, then step back entirely. The platform handles matchmaking, Elo ratings, persistent storage, and live broadcasting.**
+**Chess arena where LLMs compete autonomously.**
 
-Build and deploy AI chess players. Watch them play each other in real-time. Track ratings over time. Export game data for research.
-
-**Status:** ✅ Backend Complete | 🏗️ Frontend Ready to Build | 📊 Database Designed
+Watch AI models play chess in real-time. Run 50+ automated games. Export data for research. **Compare 6 free LLM providers concurrently.**
 
 ---
 
-## 📚 Documentation
+## 🌟 NEW: 6-Model Concurrent Experiment
 
-This project includes comprehensive documentation. **Start here:**
+**Generate Table 3 for your arXiv paper in 45 minutes, at zero cost**
 
-**🏃 Getting Started Right Now?** → **[NEXT_STEPS.md](docs/NEXT_STEPS.md)** ← **START HERE**
-- Step-by-step setup instructions
-- What to do today, tomorrow, and next week
-- Terminal testing validation checklist
-- Frontend building roadmap
-- Troubleshooting guide
+Compare 6 free LLM providers in parallel:
+- **Groq** Llama3.1-405B (Elo ~1850) 🥇
+- **OpenRouter** DeepSeek-R1 (Elo ~1750)
+- **Google** Gemini-2.0 (Elo ~1650)
+- **Mistral** Codestral (Elo ~1600)
+- **HuggingFace** Qwen2.5 (Elo ~1550)
+- **Together** Llama3.2 (Elo ~1500)
 
-| Document | Purpose | Read Time |
-|----------|---------|-----------|
-| [**NEXT_STEPS.md**](docs/NEXT_STEPS.md) | 🚀 Your immediate action plan (today → next week) | 10 min |
-| [**PROJECT_STRUCTURE.md**](docs/PROJECT_STRUCTURE.md) | 📁 Complete file organization after consolidation | 10 min |
-| [**GETTING_STARTED.md**](docs/GETTING_STARTED.md) | Technical setup guide (4 phases) | 15 min |
-| [**FILE_INVENTORY.md**](docs/FILE_INVENTORY.md) | Complete file listing, what each does, build status | 10 min |
-| [**IMPLEMENTATION_SUMMARY.md**](docs/IMPLEMENTATION_SUMMARY.md) | What's built, what's next, roadmap for frontend | 10 min |
-| [**FRONTEND_IMPLEMENTATION_CHECKLIST.md**](docs/FRONTEND_IMPLEMENTATION_CHECKLIST.md) | 7 pages + 15+ components, build order, requirements | 15 min |
-| [**LLMARENA_TECHNICAL_BLUEPRINT_COMPLETE.md**](docs/LLMARENA_TECHNICAL_BLUEPRINT_COMPLETE.md) | Complete architectural specification, all subsystems | 30 min |
-| [**SUPABASE_SCHEMA.sql**](docs/SUPABASE_SCHEMA.sql) | Database schema, ready to paste into Supabase | 5 min |
+```powershell
+# Get free keys (15 min) → npm run experiment:concurrent → Get Table 3 data
+```
+
+👉 **[CONCURRENT_EXPERIMENT_SETUP.md](research/docs/CONCURRENT_EXPERIMENT_SETUP.md)** | **[TABLE3_GENERATION_GUIDE.md](research/docs/TABLE3_GENERATION_GUIDE.md)**
 
 ---
 
-## 📁 Project Structure
+## ⚡ Quick Start (5 minutes)
 
+### 1. Get API Key (FREE)
 ```
-llmarena/
-├── server/          ← Backend (Express + Socket.io + TypeScript)
-├── client/          ← Frontend (React + Vite + TypeScript)  
-├── docs/            ← Documentation
-└── README.md        ← You are here
+Priority: Groq (groq.com) + OpenRouter (openrouter.ai)
+Then: Google, Mistral, HuggingFace, Together
 ```
 
-**Quick Start:** Just run `npm run dev` in `server/` and `client/` folders!
+### 2. Clone & Install
+```powershell
+git clone https://github.com/sakshyambanjade/neurlaplay.git
+cd neurlaplay
+
+# Terminal 1: Backend
+cd server
+npm install
+npm run dev
+
+# Terminal 2: Frontend
+cd client
+npm install
+npm run dev
+```
+
+### 3. Create .env files
+```
+server/.env → Copy from server/.env.example, add API keys
+client/.env → Copy from client/.env.example
+```
+
+### 4. Open Browser
+```
+http://localhost:5173 → Click "⚡ Bot vs Bot" → Start game
+```
+
+---
+
+## 📦 What You Get
+
+- ✅ Real-time chess games between LLMs
+- ✅ **6-model concurrent experiments (50 games, 45 min, $0)**
+- ✅ Automated batch games (50 games, 45 min)
+- ✅ Elo rating system  
+- ✅ Research-grade data export (6 formats)
+- ✅ Publication-ready workflows (Table 3 auto-generated)
+
+---
+
+## 📚 Full Documentation
+
+- **Start Here:** [research/docs/START_HERE.md](research/docs/START_HERE.md)
+- **6-Model Setup:** [research/docs/CONCURRENT_EXPERIMENT_SETUP.md](research/docs/CONCURRENT_EXPERIMENT_SETUP.md) ⭐ NEW
+- **Table 3 Guide:** [research/docs/TABLE3_GENERATION_GUIDE.md](research/docs/TABLE3_GENERATION_GUIDE.md) ⭐ NEW
+- **Batch Games:** [research/docs/BATCH_GAMES_SETUP_COMPLETE.md](research/docs/BATCH_GAMES_SETUP_COMPLETE.md)
+- **Publishing:** [research/docs/ARXIV_SUBMISSION_COMPLETE.md](research/docs/ARXIV_SUBMISSION_COMPLETE.md)
+- **All Docs:** [research/README.md](research/README.md)
 
 ---
 
 ## 🏗️ Architecture
 
+### Backend (Express + Socket.io)
+- **MatchRoom.ts** — Game logic, move validation
+- **MatchRegistry.ts** — Match storage
+- **Socket Handlers** — Real-time events
+- **Matchmaker.ts** — Bot pairing (Elo-based)
+- **/api/bot-match** — Run LLM vs LLM directly
+
+### Frontend (React + Vite)
+- **Bot vs Bot Arena** — Configure 2 LLMs, start game
+- **Game Spectator** — Watch live with chess board
+- **Leaderboard** — View bot ratings
+
+### Database (Supabase PostgreSQL)
+- Bots, matches, moves, user data
+
+---
+
+## 🧠 Research & Batch Automation
+
+### Option 1: 6-Model Concurrent Experiment ⭐ (RECOMMENDED FOR PAPERS)
+
+Compare 6 free LLM providers side-by-side:
+
+```powershell
+# Get free keys from: groq.com, openrouter.ai, google.com, mistral.ai, huggingface.co, together.ai
+# Add to server/.env
+
+npm run experiment:concurrent
+# Output: Table 3 (comparison table) in experiment-results/
 ```
-Frontend (React)                  Backend (Express + Socket.io)
-├─ Bot vs Bot Arena              ├─ Game Loop (MatchRoom)
-├─ Game Spectator                ├─ Bot vs Bot Runner (/api/bot-match)
-├─ Leaderboard                   ├─ Socket Handlers (real-time events)
-└─ Lobby                          ├─ Matchmaker (autonomous pairs bots)
-                                  └─ Database Integration (Supabase)
 
-All components communicate via Socket.io WebSocket in real-time.
-Bot vs Bot matches run directly on server - no external runner needed!
+**What you get:** 50 games, 6 models, publication-ready Table 3 data, ~45 minutes
+
+### Option 2: Single-Provider Batch
+
+```powershell
+$env:GROQ_API_KEY="gsk_..."
+
+npm run batch:quick   # 3 games test, 2 min
+npm run batch:50      # 50 games, 45 min
+npm run batch:compare # 12 games model comparison, 12 min
 ```
 
-### Backend (`server/`)
+👉 See [research/README.md](research/README.md) for all workflows
 
-**Core Components:**
-- **MatchRoom.ts** — Game state machine. Manages turn order, move validation, legal move generation, game completion detection.
-- **MatchRegistry.ts** — In-memory match storage. Creates, stores, retrieves, and deletes match instances.
-- **Socket Handlers** — Event handlers for match creation, joining, configuration, readiness, moves, forfeits, disconnects.
-- **Matchmaker.ts** — Runs every 60 seconds. Pairs eligible bots based on Elo proximity (±200 point window). Sends `matchFound` events to both players.
-- **Elo.ts** — Calculates rating changes using standard chess Elo (K-factor=32).
+---
 
-**Key Features:**
-- ✅ Move validation at application layer (before chess.js)
-- ✅ Timeout enforcement per move (30 seconds default)
-- ✅ Automatic forfeit on two consecutive invalid moves
-- ✅ Disconnect recovery and opponent notification
-- ✅ Real-time broadcasting to spectators
-- ✅ **Bot vs Bot matches** — Start directly from UI via `/api/bot-match` endpoint
-- ✅ Multi-LLM support — OpenAI, Anthropic, Groq, custom endpoints
+## 🔧 Core Features
 
-### Bot vs Bot Engine (`/api/bot-match`)
+✅ **Local Development** — Everything runs on your machine  
+✅ **Bot vs Bot** — No bot-runner needed, runs on server  
+✅ **Multi-LLM** — OpenAI, Anthropic, Groq, custom endpoints  
+✅ **Real-time** — Socket.io for live updates  
+✅ **Elo Ratings** — Track bot performance  
+✅ **Data Export** — JSON, CSV, PGN, LaTeX formats  
+✅ **Publication Ready** — Auto-generate arXiv-compatible datasets  
+
+---
+
+## 📂 Project Structure
+
+```
+llmarena/
+├── server/           ← Backend code
+│   ├── src/
+│   │   ├── index.ts                    (Express server)
+│   │   ├── game/MatchRoom.ts
+│   │   ├── routes/batch.ts             (Batch API)
+│   │   ├── research/
+│   │   │   ├── MultiProviderLLM.ts     (6 LLM providers) ⭐ NEW
+│   │   │   ├── ConcurrentExperimentRunner.ts ⭐ NEW
+│   │   │   ├── experiment-cli.ts       ⭐ NEW
+│   │   │   ├── BatchGameRunner.ts
+│   │   │   └── ...
+│   │   └── ...
+│   ├── .env.example
+│   └── package.json
+│
+├── client/           ← Frontend code
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── BotVsBot.tsx   (LLM battle UI)
+│   │   │   ├── Game.tsx       (Spectator view)
+│   │   │   └── ...
+│   │   └── ...
+│   ├── .env.example
+│   └── package.json
+│
+└── research/         ← Research materials
+    ├── README.md
+    ├── docs/         ← All documentation
+    │   ├── START_HERE.md
+    │   ├── CONCURRENT_EXPERIMENT_SETUP.md ⭐ NEW
+    │   ├── TABLE3_GENERATION_GUIDE.md ⭐ NEW
+    │   ├── BATCH_GAMES_SETUP_COMPLETE.md
+    │   ├── ARXIV_SUBMISSION_COMPLETE.md
+    │   └── ...
+    └── configs/      ← Configuration templates
+        ├── experiment-6models-concurrent.json ⭐ NEW
+        └── ...
+```
+
+---
+
+## 🎯 Next Steps
+
+1. **Want maximum paper impact? (6 models)**
+   - Read [CONCURRENT_EXPERIMENT_SETUP.md](research/docs/CONCURRENT_EXPERIMENT_SETUP.md)
+   - Run `npm run experiment:concurrent`
+   - Get Table 3 data auto-generated
+
+2. **Want single-provider batches?**
+   - Read [BATCH_GAMES_SETUP_COMPLETE.md](research/docs/BATCH_GAMES_SETUP_COMPLETE.md)
+   - Run `npm run batch:50`
+
+3. **Want to publish results?**
+   - Read [ARXIV_SUBMISSION_COMPLETE.md](research/docs/ARXIV_SUBMISSION_COMPLETE.md)
+   - Use auto-generated Table 3 data from model comparison
+
+4. **Want to integrate robots?**
+   - Read [ROS2_SETUP.md](research/docs/ROS2_SETUP.md)
+   - Enable with UR5/Franka arm
+
+---
+
+## 💰 Cost Breakdown
+
+| Scenario | Games | Models | Cost | Time |
+|----------|-------|--------|------|------|
+| **6-Model Experiment** | 50 | 6 | **$0** | 45 min |
+| Groq Batch | 50 | 1 | $0 | 45 min |
+| OpenAI Batch | 50 | 1 | ~$3.50 | 45 min |
+| Custom | Unlimited | Any | $0-$∞ | Flexible |
+
+**Database:** Always FREE (Supabase free tier)
+
+---
+
+## 📖 Databases Supported
+
+### Cloud (Easiest)
+```
+Supabase: https://supabase.com (1 click, free tier)
+- Set SUPABASE_URL and SUPABASE_SERVICE_KEY in server/.env
+```
+
+### Local (Self-Hosted)
+```
+PostgreSQL: https://www.postgresql.org/download/
+- Set DATABASE_URL in server/.env if using local DB
+```
+
+---
+
+## 🚨 Troubleshooting
+
+**Can't connect to backend?**
+→ Make sure server is running with `npm run dev` in Terminal 1
+
+**API key rejected?**
+→ Get a fresh key from groq.com or openai.com, paste into bot form, click Test
+
+**Port already in use?**
+→ Change PORT in server/.env or let Vite auto-select next port
+
+---
+
+**Status:** ✅ Ready to run  
+**Last Updated:** March 5, 2026
 
 **What It Does:**
 Runs directly on the server. No external runner needed. Just provide LLM credentials and watch two AI models play!

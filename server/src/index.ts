@@ -8,6 +8,7 @@ import { setMatchmaker } from './socket/matchHandlers';
 import { registry } from './game/MatchRegistry';
 import { config } from './config';
 import { Matchmaker } from './matchmaking/Matchmaker';
+import { NeuroAgent } from './agents/NeuroAgent';
 import botsRouter from './routes/bots';
 import matchesRouter from './routes/matches';
 import leaderboardRouter from './routes/leaderboard';
@@ -113,6 +114,213 @@ app.post('/api/bot-match', async (req, res) => {
     res.status(500).json({ message: err.message || 'Failed to start bot match' });
   }
 });
+
+/**
+ * Neuro Bot Match - LLM + SNN Hybrid Arena
+ * Uses NeuroAgent for brain-like move selection
+ */
+app.post('/api/neuro-bot-match', async (req, res) => {
+  const {
+    matchId,
+    whiteBotName,
+    whiteModel,
+    whiteEndpointUrl,
+    whiteApiKey,
+    blackBotName,
+    blackModel,
+    blackEndpointUrl,
+    blackApiKey,
+    moveDelayMs = 3000
+  } = req.body;
+
+  if (!matchId || !whiteApiKey || !blackApiKey) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    // Get or create the match room
+    let room = registry.get(matchId);
+    if (!room) {
+      res.status(400).json({ message: 'Match not found' });
+      return;
+    }
+
+    // Start the room if not already started
+    if (room.status === 'waiting') {
+      room.start();
+    }
+
+    // Start neuro bot match in background
+    startNeuroBotMatch(io, room, {
+      whiteBotName,
+      whiteModel,
+      whiteEndpointUrl,
+      whiteApiKey,
+      blackBotName,
+      blackModel,
+      blackEndpointUrl,
+      blackApiKey,
+      moveDelayMs
+    }).catch(err => console.error('[NeuroAPI] Bot match error:', err));
+
+    res.json({ message: 'Neuro bot match started (LLM+SNN)', matchId });
+  } catch (err: any) {
+    console.error('[NeuroAPI] Error starting neuro bot match:', err);
+    res.status(500).json({ message: err.message || 'Failed to start neuro bot match' });
+  }
+});
+
+/**
+ * Neuro Bot Match - NeuroAgent-powered decision making
+ */
+async function startNeuroBotMatch(io: any, room: any, config: any) {
+  const { whiteBotName, whiteModel, whiteEndpointUrl, whiteApiKey, blackBotName, blackModel, blackEndpointUrl, blackApiKey, moveDelayMs } = config;
+
+  const { Chess } = await import('chess.js');
+  const chess = room.chess;
+
+  console.log(`[NeuroBotMatch] Starting SNN-enhanced match ${room.matchId}`);
+  console.log(`[NeuroBotMatch] ${whiteBotName} (${whiteModel}) vs ${blackBotName} (${blackModel})`);
+
+  // Initialize NeuroAgents for each player
+  const whiteAgent = new NeuroAgent(whiteModel);
+  const blackAgent = new NeuroAgent(blackModel);
+
+  // Update room config
+  room.white = { botName: whiteBotName, model: whiteModel, socketId: 'neuro-white' };
+  room.black = { botName: blackBotName, model: blackModel, socketId: 'neuro-black' };
+
+  // Notify spectators game is starting with SNN
+  io.to(room.matchId).emit('gameState', {
+    matchId: room.matchId,
+    status: 'in_progress',
+    fen: chess.fen(),
+    pgn: chess.pgn(),
+    currentTurn: 'white',
+    whiteBotName,
+    blackBotName,
+    isNeuroMatch: true
+  });
+
+  let moveCount = 0;
+  let lastError: string | null = null;
+
+  while (!chess.isGameOver() && moveCount < 150 && !lastError) {
+    const isWhiteTurn = chess.turn() === 'w';
+    const agent = isWhiteTurn ? whiteAgent : blackAgent;
+    const botName = isWhiteTurn ? whiteBotName : blackBotName;
+    const color = isWhiteTurn ? 'white' : 'black';
+
+    // Delay for dramatic effect
+    await new Promise(resolve => setTimeout(resolve, moveDelayMs));
+
+    try {
+      // Get NeuroAgent decision (LLM + SNN)
+      const legalMoves = room.legalMovesUCI;
+      const fenBefore = chess.fen();
+
+      const neuroDecision = await agent.decideMove(
+        fenBefore,
+        legalMoves,
+        `${botName} making move`
+      );
+
+      const moveUCI = neuroDecision.move;
+
+      // Validate move
+      const from = moveUCI.slice(0, 2);
+      const to = moveUCI.slice(2, 4);
+      const promotion = moveUCI.length === 5 ? moveUCI[4] : undefined;
+
+      const moveObj = chess.move({ from, to, promotion: promotion as any });
+
+      if (!moveObj) {
+        lastError = `Invalid move from ${botName}: ${moveUCI}`;
+        console.error(`[NeuroBotMatch] ${lastError}`);
+        break;
+      }
+
+      moveCount++;
+
+      // Record move with SNN metrics in reasoning
+      const reasoningWithNeuro = `${neuroDecision.reasoning} (Spike Vote: [${neuroDecision.spikeVotes.map(v => v.toFixed(2)).join(', ')}])`;
+
+      await room.recordMove(
+        moveCount,
+        color as 'white' | 'black',
+        moveUCI,
+        moveObj.san,
+        fenBefore,
+        chess.fen(),
+        reasoningWithNeuro,
+        neuroDecision.latencyMs
+      );
+
+      const moveRecord = room.moves[room.moves.length - 1];
+
+      // Broadcast move with SNN metrics
+      io.to(room.matchId).emit('moveMade', {
+        ...moveRecord,
+        fen: chess.fen(),
+        isCheck: chess.isCheck(),
+        legalMoves: room.legalMovesUCI,
+        pgn: chess.pgn(),
+        // SNN metrics for display
+        spikeVotes: neuroDecision.spikeVotes,
+        spikeEfficiency: neuroDecision.spikeEfficiency,
+        neuroLatencyMs: neuroDecision.latencyMs
+      });
+
+      console.log(
+        `[NeuroBotMatch] Move ${moveCount}: ${moveObj.san} | ` +
+        `${botName} | ${neuroDecision.reasoning}`
+      );
+    } catch (err: any) {
+      lastError = `Error in neuro move decision: ${err.message}`;
+      console.error(`[NeuroBotMatch] ${lastError}`, err);
+      break;
+    }
+
+    // Check for game-ending conditions
+    if (room.isOver) {
+      break;
+    }
+  }
+
+  // Cleanup NeuroAgents
+  whiteAgent.dispose();
+  blackAgent.dispose();
+
+  // Determine result
+  const result = room.result;
+  const termination = room.termination;
+
+  // End the match
+  room.status = 'completed';
+  room.endedAt = new Date();
+
+  // Export research metrics
+  const whiteMetrics = whiteAgent.getResearchMetrics();
+  const blackMetrics = blackAgent.getResearchMetrics();
+
+  // Notify spectators game is over
+  io.to(room.matchId).emit('gameOver', {
+    result,
+    termination,
+    winner: result === '1-0' ? 'white' : result === '0-1' ? 'black' : null,
+    pgn: chess.pgn(),
+    totalMoves: moveCount,
+    error: lastError,
+    neuroMetrics: {
+      white: whiteMetrics,
+      black: blackMetrics
+    }
+  });
+
+  console.log(`[NeuroBotMatch] Match ${room.matchId} ended: ${result} (${termination})`);
+  console.log(`[NeuroBotMatch] White SNN metrics:`, whiteMetrics);
+  console.log(`[NeuroBotMatch] Black SNN metrics:`, blackMetrics);
+}
 
 /**
  * Helper to start a bot match
@@ -267,21 +475,21 @@ Your move (must be from the legal moves list):`
 
       moveCount++;
       const halfMoveNumber = moveCount;
-
-      // Create move record
-      const moveRecord = {
-        moveNumber: halfMoveNumber,
-        playerColor: isWhiteTurn ? 'white' : 'black',
-        uci: `${moveObj.from}${moveObj.to}`,
-        san: moveObj.san,
-        reasoning: `${botName}'s move`,
-        timestamp: new Date().toISOString()
-      };
-
-      room.moves.push(moveRecord);
-
+      const fenBefore = chess.history({ verbose: true })[chess.history({ verbose: true }).length - 1]?.before || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
       const currentFen = chess.fen();
       const currentPgn = chess.pgn();
+
+      // Record move with Stockfish analysis
+      await room.recordMove(
+        halfMoveNumber,
+        isWhiteTurn ? 'white' : 'black',
+        `${moveObj.from}${moveObj.to}`,
+        moveObj.san,
+        fenBefore,
+        currentFen,
+        `${botName}'s move`,
+        0
+      );
 
       // Broadcast move to spectators with FEN update
       io.to(room.matchId).emit('moveMade', {
@@ -341,6 +549,76 @@ app.get('/api/matches/:matchId', (req, res) => {
     status: room.status,
     gameState: state,
     summary
+  });
+});
+
+// Research data export endpoint - JSON format
+app.get('/api/research/export/:matchId/json', (req, res) => {
+  const room = registry.get(req.params.matchId);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Match not found' });
+  }
+
+  const jsonData = room.exportResearchJSON();
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="research-${room.matchId}.json"`);
+  res.send(jsonData);
+});
+
+// Research data export endpoint - CSV format
+app.get('/api/research/export/:matchId/csv', (req, res) => {
+  const room = registry.get(req.params.matchId);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Match not found' });
+  }
+
+  const csvData = room.exportResearchCSV();
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="research-${room.matchId}.csv"`);
+  res.send(csvData);
+});
+
+// Research data summary endpoint
+app.get('/api/research/summary/:matchId', (req, res) => {
+  const room = registry.get(req.params.matchId);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Match not found' });
+  }
+
+  res.json({
+    matchId: room.matchId,
+    totalMoves: room.moves.length,
+    averageCPL: room.getAverageCentipawnLoss(),
+    totalCPL: room.getTotalCentipawnLoss(),
+    whiteBotName: room.white?.botName,
+    whiteModel: room.white?.model,
+    blackBotName: room.black?.botName,
+    blackModel: room.black?.model,
+    result: room.result,
+    startedAt: room.startedAt,
+    endedAt: room.endedAt,
+    researchDataPoints: room.researchLog.length
+  });
+});
+
+// NeuroAgent spike raster data endpoint (for visualization)
+app.get('/api/research/spikes/:matchId', (req, res) => {
+  const room = registry.get(req.params.matchId);
+
+  if (!room) {
+    return res.status(404).json({ error: 'Match not found' });
+  }
+
+  // Return spike raster plot data
+  res.json({
+    matchId: room.matchId,
+    totalMoves: room.moves.length,
+    averageCPL: room.getAverageCentipawnLoss(),
+    dataType: 'spike_raster',
+    note: 'Spike pattern data from SNN motor cortex simulation'
   });
 });
 

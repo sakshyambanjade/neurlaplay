@@ -1,0 +1,65 @@
+{
+  "totalGames": 12,
+  "concurrentGames": 3,
+  "exportInterval": 4,
+  "games": [
+    {
+      "whiteModel": "gpt-4o",
+      "whiteEndpointUrl": "https://api.openai.com/v1",
+      "whiteApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      
+      "blackModel": "claude-3.5-sonnet",
+      "blackEndpointUrl": "https://api.anthropic.com",
+      "blackApiKey": "sk-ant-YOUR-ANTHROPIC-KEY-HERE",
+      
+      "enableRobotExecution": false,
+      "moveDelayMs": 100,
+      "maxMoves": 150,
+      "enableStockfish": false
+    },
+    {
+      "whiteModel": "claude-3.5-sonnet",
+      "whiteEndpointUrl": "https://api.anthropic.com",
+      "whiteApiKey": "sk-ant-YOUR-ANTHROPIC-KEY-HERE",
+      
+      "blackModel": "gpt-4o",
+      "blackEndpointUrl": "https://api.openai.com/v1",
+      "blackApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      
+      "enableRobotExecution": false,
+      "moveDelayMs": 100,
+      "maxMoves": 150,
+      "enableStockfish": false
+    },
+    {
+      "whiteModel": "gpt-4-turbo",
+      "whiteEndpointUrl": "https://api.openai.com/v1",
+      "whiteApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      
+      "blackModel": "claude-3-opus",
+      "blackEndpointUrl": "https://api.anthropic.com",
+      "blackApiKey": "sk-ant-YOUR-ANTHROPIC-KEY-HERE",
+      
+      "enableRobotExecution": false,
+      "moveDelayMs": 100,
+      "maxMoves": 150,
+      "enableStockfish": false
+    },
+    {
+      "whiteModel": "gpt-4o",
+      "whiteEndpointUrl": "https://api.openai.com/v1",
+      "whiteApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      
+      "blackModel": "claude-3.5-sonnet",
+      "blackEndpointUrl": "https://api.anthropic.com",
+      "blackApiKey": "sk-ant-YOUR-ANTHROPIC-KEY-HERE",
+      
+      "enableRobotExecution": false,
+      "moveDelayMs": 100,
+      "maxMoves": 150,
+      "enableStockfish": false
+    }
+  ],
+  "outputDir": "./batch_results/model_comparison",
+  "resumeOnFail": true
+}

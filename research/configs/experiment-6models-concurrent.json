@@ -1,0 +1,69 @@
+{
+  "name": "NeuroChess 6-Model Concurrent Experiment",
+  "description": "Compare 6 free LLM providers in parallel match types. 50 games total (~45 min runtime).",
+  "totalGames": 50,
+  "moveDelayMs": 500,
+  "outputDir": "./experiment-results",
+  "exportInterval": 5,
+  "matchTypes": [
+    {
+      "name": "NeuroChess vs DeepSeek (Match Type 1)",
+      "whiteProvider": "groq",
+      "whiteModel": "llama3.1-405b",
+      "whiteEndpointUrl": "https://api.groq.com/openai/v1/chat/completions",
+      "whiteApiKey": "${GROQ_API_KEY}",
+      "whiteEstimatedElo": 1850,
+      "blackProvider": "openrouter",
+      "blackModel": "deepseek/deepseek-r1:free",
+      "blackEndpointUrl": "https://openrouter.ai/api/v1/chat/completions",
+      "blackApiKey": "${OPENROUTER_API_KEY}",
+      "blackEstimatedElo": 1750,
+      "description": "Best free models available. NeuroChess with max reasoning vs DeepSeek reasoning model.",
+      "expectedGames": 17
+    },
+    {
+      "name": "Gemini2 vs Codestral (Match Type 2)",
+      "whiteProvider": "google",
+      "whiteModel": "gemini-2.0-flash",
+      "whiteEndpointUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "whiteApiKey": "${GOOGLE_API_KEY}",
+      "whiteEstimatedElo": 1650,
+      "blackProvider": "mistral",
+      "blackModel": "codestral-latest",
+      "blackEndpointUrl": "https://api.mistral.ai/v1/chat/completions",
+      "blackApiKey": "${MISTRAL_API_KEY}",
+      "blackEstimatedElo": 1600,
+      "description": "Mid-tier comparison. Google's multimodal vs Mistral's code-optimized.",
+      "expectedGames": 16
+    },
+    {
+      "name": "Qwen2.5 vs Llama3.2 (Match Type 3)",
+      "whiteProvider": "huggingface",
+      "whiteModel": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "whiteEndpointUrl": "https://api-inference.huggingface.co/v1/chat/completions",
+      "whiteApiKey": "${HUGGINGFACE_API_KEY}",
+      "whiteEstimatedElo": 1550,
+      "blackProvider": "together",
+      "blackModel": "meta-llama/Llama-3.2-3B-Instruct",
+      "blackEndpointUrl": "https://api.together.xyz/v1/chat/completions",
+      "blackApiKey": "${TOGETHER_API_KEY}",
+      "blackEstimatedElo": 1500,
+      "description": "Open-source comparison. Qwen latest vs Llama lightweight.",
+      "expectedGames": 17
+    }
+  ],
+  "_instructions": {
+    "step1_get_keys_for_free": [
+      "Groq (FREE, no credit card): https://console.groq.com/keys",
+      "OpenRouter (1000 req/day free): https://openrouter.ai",
+      "Google AI Studio (60 RPM free): https://aistudio.google.com",
+      "Mistral (500k TPM free): https://mistral.ai/platform",
+      "HuggingFace (unlimited): https://huggingface.co/inference-api",
+      "Together AI ($25 credit): https://together.ai"
+    ],
+    "step2_create_env": "Copy your keys to server/.env following .env.example",
+    "step3_run_experiment": "npm run experiment:concurrent",
+    "expected_duration": "~45 minutes for 50 games, 3 concurrent matches",
+    "expected_output": "experiment-results/ with table3-model-comparison.json and experiment-results.json"
+  }
+}
