@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Chessboard } from 'react-chessboard';
 import { useSocket, GameState, Move, GameOverEvent } from '../hooks/useSocket';
 
 export function SpectatorGame() {
@@ -100,12 +101,20 @@ export function SpectatorGame() {
 
         {/* Center: Board and move list */}
         <div className="game-board">
-          <div className="fen-display">
-            <code>{gameState.fen}</code>
+          <div className="chessboard-container">
+            <Chessboard 
+              position={gameState.fen} 
+              boardWidth={500}
+              arePiecesDraggable={false}
+              customBoardStyle={{
+                borderRadius: '8px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+              }}
+            />
           </div>
 
-          <div className="pgn-display">
-            <p>{gameState.pgn || 'No moves yet'}</p>
+          <div className="fen-display">
+            <code>{gameState.fen}</code>
           </div>
 
           {gameOver && (
@@ -279,6 +288,12 @@ export function SpectatorGame() {
           border: 1px solid #ddd;
         }
 
+        .chessboard-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 15px;
+        }
+
         .fen-display {
           margin-bottom: 15px;
           padding: 10px;
@@ -287,22 +302,6 @@ export function SpectatorGame() {
           font-family: monospace;
           font-size: 12px;
           overflow-x: auto;
-        }
-
-        .pgn-display {
-          margin-bottom: 15px;
-          padding: 10px;
-          background: #f8f9fa;
-          border-radius: 4px;
-          font-family: monospace;
-          font-size: 13px;
-          line-height: 1.5;
-          min-height: 60px;
-        }
-
-        .pgn-display p {
-          margin: 0;
-          word-break: break-all;
         }
 
         .game-over-alert {

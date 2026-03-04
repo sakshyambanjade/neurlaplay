@@ -38,27 +38,26 @@ This project includes comprehensive documentation. **Start here:**
 llmarena/
 ├── server/          ← Backend (Express + Socket.io + TypeScript)
 ├── client/          ← Frontend (React + Vite + TypeScript)  
-├── bot-runner/      ← Standalone bot runner (deployed by bot owners)
 ├── docs/            ← Documentation
 └── README.md        ← You are here
 ```
 
-**Note:** Types are now in `server/src/types/` and `client/src/types/` (no more shared folder).  
-**Note:** Client is spectator-only UI. Bot-runner handles LLM calls (not client).
+**Quick Start:** Just run `npm run dev` in `server/` and `client/` folders!
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-Frontend (React + Vite)          Backend (Express + Socket.io)       Bot Runner (CLI)
-├─ Game Spectator               ├─ Game Loop (MatchRoom)            ├─ LLM Caller
-├─ Leaderboard                  ├─ Socket Handlers                  ├─ Move Validation
-├─ Bot Profile                  ├─ Matchmaker (autonomous)          └─ Retry Logic
-├─ Registration Wizard          ├─ Elo Rating Engine
-└─ Analysis                      └─ Database Integration (Supabase)
+Frontend (React)                  Backend (Express + Socket.io)
+├─ Bot vs Bot Arena              ├─ Game Loop (MatchRoom)
+├─ Game Spectator                ├─ Bot vs Bot Runner (/api/bot-match)
+├─ Leaderboard                   ├─ Socket Handlers (real-time events)
+└─ Lobby                          ├─ Matchmaker (autonomous pairs bots)
+                                  └─ Database Integration (Supabase)
 
 All components communicate via Socket.io WebSocket in real-time.
+Bot vs Bot matches run directly on server - no external runner needed!
 ```
 
 ### Backend (`server/`)
@@ -76,109 +75,103 @@ All components communicate via Socket.io WebSocket in real-time.
 - ✅ Automatic forfeit on two consecutive invalid moves
 - ✅ Disconnect recovery and opponent notification
 - ✅ Real-time broadcasting to spectators
+- ✅ **Bot vs Bot matches** — Start directly from UI via `/api/bot-match` endpoint
+- ✅ Multi-LLM support — OpenAI, Anthropic, Groq, custom endpoints
 
-### Bot Runner (`bot-runner/`)
+### Bot vs Bot Engine (`/api/bot-match`)
 
 **What It Does:**
-Deployed by bot owners. Connects to LLMArena server, receives move requests, calls their LLM API, returns moves.
+Runs directly on the server. No external runner needed. Just provide LLM credentials and watch two AI models play!
 
-**Core Components:**
-- **index.ts** — Main CLI entry point. Manages Socket.io connection, event handling, move submission cycle.
-- **llm.ts** — Multi-provider LLM caller. Detects endpoint type (OpenAI, Anthropic, Groq, custom). Handles timeouts, rate limits, JSON parsing, retries.
-- **prompts.ts** — Strict chess prompt templates. Requires UCI format moves, legal-only responses, JSON output.
+**How It Works:**
+1. Client sends bot configs (names, models, API keys, endpoints) to `/api/bot-match`
+2. Server creates match room and starts the game loop
+3. Server iteratively:
+   - Asks LLM for next move (with configurable delay for drama!)
+   - Validates move on chess board
+   - Broadcasts to all spectators via Socket.io
+   - Repeats until checkmate/stalemate/max moves
+4. Match completes and results shown in real-time
 
 **Supported Providers:**
 - OpenAI (gpt-4, gpt-4o, gpt-4-turbo)
 - Anthropic (claude-3.5-sonnet, claude-3-opus)
 - Groq (mixtral-8x7b, llama-2)
-- Custom endpoints (OpenAI-compatible)
+- Custom OpenAI-compatible endpoints
 
 ### Frontend (`client/`)
 
-**Spectator UI (Read-Only):**
-- 7 pages: Home, RegisterBot, Game, BotProfile, Leaderboard, Analysis, Profile
-- 15+ components: ChessBoard, BotPanel, EvalBar, MoveHistory, LeaderboardTable, etc.
-- Complete Zustand store for game state
-- Socket.io hook for real-time updates
-- Stockfish WASM wrapper for analysis
+**Pages & Features:**
+- **Home** — Create match / Bot vs Bot Arena / Join by Match ID
+- **Bot vs Bot Arena** — Configure 2 LLMs, set move delay, start match
+- **Game Spectator** — Watch matches with live chess board (react-chessboard)
+- **Lobby** — Register & configure bots
+- **Leaderboard** — Track bot ratings
+- **Bot Profile** — View detailed bot stats
 
-**Important:** Client does NOT call LLMs. It's a spectator view only. Bot-runner handles all LLM calls.
+**Technology:**
+- React + Vite + TypeScript
+- Socket.io for real-time updates  
+- react-chessboard for visual board
+- Zustand for state management
 
 Types are in `client/src/types/` (duplicated from server for deployment independence).
 
-See [FRONTEND_IMPLEMENTATION_CHECKLIST.md](docs/FRONTEND_IMPLEMENTATION_CHECKLIST.md) for full build order.
-
 ### Database (`Supabase PostgreSQL`)
 
-**7 Tables:**
+**Tables:**
 - `users` — Account owners
-- `bots` — Bot profiles, Elo, status, configuration
-- `bot_tokens` — JWT auth for runners (bcrypt hashed)
-- `matches` — Game results, Elo snapshots before/after, termination reason
-- `moves` — Move-by-move data (FEN before/after, reasoning, Stockfish eval)
-- `challenges` — Bot-to-bot challenge queue
-- `elo_history` — Elo progression for rating charts
+- `bots` — Bot profiles, Elo, status
+- `matches` — Game results & ratings
+- `moves` — Move-by-move data
 
-**Security:**
-- Row-level security (RLS) enforced
-- Public bots viewable, own bots controlled
-- All matches and moves public for research
-- Zero API keys stored (kept in runner environment only)
+---
+
+## 🎮 Quick Start - Watch LLMs Play Chess
+
+### 1. Start the Server
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+Server runs on `http://localhost:3001`
+
+### 2. Start the Client
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Client runs on `http://localhost:5173`
+
+### 3. Start a Bot vs Bot Match
+
+1. Click **"⚡ Bot vs Bot"** button on home page
+2. Enter bot names (e.g., "GPT-4" vs "Claude")
+3. Select models and API endpoints
+4. Paste in your API keys (Groq, OpenAI, Anthropic, etc.)
+5. Set move delay for dramatic effect (500ms - 10s)
+6. Click **"Start Match"**
+7. Watch the live chess board as LLMs battle in real-time! 👀
+
+That's it! No CLI, no separate runners, no complex setup. Just browser + credentials!
 
 ---
 
 ## 📊 Project Status
 
-| Component | Status | Lines of Code |
-|-----------|--------|---------------|
-| Backend Game Loop | ✅ Complete | 950 |
-| Bot Runner | ✅ Complete | 540 |
-| Database Schema | ✅ Complete | 100 |
-| Type Definitions | ✅ Complete | 170 |
-| Documentation | ✅ Complete | 5000+ words |
-| Frontend Pages | 🏗️ Scaffold Ready | 320 + TODO |
-| Frontend Components | 🏗️ Scaffold Ready | TODO |
-
-**Total Code:** ~2,070 lines of TypeScript (production-ready)
-
----
-
-## 🎮 How to Play
-
-### Step 1: Register a Bot
-Visit `http://localhost:5173/register` and configure:
-- Bot name
-- LLM provider (OpenAI, Anthropic, Groq)
-- Model name
-- API key
-- (Optional) ELO starting rating
-
-### Step 2: Start Bot Runner
-```bash
-cd bot-runner
-npm run start
-```
-
-Bot connects to server and registers via Socket.io.
-
-### Step 3: Wait for Matchmaking
-Every 60 seconds, Matchmaker pairs registered bots:
-- Must have rating within ±200 points
-- Must be actively connected
-- Generates 8-character match ID
-
-### Step 4: Play Game
-- Bots receive `turnStart` event with FEN + legal moves
-- LLM returns move via API
-- Server validates move
-- Move broadcast to all spectators
-- Both bots see updated board
-- Game continues until checkmate/stalemate/draw/disconnect
-
-### Step 5: Check Results
-- Leaderboard updates with new Elo
-- Match saved to Supabase
-- All moves: FEN, reasoning, Stockfish eval (browser-side)
+| Component | Status |
+|-----------|--------|
+| Backend Game Loop | ✅ Complete |
+| Bot vs Bot Engine | ✅ Complete |  
+| Frontend UI | ✅ Complete |
+| Database Schema | ✅ Complete |
+| Documentation | ✅ Complete |
 - Download PGN or GIF
 
 ---

@@ -9,6 +9,30 @@ import { registry } from '../game/MatchRegistry';
 const router = Router();
 
 /**
+ * POST /api/matches - Create a new match
+ */
+router.post('/', async (req, res) => {
+  try {
+    const { timeoutSeconds = 30 } = req.body;
+    
+    // Generate match ID
+    const matchId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    
+    // Create match room
+    const room = registry.create(matchId, timeoutSeconds);
+
+    res.json({ 
+      matchId,
+      status: 'waiting'
+    });
+  } catch (err: any) {
+    console.error('[API] Error creating match:', err);
+    res.status(500).json({ error: 'Failed to create match' });
+  }
+});
+
+
+/**
  * GET /api/matches/active - Get all active matches
  */
 router.get('/active', async (req, res) => {

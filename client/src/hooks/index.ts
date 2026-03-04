@@ -20,9 +20,8 @@ export function useSocket() {
       sharedSocket = io(serverUrl, {
         reconnection: true,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        reconnectionAttempts: Infinity, // Infinite reconnection attempts
         reconnectionDelayMax: 10000,
+        reconnectionAttempts: Infinity,
         transports: ['websocket', 'polling']
       });
 

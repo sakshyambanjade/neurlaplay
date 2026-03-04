@@ -7,6 +7,7 @@ import { GamePage } from './pages/Game';
 import { SpectatorGame } from './pages/SpectatorGame';
 import { BotProfile } from './pages/BotProfile';
 import { Leaderboard } from './pages/Leaderboard';
+import { BotVsBot } from './pages/BotVsBot';
 import { Home as HomeIcon } from 'lucide-react';
 import { JoinByMatchId } from './components/JoinByMatchId';
 
@@ -123,6 +124,16 @@ function HomePage() {
             >
               Create Match
             </button>
+
+            <Link
+              to="/bot-vs-bot"
+              className="btn btn-lg fw-bold"
+              style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', background: 'linear-gradient(to right, #ec4899, #f43f5e)', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'none' }}
+              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(236, 72, 153, 0.5)', e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none', e.currentTarget.style.transform = 'scale(1)')}
+            >
+              ⚡ Bot vs Bot
+            </Link>
 
             <button
               onClick={() => setShowJoinModal(true)}
@@ -595,6 +606,7 @@ export function App() {
           <Route path="/lobby" element={<LobbyPageWrapper />} />
           <Route path="/game" element={<GamePageWrapper />} />
           <Route path="/game/:matchId" element={<SpectatorGame />} />
+          <Route path="/bot-vs-bot" element={<BotVsBot />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/bot/:slug" element={<BotProfile />} />
         </Routes>
