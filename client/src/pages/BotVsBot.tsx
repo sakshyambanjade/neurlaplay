@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 /**
  * Bot vs Bot - Start LLM battles directly from the client
@@ -20,10 +20,51 @@ export function BotVsBot() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moveDelay, setMoveDelay] = useState(3000);
+  const [whiteKeyValid, setWhiteKeyValid] = useState<boolean | null>(null);
+  const [blackKeyValid, setBlackKeyValid] = useState<boolean | null>(null);
+  const [testingWhite, setTestingWhite] = useState(false);
+  const [testingBlack, setTestingBlack] = useState(false);
+
+  const testApiKey = async (endpoint: string, apiKey: string, isWhite: boolean) => {
+    const setTesting = isWhite ? setTestingWhite : setTestingBlack;
+    const setValid = isWhite ? setWhiteKeyValid : setBlackKeyValid;
+    
+    setTesting(true);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: isWhite ? whiteModel : blackModel,
+          messages: [{ role: 'user', content: 'test' }],
+          max_tokens: 1
+        })
+      });
+
+      setValid(response.ok);
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(`API Key Error: ${errorData.error?.message || 'Invalid key'}`);
+      }
+    } catch (err) {
+      setValid(false);
+      setError(`Connection Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleStartMatch = async () => {
     if (!whiteApiKey || !blackApiKey) {
       setError('Please provide API keys for both bots');
+      return;
+    }
+
+    if (whiteKeyValid !== true || blackKeyValid !== true) {
+      setError('Please test your API keys first - click the Test button next to each API key');
       return;
     }
 
@@ -120,12 +161,33 @@ export function BotVsBot() {
 
             <div className="form-group">
               <label>API Key</label>
-              <input
-                type="password"
-                value={whiteApiKey}
-                onChange={(e) => setWhiteApiKey(e.target.value)}
-                placeholder="Your API key"
-              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="password"
+                  value={whiteApiKey}
+                  onChange={(e) => { setWhiteApiKey(e.target.value); setWhiteKeyValid(null); }}
+                  placeholder="Your API key"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={() => testApiKey(whiteEndpoint, whiteApiKey, true)}
+                  disabled={!whiteApiKey || testingWhite}
+                  style={{
+                    padding: '8px 12px',
+                    background: whiteKeyValid === true ? '#10b981' : whiteKeyValid === false ? '#ef4444' : '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: whiteApiKey && !testingWhite ? 'pointer' : 'not-allowed',
+                    opacity: whiteApiKey && !testingWhite ? 1 : 0.5,
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {testingWhite ? '...' : whiteKeyValid === null ? 'Test' : whiteKeyValid ? '✓' : '✗'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -171,12 +233,33 @@ export function BotVsBot() {
 
             <div className="form-group">
               <label>API Key</label>
-              <input
-                type="password"
-                value={blackApiKey}
-                onChange={(e) => setBlackApiKey(e.target.value)}
-                placeholder="Your API key"
-              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="password"
+                  value={blackApiKey}
+                  onChange={(e) => { setBlackApiKey(e.target.value); setBlackKeyValid(null); }}
+                  placeholder="Your API key"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  onClick={() => testApiKey(blackEndpoint, blackApiKey, false)}
+                  disabled={!blackApiKey || testingBlack}
+                  style={{
+                    padding: '8px 12px',
+                    background: blackKeyValid === true ? '#10b981' : blackKeyValid === false ? '#ef4444' : '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: blackApiKey && !testingBlack ? 'pointer' : 'not-allowed',
+                    opacity: blackApiKey && !testingBlack ? 1 : 0.5,
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {testingBlack ? '...' : blackKeyValid === null ? 'Test' : blackKeyValid ? '✓' : '✗'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -209,7 +292,8 @@ export function BotVsBot() {
         <button
           className="start-button"
           onClick={handleStartMatch}
-          disabled={loading}
+          disabled={loading || whiteKeyValid !== true || blackKeyValid !== true}
+          title={whiteKeyValid !== true || blackKeyValid !== true ? 'Please test API keys first' : ''}
         >
           {loading ? (
             <>

@@ -147,6 +147,22 @@ async function startBotMatch(io: any, room: any, config: any) {
   // Helper to get next move from LLM
   async function getMove(color: string, fen: string, model: string, endpoint: string, apiKey: string) {
     try {
+      // Get all legal moves for this position
+      const legalMoveObjects = chess.moves({ verbose: true });
+      const legalMovesInSan = legalMoveObjects.map(m => m.san);
+      
+      const systemPrompt = `You are a chess AI. Given a current board position in FEN notation and a list of LEGAL moves, choose the best move.
+
+Rules:
+- You MUST choose from the provided legal moves list
+- Respond with EXACTLY ONE move from the list, nothing else
+- Use the exact format supplied in the legal moves list
+- No explanations, variations, or alternatives
+- Pick the most strategically sound move`;
+
+      const legalMovesStr = legalMovesInSan.join(', ');
+      const moveHistory = chess.moves({ verbose: true }).slice(-4).map(m => m.san).join(' ');
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -156,19 +172,52 @@ async function startBotMatch(io: any, room: any, config: any) {
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: 'You are a chess AI. Given FEN, respond with just the move in UCI or SAN notation.' },
-            { role: 'user', content: `FEN: ${fen}` }
+            { role: 'system', content: systemPrompt },
+            { 
+              role: 'user', 
+              content: `Current position (FEN): ${fen}
+
+Legal moves available (pick ONE): ${legalMovesStr}
+
+Recent moves: ${moveHistory || 'none yet'}
+
+Your move (must be from the legal moves list):` 
+            }
           ],
-          max_tokens: 10,
-          temperature: 0.7
+          max_tokens: 5,
+          temperature: 0.5
         })
       });
 
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[BotMatch] API error ${response.status}:`, errorText);
+        return null;
+      }
 
       const data = await response.json();
       let move = data.choices?.[0]?.message?.content?.trim() || '';
-      move = move.replace(/[^a-zA-Z0-9\-]/g, '');
+      
+      // Clean up the move - take first word
+      move = move.split('\n')[0].trim();
+      move = move.split(/[\s,;.]/)[0].trim();
+      
+      // Check if this move is in the legal moves list
+      if (!legalMovesInSan.includes(move)) {
+        // If not, try to find the move by matching pattern
+        const possibleMove = legalMovesInSan.find(m => m.toLowerCase().includes(move.toLowerCase()));
+        if (possibleMove) {
+          console.log(`[BotMatch] LLM ambiguous move "${move}" -> corrected to "${possibleMove}"`);
+          move = possibleMove;
+        } else {
+          console.warn(`[BotMatch] LLM returned illegal move "${move}" for position. Legal: ${legalMovesStr}`);
+          // Return null to indicate invalid move
+          return null;
+        }
+      }
+      
+      console.log(`[BotMatch] LLM chose move: "${move}" for ${color}`);
+      
       return move;
     } catch (err) {
       console.error(`[BotMatch] Error getting move from ${color}:`, err);
@@ -178,8 +227,11 @@ async function startBotMatch(io: any, room: any, config: any) {
 
   // Play the match
   let moveCount = 0;
-  while (!chess.isGameOver() && moveCount < 150) {
+  let lastError: string | null = null;
+  
+  while (!chess.isGameOver() && moveCount < 150 && !lastError) {
     const isWhiteTurn = chess.turn() === 'w';
+    const botName = isWhiteTurn ? whiteBotName : blackBotName;
     const model = isWhiteTurn ? whiteModel : blackModel;
     const endpoint = isWhiteTurn ? whiteEndpointUrl : blackEndpointUrl;
     const apiKey = isWhiteTurn ? whiteApiKey : blackApiKey;
@@ -197,62 +249,68 @@ async function startBotMatch(io: any, room: any, config: any) {
     );
 
     if (!move) {
-      console.error(`[BotMatch] No valid move from ${isWhiteTurn ? whiteBotName : blackBotName}`);
+      lastError = `No valid move from ${botName}`;
+      console.error(`[BotMatch] ${lastError}`);
       break;
     }
+
+    const legalMovesForDebug = room.legalMovesUCI.slice(0, 5);
+    console.log(`[BotMatch] Trying move "${move}" for ${botName} | Legal moves: ${legalMovesForDebug.join(', ')}...`);
 
     try {
       const moveObj = chess.move(move, { sloppy: true });
       if (!moveObj) {
-        console.error(`[BotMatch] Invalid move: ${move}`);
+        lastError = `Invalid move from ${botName}: "${move}". Legal moves are: ${room.legalMovesUCI.slice(0, 5).join(', ')}...`;
+        console.error(`[BotMatch] ${lastError}`);
         break;
       }
 
       moveCount++;
+      const halfMoveNumber = moveCount;
 
       // Create move record
       const moveRecord = {
-        moveNumber: moveCount,
+        moveNumber: halfMoveNumber,
         playerColor: isWhiteTurn ? 'white' : 'black',
         uci: `${moveObj.from}${moveObj.to}`,
         san: moveObj.san,
-        reasoning: `${isWhiteTurn ? whiteBotName : blackBotName}'s move`,
+        reasoning: `${botName}'s move`,
         timestamp: new Date().toISOString()
       };
 
       room.moves.push(moveRecord);
 
-      // Broadcast move to spectators
+      const currentFen = chess.fen();
+      const currentPgn = chess.pgn();
+
+      // Broadcast move to spectators with FEN update
       io.to(room.matchId).emit('moveMade', {
-        ...moveRecord,
-        fen: chess.fen(),
+        moveNumber: halfMoveNumber,
+        playerColor: isWhiteTurn ? 'white' : 'black',
+        uci: `${moveObj.from}${moveObj.to}`,
+        san: moveObj.san,
+        reasoning: `${botName}'s move`,
+        fen: currentFen,  // Include updated FEN
+        pgn: currentPgn,  // Include updated PGN
         isCheck: chess.isCheck(),
-        pgn: chess.pgn()
+        legalMoves: room.legalMovesUCI
       });
 
-      console.log(`[BotMatch] Move ${moveCount}: ${moveObj.san}`);
-    } catch (err) {
-      console.error(`[BotMatch] Error making move:`, err);
+      console.log(`[BotMatch] Move ${moveCount}: ${moveObj.san} | FEN is now valid: ${currentFen.substring(0, 30)}...`);
+    } catch (err: any) {
+      lastError = `Error making move: ${err.message}`;
+      console.error(`[BotMatch] ${lastError}`, err);
       break;
     }
   }
 
-  // Determine result
-  let result = '1/2-1/2';
-  let termination = 'draw';
-  
-  if (chess.isCheckmate()) {
-    result = chess.turn() === 'w' ? '0-1' : '1-0';
-    termination = 'checkmate';
-  } else if (chess.isStalemate()) {
-    termination = 'stalemate';
-  }
+  // Determine result based on final state
+  const result = room.result;  // Use the getter, don't set it
+  const termination = room.termination;  // Use the getter, don't set it
 
   // End the match
   room.status = 'completed';
   room.endedAt = new Date();
-  room.result = result;
-  room.termination = termination;
 
   // Notify spectators game is over
   io.to(room.matchId).emit('gameOver', {
@@ -260,10 +318,11 @@ async function startBotMatch(io: any, room: any, config: any) {
     termination,
     winner: result === '1-0' ? 'white' : result === '0-1' ? 'black' : null,
     pgn: chess.pgn(),
-    totalMoves: moveCount
+    totalMoves: moveCount,
+    error: lastError
   });
 
-  console.log(`[BotMatch] Match ${room.matchId} ended: ${result}`);
+  console.log(`[BotMatch] Match ${room.matchId} ended: ${result} (${termination})${lastError ? ` - Error: ${lastError}` : ''}`);
 }
 
 // Legacy route - get match status (kept for backwards compatibility)

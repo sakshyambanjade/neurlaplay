@@ -17,18 +17,26 @@ export function SpectatorGame() {
 
   const { isConnected } = useSocket(matchId || '', {
     onGameState: (state) => {
+      console.log('[SpectatorGame] Received gameState:', state);
       setGameState(state);
       setMoves(state.moves || []);
       setLoading(false);
     },
     onMoveMade: (move) => {
+      console.log('[SpectatorGame] Received moveMade:', move);
       setMoves((prev) => [...prev, move]);
       setGameState((prev) => {
         if (!prev) return prev;
-        return { ...prev, moveCount: prev.moveCount + 1 };
+        return { 
+          ...prev, 
+          moveCount: prev.moveCount + 1,
+          fen: move.fen || prev.fen,  // Update board position
+          pgn: move.pgn || prev.pgn
+        };
       });
     },
     onGameOver: (result) => {
+      console.log('[SpectatorGame] Received gameOver:', result);
       setGameOver(result);
       setGameState((prev) => {
         if (!prev) return prev;
@@ -36,6 +44,7 @@ export function SpectatorGame() {
       });
     },
     onError: (err) => {
+      console.error('[SpectatorGame] Socket error:', err);
       setError(err.message);
       setLoading(false);
     }
