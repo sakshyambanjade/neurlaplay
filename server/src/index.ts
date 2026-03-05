@@ -14,6 +14,7 @@ import matchesRouter from './routes/matches';
 import leaderboardRouter from './routes/leaderboard';
 import challengesRouter from './routes/challenges';
 import { setupGameDataRoutes } from './routes/gameDataRoutes';
+import { setupBatchRoutes } from './routes/batchRoutes';
 import { GameLogger } from './game/GameLogger';
 
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/matches', matchesRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/challenges', challengesRouter);
 setupGameDataRoutes(app);
+setupBatchRoutes(app, io);
 
 // Bot match endpoint - needs io instance
 app.post('/api/bot-match', async (req, res) => {

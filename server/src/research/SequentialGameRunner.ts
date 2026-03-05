@@ -13,6 +13,7 @@ import { EventEmitter } from 'events';
 import { MatchRoom } from '../game/MatchRoom';
 import { NeuroAgent } from '../agents/NeuroAgent';
 import { NEUROCHESS_EXPORTER } from '../research/DatasetExporter';
+import { GameLogger, MoveRecord as GameLoggerMoveRecord } from '../game/GameLogger';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -78,6 +79,7 @@ export class SequentialGameRunner extends EventEmitter {
   private failedGames: number = 0;
   private startTime: number = 0;
   private logFile: string;
+  private gameLogger: GameLogger;
   
   constructor(config: SequentialBatchConfig) {
     super();
@@ -98,6 +100,9 @@ export class SequentialGameRunner extends EventEmitter {
     
     // Setup log file
     this.logFile = path.join(this.config.outputDir, `batch_${new Date().toISOString().slice(0, 10)}.log`);
+    
+    // Initialize GameLogger for web viewing
+    this.gameLogger = new GameLogger('./game-data');
     
     // Initialize progress tracking
     for (let i = 0; i < this.config.totalGames; i++) {
@@ -264,12 +269,26 @@ export class SequentialGameRunner extends EventEmitter {
       const room = new MatchRoom(gameId);
       room.start();
       
-      // Create AI agents
-      const whiteAgent = new NeuroAgent(config.whiteModel, config.enableRobotExecution);
-      const blackAgent = new NeuroAgent(config.blackModel, config.enableRobotExecution);
+      // Create AI agents with API configuration
+      const whiteAgent = new NeuroAgent(
+        config.whiteModel,
+        config.whiteEndpointUrl,
+        config.whiteApiKey,
+        config.enableRobotExecution
+      );
+      const blackAgent = new NeuroAgent(
+        config.blackModel,
+        config.blackEndpointUrl,
+        config.blackApiKey,
+        config.enableRobotExecution
+      );
+      
+      console.log(`\n🎮 [Game ${gameProgress.gameNumber}/${this.config.totalGames}] ${config.whiteModel} (White) vs ${config.blackModel} (Black)`);
+      console.log(`   White API: ${config.whiteEndpointUrl.split('//')[1]?.split('/')[0]}`);
+      console.log(`   Black API: ${config.blackEndpointUrl.split('//')[1]?.split('/')[0]}`);
       
       let moveCount = 0;
-      const maxMoves = config.maxMoves || 100;
+      const maxMoves = config.maxMoves || 300; // Increased from 100 to 300 for longer games
       const gameStartTime = Date.now();
       
       // Game loop
@@ -328,6 +347,19 @@ export class SequentialGameRunner extends EventEmitter {
             decision.latencyMs || 0
           );
           
+          // Log move to GameLogger (for web viewing)
+          this.gameLogger.logMove(gameId, {
+            moveNumber: moveCount + 1,
+            color: agentColor as 'white' | 'black',
+            move: move,
+            fen: fenAfter,
+            confidence: decision.finalConfidence || 0.5,
+            spikeEfficiency: decision.spikeEfficiency || 1.0,
+            latencyMs: decision.latencyMs || 0,
+            reasoning: decision.reasoning || '',
+            timestamp: new Date().toISOString()
+          });
+          
           // Add to research dataset
           NEUROCHESS_EXPORTER.addDatapoint({
             gameId,
@@ -372,6 +404,24 @@ export class SequentialGameRunner extends EventEmitter {
       
       // Complete the game
       room.complete();
+      
+      // Save game to GameLogger (for web viewing)
+      this.gameLogger.saveGameResult({
+        matchId: gameId,
+        timestamp: new Date().toISOString(),
+        whiteBotName: config.whiteModel.split('/').pop() || config.whiteModel,
+        whiteModel: config.whiteModel,
+        blackBotName: config.blackModel.split('/').pop() || config.blackModel,
+        blackModel: config.blackModel,
+        result: room.isOver && room.result === 'white' ? 'white' : 
+                room.isOver && room.result === 'black' ? 'black' : 'draw',
+        pgn: '', // Could generate PGN if needed
+        fen: room.chess.fen(),
+        moves: [],
+        totalMoves: moveCount,
+        gameStatus: room.isOver ? 'completed' : 'stopped',
+        duration_ms: Date.now() - gameStartTime
+      });
       
       gameProgress.moves = moveCount;
       gameProgress.result = room.isOver 

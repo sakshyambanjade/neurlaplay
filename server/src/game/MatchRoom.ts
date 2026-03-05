@@ -31,6 +31,7 @@ export class MatchRoom {
   public endedAt: Date | null = null;
   public researchLog: any[] = [];
   private stockfishCache: Map<string, number> = new Map();
+  private stockfishAvailable: boolean = true; // Assume available until proven otherwise
 
   constructor(matchId: string, timeoutSeconds?: number) {
     this.matchId = matchId;
@@ -62,6 +63,11 @@ export class MatchRoom {
    * Cached for performance
    */
   private async evaluatePosition(fen: string, depth: number = 20): Promise<number> {
+    // Skip if Stockfish not available
+    if (!this.stockfishAvailable) {
+      return 0;
+    }
+
     const cacheKey = `${fen}:${depth}`;
     if (this.stockfishCache.has(cacheKey)) {
       return this.stockfishCache.get(cacheKey)!;
@@ -72,6 +78,15 @@ export class MatchRoom {
         let output = '';
         const stockfish = spawn('stockfish', [], {
           stdio: ['pipe', 'pipe', 'ignore']
+        });
+
+        // Handle spawn errors (e.g., stockfish not found)
+        stockfish.on('error', (error: NodeJS.ErrnoException) => {
+          if (error.code === 'ENOENT') {
+            console.warn('⚠️  Stockfish not found - skipping move analysis');
+            this.stockfishAvailable = false;
+          }
+          resolve(0);
         });
 
         // Set depth and evaluate

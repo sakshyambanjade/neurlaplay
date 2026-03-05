@@ -8,6 +8,8 @@ import { SpectatorGame } from './pages/SpectatorGame';
 import { BotProfile } from './pages/BotProfile';
 import { Leaderboard } from './pages/Leaderboard';
 import { BotVsBot } from './pages/BotVsBot';
+import { BatchResearch } from './pages/BatchResearch';
+import { BatchGameViewer } from './pages/BatchGameViewer';
 import { Home as HomeIcon } from 'lucide-react';
 import { GameLauncher, JoinByMatchId } from './components';
 
@@ -133,6 +135,16 @@ function HomePage() {
               onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none', e.currentTarget.style.transform = 'scale(1)')}
             >
               ⚡ Bot vs Bot
+            </Link>
+
+            <Link
+              to="/batch-research"
+              className="btn btn-lg fw-bold"
+              style={{ padding: '0.75rem 2.5rem', fontSize: '1.1rem', color: '#fff', background: 'linear-gradient(to right, #10b981, #059669)', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', transition: 'all 0.2s', textDecoration: 'none' }}
+              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(16, 185, 129, 0.5)', e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none', e.currentTarget.style.transform = 'scale(1)')}
+            >
+              🧪 Research Batch (50+ Games)
             </Link>
 
             <button
@@ -607,7 +619,9 @@ export function App() {
           <Route path="/lobby" element={<LobbyPageWrapper />} />
           <Route path="/game" element={<GamePageWrapper />} />
           <Route path="/game/:matchId" element={<SpectatorGame />} />
+          <Route path="/batch-game/:matchId" element={<BatchGameViewer />} />
           <Route path="/bot-vs-bot" element={<BotVsBot />} />
+          <Route path="/batch-research" element={<BatchResearch />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/bot/:slug" element={<BotProfile />} />
         </Routes>

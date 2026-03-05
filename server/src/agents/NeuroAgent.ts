@@ -4,6 +4,7 @@
 import { Chess } from 'chess.js';
 import { ChessArmMapper, RobotTrajectory } from '../robotics/ChessArmMapper';
 import { ROS2ArmController, RobotExecutionResult } from '../robotics/ROS2ArmController';
+import axios from 'axios';
 
 interface NeuroDecision {
   move: string;
@@ -26,15 +27,21 @@ interface SpikePattern {
 
 export class NeuroAgent {
   private modelName: string;
+  private endpointUrl: string;
+  private apiKey: string;
   private enableRobotExecution: boolean;
   private gameHistory: Array<{ move: string; confidence: number }> = [];
   private armController: ROS2ArmController | null = null;
   private armMapper: ChessArmMapper;
 
-  constructor(modelName: string, enableRobotExecution: boolean = false) {
+  constructor(modelName: string, endpointUrl: string, apiKey: string, enableRobotExecution: boolean = false) {
     this.modelName = modelName;
+    this.endpointUrl = endpointUrl;
+    this.apiKey = apiKey;
     this.enableRobotExecution = enableRobotExecution;
     this.armMapper = new ChessArmMapper();
+    
+    console.log(`🤖 [NeuroAgent] Created: ${modelName} → ${endpointUrl}`);
     
     if (enableRobotExecution) {
       this.armController = new ROS2ArmController();
@@ -42,8 +49,8 @@ export class NeuroAgent {
   }
 
   /**
-   * Make a decision by evaluating all legal moves
-   * Returns the best move with real confidence based on analysis
+   * Make a decision by evaluating all legal moves using LLM API
+   * Returns the best move with real confidence based on LLM analysis
    */
   async decideMove(
     fen: string,
@@ -56,6 +63,111 @@ export class NeuroAgent {
       throw new Error('No legal moves available');
     }
 
+    // Call the actual LLM API
+    try {
+      const llmResponse = await this.callLLMApi(fen, legalMoves);
+      const latencyMs = performance.now() - startTime;
+      
+      const spikeVotes = [llmResponse.confidence, llmResponse.confidence * 0.95, llmResponse.confidence * 0.9];
+      const finalConfidence = spikeVotes.reduce((a, b) => a + b) / spikeVotes.length;
+      
+      this.gameHistory.push({
+        move: llmResponse.move,
+        confidence: finalConfidence
+      });
+      
+      return {
+        move: llmResponse.move,
+        llmConfidence: llmResponse.confidence,
+        spikeVotes,
+        finalConfidence,
+        spikeEfficiency: 1.0,
+        latencyMs,
+        reasoning: llmResponse.reasoning,
+      };
+    } catch (error: any) {
+      console.error(`❌ [NeuroAgent] LLM API call failed for ${this.modelName}:`, error.message);
+      // Fallback to heuristic if API fails
+      return this.fallbackHeuristicMove(fen, legalMoves, startTime);
+    }
+  }
+
+  /**
+   * Call the actual LLM API endpoint
+   */
+  private async callLLMApi(fen: string, legalMoves: string[]): Promise<{ move: string; confidence: number; reasoning: string }> {
+    const prompt = `You are a chess grandmaster. Analyze this position and choose the best move.
+
+Current position (FEN): ${fen}
+
+Legal moves (UCI format): ${legalMoves.join(', ')}
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "move": "<your chosen move in UCI format>",
+  "reasoning": "<brief explanation>",
+  "confidence": <number between 0.5 and 0.95>
+}
+
+Your move MUST be one from the legal moves list above.`;
+
+    console.log(`📡 [NeuroAgent] Calling ${this.modelName} at ${this.endpointUrl.split('//')[1]?.split('/')[0]}`);
+    
+    const response = await axios.post(
+      this.endpointUrl,
+      {
+        model: this.modelName,
+        messages: [
+          { role: 'system', content: 'You are a chess grandmaster. Always respond with valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        timeout: 30000
+      }
+    );
+
+    const content = response.data.choices[0].message.content.trim();
+    
+    // Parse JSON response
+    let result;
+    try {
+      // Try to extract JSON if wrapped in markdown code blocks
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : content;
+      result = JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error(`Failed to parse LLM response: ${content}`);
+    }
+
+    // Validate move is legal
+    if (!legalMoves.includes(result.move)) {
+      console.warn(`⚠️ [NeuroAgent] LLM suggested illegal move ${result.move}, picking first legal move`);
+      result.move = legalMoves[0];
+      result.confidence = 0.6;
+    }
+
+    console.log(`✅ [NeuroAgent] ${this.modelName} chose: ${result.move} (confidence: ${result.confidence})`);
+    
+    return {
+      move: result.move,
+      confidence: result.confidence || 0.75,
+      reasoning: result.reasoning || 'No reasoning provided'
+    };
+  }
+
+  /**
+   * Fallback heuristic move selection if LLM API fails
+   */
+  private async fallbackHeuristicMove(fen: string, legalMoves: string[], startTime: number): Promise<NeuroDecision> {
+    console.warn(`⚠️ [NeuroAgent] Using fallback heuristic for ${this.modelName}`);
+    
     // Initialize chess board from FEN
     const tempChess = new Chess(fen);
     
