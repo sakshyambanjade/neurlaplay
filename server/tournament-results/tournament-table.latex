@@ -1,0 +1,13 @@
+\begin{table}[h]
+\centering
+\caption{Round-Robin Tournament Rankings (6 Models)}
+\begin{tabular}{lccccccc}
+\hline
+Rank & Model & Provider & Elo & Games & W-D-L & Score & \% \\
+\hline
+1 & Llama 3.3 70B & groq & 1850 & 2 & 0-2-0 & 1.0 & 50.0 \\
+2 & Llama 3.1 8B & groq & 1700 & 2 & 0-2-0 & 1.0 & 50.0 \\
+\hline
+\end{tabular}
+\label{table:roundrobin}
+\end{table}

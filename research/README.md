@@ -1,53 +1,64 @@
-# 🧠 NeuroChess Research
+# 🎮 NeuroChess Research - Sequential Game Runner
 
-**Complete research documentation, batch automation, and publication pipeline.**
+**Publication-ready research system for LLM chess games**
 
 ---
 
 ## 📚 Documentation
 
-### Essential Guides (Start Here)
+### Getting Started
 
 | Document | Purpose | Time |
 |----------|---------|------|
-| **[START_HERE.md](docs/START_HERE.md)** | Entry point - choose your path | 5 min |
-| **[BATCH_GAMES_SETUP_COMPLETE.md](docs/BATCH_GAMES_SETUP_COMPLETE.md)** | Run 50+ games automatically | 10 min |
-| **[BATCH_GAMES_QUICK_REFERENCE.md](docs/BATCH_GAMES_QUICK_REFERENCE.md)** | Commands & config reference | 2 min |
-| **[ARXIV_SUBMISSION_COMPLETE.md](docs/ARXIV_SUBMISSION_COMPLETE.md)** | Publish results to arXiv | 15 min |
-| **[ROS2_SETUP.md](docs/ROS2_SETUP.md)** | Robot integration (UR5, Franka) | 30 min |
+| **[docs/SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md)** | Setup guide (first time only) | 5 min |
+| **[docs/SEQUENTIAL_FOR_RESEARCH.md](docs/SEQUENTIAL_FOR_RESEARCH.md)** | Complete research guide | 10 min |
+| **[docs/README.md](docs/README.md)** | Documentation index | 2 min |
 
 ---
 
 ## 🚀 Quick Start
 
-```powershell
-# 1. Setup (5 min)
-# - Get Groq API key from https://console.groq.com/keys
-# - Create server/.env with API keys
+```bash
+# 1. Create API keys (.env)
+# - OpenAI: https://platform.openai.com/api-keys
+# - Anthropic: https://console.anthropic.com/account/keys
+# Create server/.env:
+#   OPENAI_API_KEY=sk-...
+#   ANTHROPIC_API_KEY=sk-ant-...
 
-# 2. Run Backend & Frontend
-cd server && npm install && npm run dev
-# Terminal 2:
-cd client && npm install && npm run dev
+# 2. Test setup (15 minutes)
+cd server
+npm run batch:sequential:test
 
-# 3. Test in Browser
-# http://localhost:5173 → Click "⚡ Bot vs Bot" → Add API key → Start game
+# 3. Run research batch (60 minutes)
+npm run batch:sequential:6games
 
-# 4. Run Batch Games (20+ min later)
-$env:GROQ_API_KEY="gsk_..."
-npm run batch:50
+# 4. Use results in paper
+# Results saved to: batch_results/sequential_6games/
 ```
 
-See **[BATCH_GAMES_SETUP_COMPLETE.md](docs/BATCH_GAMES_SETUP_COMPLETE.md)** for detailed setup.
+See **[docs/SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md)** for detailed guide.
 
 ---
 
-## 📁 Project Files
+## 📁 Project Structure
 
 ```
 research/
 ├── README.md                          ← You are here
-├── docs/                              ← Documentation (5 files)
+├── docs/                              ← Documentation
+│   ├── README.md                      ← Documentation index
+│   ├── SETUP_CHECKLIST.md             ← Setup guide
+│   └── SEQUENTIAL_FOR_RESEARCH.md     ← Research paper guide
+├── configs/
+│   └── batch_config_sequential_6games.json  ← 6-game config
+└── batch_results/                     ← Experiment outputs (created on run)
+    └── sequential_6games/
+        ├── batch_summary.json         ← Main results
+        ├── batch_YYYY-MM-DD.log       ← Timestamped log
+        ├── game_data_*.json           ← Individual games
+        └── dataset.json               ← Combined data
+```
 │   ├── START_HERE.md
 │   ├── BATCH_GAMES_SETUP_COMPLETE.md
 │   ├── BATCH_GAMES_QUICK_REFERENCE.md

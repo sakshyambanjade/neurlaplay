@@ -30,8 +30,7 @@ export function SpectatorGame() {
         return { 
           ...prev, 
           moveCount: prev.moveCount + 1,
-          fen: move.fen || prev.fen,  // Update board position
-          pgn: move.pgn || prev.pgn
+          fen: move.fen || prev.fen
         };
       });
     },

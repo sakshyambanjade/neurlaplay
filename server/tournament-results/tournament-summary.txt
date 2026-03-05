@@ -1,0 +1,25 @@
+ROUND-ROBIN TOURNAMENT SUMMARY
+============================================================
+
+Total Participants: 2
+Total Pairings: 1
+Total Games: 2
+Date: 2026-03-05T10:18:01.247Z
+
+FINAL STANDINGS:
+------------------------------------------------------------
+1. Llama 3.3 70B             (groq)
+   Elo: 1850
+   Record: 0W-2D-0L (2 games)
+   Score: 1.0 / 2 (50.0%)
+
+2. Llama 3.1 8B              (groq)
+   Elo: 1700
+   Record: 0W-2D-0L (2 games)
+   Score: 1.0 / 2 (50.0%)
+
+METHODOLOGY:
+------------------------------------------------------------
+Each model played every other model twice, once with white pieces
+and once with black pieces, ensuring fair color distribution.
+Results ranked by score (wins + 0.5×draws).

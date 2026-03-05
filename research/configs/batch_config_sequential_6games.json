@@ -1,0 +1,24 @@
+{
+  "totalGames": 6,
+  "moveTimeoutMs": 30000,
+  "gameTimeoutMs": 600000,
+  "maxRetries": 2,
+  "moveDelayMs": 500,
+  "interGameDelayMs": 2000,
+  "exportInterval": 1,
+  "games": [
+    {
+      "whiteModel": "gpt-4o",
+      "whiteEndpointUrl": "https://api.openai.com/v1",
+      "whiteApiKey": "sk-YOUR-OPENAI-KEY-HERE",
+      "blackModel": "claude-3.5-sonnet",
+      "blackEndpointUrl": "https://api.anthropic.com",
+      "blackApiKey": "sk-ant-YOUR-ANTHROPIC-KEY-HERE",
+      "enableRobotExecution": false,
+      "moveDelayMs": 500,
+      "maxMoves": 100,
+      "enableStockfish": false
+    }
+  ],
+  "outputDir": "./batch_results/sequential_6games"
+}

@@ -13,6 +13,8 @@ import botsRouter from './routes/bots';
 import matchesRouter from './routes/matches';
 import leaderboardRouter from './routes/leaderboard';
 import challengesRouter from './routes/challenges';
+import { setupGameDataRoutes } from './routes/gameDataRoutes';
+import { GameLogger } from './game/GameLogger';
 
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +34,9 @@ const io = new Server(server, {
 });
 
 const PORT = config.PORT;
+
+// Initialize game logger
+const gameLogger = new GameLogger('./game-data');
 
 // Middleware
 app.use(cors({
@@ -62,6 +67,7 @@ app.use('/api/bots', botsRouter);
 app.use('/api/matches', matchesRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/challenges', challengesRouter);
+setupGameDataRoutes(app);
 
 // Bot match endpoint - needs io instance
 app.post('/api/bot-match', async (req, res) => {
@@ -161,7 +167,7 @@ app.post('/api/neuro-bot-match', async (req, res) => {
       blackEndpointUrl,
       blackApiKey,
       moveDelayMs
-    }).catch(err => console.error('[NeuroAPI] Bot match error:', err));
+    }, gameLogger).catch(err => console.error('[NeuroAPI] Bot match error:', err));
 
     res.json({ message: 'Neuro bot match started (LLM+SNN)', matchId });
   } catch (err: any) {
@@ -173,7 +179,7 @@ app.post('/api/neuro-bot-match', async (req, res) => {
 /**
  * Neuro Bot Match - NeuroAgent-powered decision making
  */
-async function startNeuroBotMatch(io: any, room: any, config: any) {
+async function startNeuroBotMatch(io: any, room: any, config: any, gameLogger: GameLogger) {
   const { whiteBotName, whiteModel, whiteEndpointUrl, whiteApiKey, blackBotName, blackModel, blackEndpointUrl, blackApiKey, moveDelayMs } = config;
 
   const { Chess } = await import('chess.js');
@@ -258,6 +264,19 @@ async function startNeuroBotMatch(io: any, room: any, config: any) {
 
       const moveRecord = room.moves[room.moves.length - 1];
 
+      // Log move to game data storage
+      gameLogger.logMove(room.matchId, {
+        moveNumber: moveCount,
+        color: color as 'white' | 'black',
+        move: moveUCI,
+        fen: chess.fen(),
+        confidence: neuroDecision.finalConfidence,
+        spikeEfficiency: neuroDecision.spikeEfficiency,
+        latencyMs: neuroDecision.latencyMs,
+        reasoning: reasoningWithNeuro,
+        timestamp: new Date().toISOString()
+      });
+
       // Broadcast move with SNN metrics
       io.to(room.matchId).emit('moveMade', {
         ...moveRecord,
@@ -294,6 +313,7 @@ async function startNeuroBotMatch(io: any, room: any, config: any) {
   // Determine result
   const result = room.result;
   const termination = room.termination;
+  const resultType: 'white' | 'black' | 'draw' = result === '1-0' ? 'white' : result === '0-1' ? 'black' : 'draw';
 
   // End the match
   room.status = 'completed';
@@ -302,6 +322,27 @@ async function startNeuroBotMatch(io: any, room: any, config: any) {
   // Export research metrics
   const whiteMetrics = whiteAgent.getResearchMetrics();
   const blackMetrics = blackAgent.getResearchMetrics();
+
+  // Save game to persistent storage
+  const startTime = new Date(room.startedAt);
+  const endTime = new Date();
+  const durationMs = endTime.getTime() - startTime.getTime();
+
+  gameLogger.saveGameResult({
+    matchId: room.matchId,
+    timestamp: startTime.toISOString(),
+    whiteBotName: whiteBotName,
+    whiteModel: whiteModel,
+    blackBotName: blackBotName,
+    blackModel: blackModel,
+    result: resultType,
+    pgn: chess.pgn(),
+    fen: chess.fen(),
+    moves: gameLogger.getMoveHistory(room.matchId),
+    totalMoves: moveCount,
+    gameStatus: termination,
+    duration_ms: durationMs
+  });
 
   // Notify spectators game is over
   io.to(room.matchId).emit('gameOver', {

@@ -1,49 +1,21 @@
 {
   "models": [
     {
-      "name": "NeuroChess (Groq)",
+      "name": "Llama 3.3 70B",
       "provider": "groq",
-      "model": "llama3.1-405b",
+      "model": "llama-3.3-70b-versatile",
       "apiKeyEnv": "GROQ_API_KEY",
       "eloEstimate": 1850
     },
     {
-      "name": "DeepSeek (OpenRouter)",
-      "provider": "openrouter",
-      "model": "deepseek-r1:free",
-      "apiKeyEnv": "OPENROUTER_API_KEY",
-      "eloEstimate": 1750
-    },
-    {
-      "name": "Gemini 2.0 (Google)",
-      "provider": "google",
-      "model": "google-gemini-2.0-flash-exp",
-      "apiKeyEnv": "GOOGLE_API_KEY",
-      "eloEstimate": 1650
-    },
-    {
-      "name": "Codestral (Mistral)",
-      "provider": "mistral",
-      "model": "mistral-large-latest",
-      "apiKeyEnv": "MISTRAL_API_KEY",
-      "eloEstimate": 1600
-    },
-    {
-      "name": "Qwen 2.5 (HuggingFace)",
-      "provider": "huggingface",
-      "model": "Qwen2.5-Coder-32B",
-      "apiKeyEnv": "HUGGINGFACE_API_KEY",
-      "eloEstimate": 1550
-    },
-    {
-      "name": "Llama 3.2 (Together)",
-      "provider": "together",
-      "model": "meta-llama/Llama-3.2-3B",
-      "apiKeyEnv": "TOGETHER_API_KEY",
-      "eloEstimate": 1500
+      "name": "Llama 3.1 8B",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "apiKeyEnv": "GROQ_API_KEY",
+      "eloEstimate": 1700
     }
   ],
-  "moveDelayMs": 500,
+  "moveDelayMs": 3000,
   "maxGamesPerModel": 150,
   "outputDirectory": "tournament-results",
   "_comments": {

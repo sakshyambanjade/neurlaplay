@@ -9,12 +9,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest",
-    "batch:quick": "tsx src/research/batch-cli.ts quick",
-    "batch:50": "tsx src/research/batch-cli.ts 50",
-    "batch:compare": "tsx src/research/batch-cli.ts compare",
-    "batch:custom": "tsx src/research/batch-cli.ts custom",
-    "experiment:concurrent": "tsx src/research/experiment-cli.ts",
-    "tournament:roundrobin": "tsx src/research/tournament-cli.ts"
+    "batch:sequential:6games": "tsx src/research/sequential-cli.ts 6games",
+    "batch:sequential:test": "tsx src/research/sequential-cli.ts test",
+    "batch:sequential:custom": "tsx src/research/sequential-cli.ts custom",
+    "batch:sequential": "tsx src/research/sequential-cli.ts"
   },
   "keywords": [
     "chess",
@@ -27,15 +25,12 @@
   "license": "MIT",
   "dependencies": {
     "@supabase/supabase-js": "^2.38.0",
-    "@tensorflow/tfjs": "^4.10.0",
-    "@tensorflow/tfjs-layers": "^4.10.0",
-    "@tensorflow/tfjs-node": "^4.10.0",
+    "axios": "^1.13.6",
     "bcryptjs": "^2.4.3",
     "chess.js": "^1.0.0-beta.8",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "roslib": "^1.6.0",
     "socket.io": "^4.6.1",
     "uuid": "^9.0.0"
   },

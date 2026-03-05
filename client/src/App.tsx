@@ -9,7 +9,7 @@ import { BotProfile } from './pages/BotProfile';
 import { Leaderboard } from './pages/Leaderboard';
 import { BotVsBot } from './pages/BotVsBot';
 import { Home as HomeIcon } from 'lucide-react';
-import { JoinByMatchId } from './components/JoinByMatchId';
+import { GameLauncher, JoinByMatchId } from './components';
 
 /**
  * Home Page Component
@@ -603,6 +603,7 @@ export function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/launcher" element={<GameLauncher />} />
           <Route path="/lobby" element={<LobbyPageWrapper />} />
           <Route path="/game" element={<GamePageWrapper />} />
           <Route path="/game/:matchId" element={<SpectatorGame />} />

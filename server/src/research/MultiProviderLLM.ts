@@ -31,7 +31,7 @@ export interface LLMResponse {
 const PROVIDER_CONFIGS = {
   groq: {
     endpoint: 'https://api.groq.com/openai/v1/chat/completions',
-    models: ['llama3.1-405b', 'mixtral-8x7b-32768'],
+    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
     estimatedElo: 1850,
     rateLimit: { tpm: 131000, rpm: 14000 }
   },
@@ -43,13 +43,13 @@ const PROVIDER_CONFIGS = {
   },
   google: {
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    models: ['gemini-2.0-flash'],
+    models: ['gemini-2.0-flash-exp', 'gemini-1.5-flash'],
     estimatedElo: 1650,
     rateLimit: { rpm: 60 }
   },
   mistral: {
     endpoint: 'https://api.mistral.ai/v1/chat/completions',
-    models: ['codestral-latest'],
+    models: ['codestral-latest', 'mistral-small-latest'],
     estimatedElo: 1600,
     rateLimit: { tpm: 500000 }
   },
@@ -94,19 +94,30 @@ export class MultiProviderLLM {
   ): Promise<LLMResponse> {
     const startTime = Date.now();
 
-    const systemPrompt = `You are an expert chess AI. Given a FEN position and legal moves, choose the best move.
+    const systemPrompt = `You are an expert chess engine in a research tournament. Your objective is to WIN.
 
-Rules:
-- MUST choose from the provided legal moves list
-- Respond with EXACTLY ONE move in the format provided
-- No explanations after the move
-- Play strategically sound chess`;
+STRATEGIC INSTRUCTIONS:
+1. Play to WIN - make aggressive, winning moves
+2. Analyze tactics: Look for checks, captures, threats
+3. Avoid repetitive moves - do NOT move pieces back and forth
+4. Prioritize: Checkmate > Material gain > Position > Avoiding loss
+5. Each move should improve your position or harm opponent's
 
-    const legalMovesStr = legalMoves.slice(0, 20).join(', ');
+RESPONSE REQUIREMENTS:
+- Output EXACTLY ONE move from the legal moves list
+- Use standard algebraic notation: e4, Nf3, Qxd5, O-O, etc.
+- NO explanations, NO extra text, NO punctuation
+- ONLY the move symbol itself
+
+CRITICAL: If you see repetition happening, STOP and make a decisive move instead.`;
+
+    const legalMovesStr = legalMoves.slice(0, 30).join(', ');
     const userPrompt = `FEN: ${fen}
-Legal moves: ${legalMovesStr}
 
-Choose your move (just the move, nothing else):`;
+Available legal moves (${legalMoves.length} total):
+${legalMovesStr}${legalMoves.length > 30 ? '... and ' + (legalMoves.length - 30) + ' more' : ''}
+
+Your next move (output only the move):`;
 
     try {
       let response;
@@ -149,8 +160,22 @@ Choose your move (just the move, nothing else):`;
         latencyMs
       };
     } catch (error: any) {
+      // Handle rate limiting with retry
+      if (error.response?.status === 429) {
+        const retryAfter = error.response?.headers['retry-after'] || 2;
+        const waitTime = parseInt(retryAfter) * 1000;
+        console.log(`⏳ Rate limit hit. Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        
+        // Retry the request once
+        return this.getMove(fen, legalMoves);
+      }
+      
+      const errorDetails = error.response?.data 
+        ? JSON.stringify(error.response.data).substring(0, 200)
+        : error.message;
       throw new Error(
-        `${this.provider} (${this.model}) error: ${error.message}`
+        `${this.provider} (${this.model}) error: ${errorDetails}`
       );
     }
   }
@@ -294,19 +319,37 @@ Choose your move (just the move, nothing else):`;
   }
 
   private parseMove(response: string, legalMoves: string[]): string | null {
-    // Extract first valid move from response
-    const cleaned = response.toUpperCase().trim();
+    // Clean the response - remove whitespace, newlines, extra characters
+    let cleaned = response.trim();
+    
+    // Remove common extra characters and punctuation
+    cleaned = cleaned
+      .replace(/[.\n\r\t]/g, '') // Remove dots, newlines, tabs
+      .replace(/^[^a-zA-Z0-9]+/, '') // Remove leading non-alphanumeric
+      .replace(/[^a-zA-Z0-9x#+=-]+$/, '') // Remove trailing non-alphanumeric
+      .trim();
 
+    // Extract first token (in case there's text after the move)
+    const firstToken = cleaned.split(/[\s,;:!?()]+/)[0].trim();
+
+    // Try to find exact match in legal moves
     for (const move of legalMoves) {
-      if (cleaned.includes(move.toUpperCase())) {
+      if (firstToken === move) {
         return move;
       }
     }
 
-    // Try alternate formats (e2e4, e2-e4, etc)
-    const firstWord = cleaned.split(/[\s,\.!?;]/)[0];
+    // Try case-insensitive match
+    const firstTokenUpper = firstToken.toUpperCase();
     for (const move of legalMoves) {
-      if (move.toUpperCase() === firstWord) {
+      if (firstTokenUpper === move.toUpperCase()) {
+        return move;
+      }
+    }
+
+    // Last resort: check if response contains any legal move
+    for (const move of legalMoves) {
+      if (cleaned.includes(move)) {
         return move;
       }
     }

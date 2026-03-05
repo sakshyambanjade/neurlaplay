@@ -1,0 +1,30 @@
+[
+  {
+    "model": "Llama 3.3 70B",
+    "provider": "groq",
+    "eloEstimate": 1850,
+    "gamesPlayed": 2,
+    "wins": 0,
+    "draws": 2,
+    "losses": 0,
+    "winRate": 0,
+    "drawRate": 1,
+    "lossRate": 0,
+    "score": 1,
+    "scorePercentage": 50
+  },
+  {
+    "model": "Llama 3.1 8B",
+    "provider": "groq",
+    "eloEstimate": 1700,
+    "gamesPlayed": 2,
+    "wins": 0,
+    "draws": 2,
+    "losses": 0,
+    "winRate": 0,
+    "drawRate": 1,
+    "lossRate": 0,
+    "score": 1,
+    "scorePercentage": 50
+  }
+]

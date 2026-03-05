@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import './GameLauncher.css';
-
-interface GameConfig {
-  type: 'tournament' | 'concurrent_experiment';
-  models?: number;
-  duration?: string;
-  status?: string;
-}
 
 interface TournamentStatus {
   status: 'idle' | 'running' | 'completed' | 'error';
@@ -24,11 +18,11 @@ export const GameLauncher: React.FC = () => {
   const [tournamentStatus, setTournamentStatus] = useState<TournamentStatus>({
     status: 'idle',
     currentGame: 0,
-    totalGames: 30,
+    totalGames: 2,
     currentPairing: 0,
-    totalPairings: 15,
+    totalPairings: 1,
     elapsed: '0:00',
-    estimated: '45:00',
+    estimated: '10:00',
   });
 
   const [selectedType, setSelectedType] = useState<'tournament' | 'concurrent'>('tournament');
@@ -36,27 +30,34 @@ export const GameLauncher: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    // Connect to WebSocket for real-time updates
-    connectWebSocket();
-    checkApiKeys();
-  }, []);
+    // Connect to Socket.IO for real-time updates
+    const newSocket = io('http://localhost:3001');
+    
+    newSocket.on('connect', () => {
+      console.log('Connected to tournament server');
+      setIsConnected(true);
+    });
 
-  const connectWebSocket = () => {
-    try {
-      const ws = new WebSocket('ws://localhost:3001/tournament-status');
-      ws.onopen = () => setIsConnected(true);
-      ws.onmessage = (event) => {
-        const update = JSON.parse(event.data);
-        setTournamentStatus(prev => ({
-          ...prev,
-          ...update,
-        }));
-      };
-      ws.onclose = () => setIsConnected(false);
-    } catch (error) {
-      console.error('WebSocket connection failed:', error);
-    }
-  };
+    newSocket.on('tournament-status', (update) => {
+      console.log('Tournament status update:', update);
+      setTournamentStatus(prev => ({
+        ...prev,
+        ...update,
+      }));
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from tournament server');
+      setIsConnected(false);
+    });
+
+    checkApiKeys();
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.close();
+    };
+  }, []);
 
   const checkApiKeys = async () => {
     try {
@@ -71,11 +72,11 @@ export const GameLauncher: React.FC = () => {
   const startTournament = async () => {
     if (!window.confirm(
       `Start Round-Robin Tournament?\n\n` +
-      `• 6 Models\n` +
-      `• 15 Pairings\n` +
-      `• 30 Total Games\n` +
-      `• ~45 Minutes Duration\n` +
-      `• Results → LaTeX Table\n\n` +
+      `• 2 Models (Groq Test)\n` +
+      `• 1 Pairing\n` +
+      `• 2 Total Games\n` +
+      `• ~10 Minutes Duration\n` +
+      `• 2s delay/move (rate limit friendly)\n\n` +
       `Click OK to begin...`
     )) {
       return;
@@ -214,13 +215,13 @@ export const GameLauncher: React.FC = () => {
             onClick={() => setSelectedType('tournament')}
           >
             <h3>🏆 Round-Robin Tournament</h3>
-            <p className="description">Each model plays every other model</p>
+            <p className="description">Test with 2 Groq models</p>
             <ul className="specs">
-              <li><strong>Models:</strong> 6</li>
-              <li><strong>Pairings:</strong> 15 unique</li>
-              <li><strong>Games:</strong> 30 total (each pairing × 2)</li>
-              <li><strong>Duration:</strong> ~45 minutes</li>
-              <li><strong>Best for:</strong> Fair ranking, publication</li>
+              <li><strong>Models:</strong> 2 (Groq only)</li>
+              <li><strong>Pairings:</strong> 1 unique</li>
+              <li><strong>Games:</strong> 2 total (each pairing × 2)</li>
+              <li><strong>Duration:</strong> ~10 minutes</li>
+              <li><strong>Best for:</strong> Rate limit friendly testing</li>
             </ul>
             <div className="benefit">FAIREST - No selection bias</div>
           </div>
