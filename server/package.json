@@ -1,46 +1,30 @@
 {
-  "name": "llmarena-server",
+  "name": "neurlaplay-server",
   "version": "0.1.0",
-  "description": "LLMArena backend - Chess referee for LLM matchups",
-  "main": "dist/index.js",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "research": "npm run dev",
-    "batch:sequential": "tsx src/research/sequential-cli.ts",
-    "batch:sequential:test": "tsx src/research/sequential-cli.ts test",
-    "batch:sequential:6games": "tsx src/research/sequential-cli.ts 6games",
-      "batch:ollama:tiny": "tsx src/research/sequential-cli.ts ../research/configs/batch_config_ollama_tiny_test.json",
-    "batch:ollama:quick": "tsx src/research/sequential-cli.ts ../research/configs/batch_config_ollama_quick_test.json",
-    "batch:ollama:tournament": "tsx src/research/sequential-cli.ts ../research/configs/batch_config_ollama_tournament.json"
+    "start": "tsx src/index.ts",
+    "batch:ollama:quick": "tsx src/research/sequential-cli.ts --config ../research/configs/batch_config_ollama_quick_test.json",
+    "research:paper": "tsx src/research/paper-cli.ts",
+    "research:50games": "npm run research:paper -- --games=50",
+    "research:100games": "npm run research:paper -- --games=100",
+    "research:audit": "tsx src/research/rule-audit-cli.ts",
+    "research:audit:latest": "tsx src/research/rule-audit-cli.ts --latest"
   },
-  "keywords": [
-    "chess",
-    "llm",
-    "arena",
-    "game",
-    "socket.io"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0",
-    "axios": "^1.13.6",
-    "bcryptjs": "^2.4.3",
-    "chess.js": "^1.0.0-beta.8",
+    "chess.js": "^1.1.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "socket.io": "^4.6.1",
-    "uuid": "^9.0.0"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "stockfish": "^17.1.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.17",
-    "@types/node": "^20.3.1",
-    "tsx": "^3.12.7",
-    "typescript": "^5.1.3",
-    "vitest": "^0.33.0"
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
   }
 }

@@ -1,82 +1,34 @@
 import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
+import http from 'node:http';
 import cors from 'cors';
-import 'dotenv/config';
-import { config } from './config';
-import { setupResearchRoutes } from './routes/research';
+import dotenv from 'dotenv';
+import { Server as SocketIOServer } from 'socket.io';
+import { createResearchRouter } from './routes/research.js';
+
+dotenv.config();
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
+const port = Number(process.env.PORT ?? 3001);
+const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
+const httpServer = http.createServer(app);
+const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: function(origin, callback) {
-      // Allow requests from localhost on any port
-      if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('CORS not allowed'));
-      }
-    },
-    credentials: true,
+    origin: '*',
     methods: ['GET', 'POST']
   }
 });
 
-const PORT = config.PORT;
-
-// Middleware
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow localhost on any port
-    if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
-    }
-  },
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date(),
-    version: '2.0.0-research'
-  });
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
 });
+app.use('/api/research', createResearchRouter(ollamaBaseUrl, io));
 
-// Research batch routes
-setupResearchRoutes(app, io);
-
-// Socket.io - Batch events only
 io.on('connection', (socket) => {
-  console.log(`[Socket] Client connected: ${socket.id}`);
-
-  socket.on('disconnect', () => {
-    console.log(`[Socket] Client disconnected: ${socket.id}`);
-  });
+  socket.join('research');
 });
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════╗
-║  🚀 Research Chess Batch Server        ║
-║  Port: ${PORT}                              ║
-║  Status: Ready                         ║
-╚════════════════════════════════════════╝
-  `);
+httpServer.listen(port, () => {
+  console.log(`Server listening on http://localhost:${port}`);
 });
-
-process.on('SIGINT', () => {
-  console.log('Shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-export { app, server, io };

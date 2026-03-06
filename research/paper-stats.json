@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-03-06T18:31:29.316Z",
+  "stats": {
+    "totalGames": 1,
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "whiteWins": 0,
+    "blackWins": 1,
+    "draws": 0,
+    "whiteWinRate": 0,
+    "blackWinRate": 1,
+    "drawRate": 0,
+    "avgCpl": {
+      "white": 21.03125,
+      "black": 45.53125,
+      "overall": 33.28125
+    },
+    "blunderRate": {
+      "white": 0,
+      "black": 0,
+      "overall": 0
+    },
+    "phasePerformance": {
+      "opening": 27.5,
+      "midgame": 31.5,
+      "endgame": 37.916666666666664
+    },
+    "confidenceInterval95": {
+      "whiteWinRate": [
+        0,
+        0
+      ],
+      "blackWinRate": [
+        1,
+        1
+      ],
+      "drawRate": [
+        0,
+        0
+      ]
+    },
+    "pValueWhiteVsBlack": 0
+  },
+  "games": [
+    {
+      "gameId": "paper-game-001",
+      "gameIndex": 1,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "0-1",
+      "termination": "normal",
+      "moveCount": 64,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. a3 d6 2. a4 e5 3. a5 c5 4. d4 Qf6 5. a6 Qd8 6. Ra3 h5 7. axb7 c4 8. bxa8=N d5 9. Rc3 Bd6 10. Kd2 Kf8 11. Nc7 a5 12. Rb3 Bf5 13. Na8 Rh7 14. Ra3 Bd3 15. Nc7 Qh4 16. Na8 Be7 17. Nc7 a4 18. Ra1 Nd7 19. Na8 Bd8 20. Na3 Rh8 21. Nb6 f5 22. Na8 Bb6 23. Nc7 Bxc2 24. g3 Ngf6 25. Na8 Kg8 26. Nc7 Nb8 27. Na8 Bb3 28. Nc7 Bxc7 29. Bh3 exd4 30. Nb5 a3 31. gxh4 Nfd7 32. Na7 Ba5# *",
+      "startedAt": "2026-03-06T18:21:43.387Z",
+      "endedAt": "2026-03-06T18:31:29.200Z",
+      "averageCplWhite": 21.03125,
+      "averageCplBlack": 45.53125
+    }
+  ]
+}

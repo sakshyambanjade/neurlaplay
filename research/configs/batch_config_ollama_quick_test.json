@@ -1,74 +1,16 @@
 {
-  "totalGames": 4,
-  "concurrentGames": 1,
-  "exportInterval": 2,
-  "games": [
-    {
-      "whiteModel": "tinyllama-a",
-      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "whiteApiModel": "tinyllama:latest",
-      "whiteApiKey": "ollama-no-auth",
-      
-      "blackModel": "tinyllama-b",
-      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "blackApiModel": "tinyllama:latest",
-      "blackApiKey": "ollama-no-auth",
-      
-      "enableStockfish": false,
-      "moveDelayMs": 500,
-      "maxMoves": 80
-    },
-    {
-      "whiteModel": "tinyllama-b",
-      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "whiteApiModel": "tinyllama:latest",
-      "whiteApiKey": "ollama-no-auth",
-      
-      "blackModel": "tinyllama-a",
-      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "blackApiModel": "tinyllama:latest",
-      "blackApiKey": "ollama-no-auth",
-      
-      "enableStockfish": false,
-      "moveDelayMs": 500,
-      "maxMoves": 80
-    },
-    {
-      "whiteModel": "tinyllama-a",
-      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "whiteApiModel": "tinyllama:latest",
-      "whiteApiKey": "ollama-no-auth",
-      
-      "blackModel": "tinyllama-b",
-      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "blackApiModel": "tinyllama:latest",
-      "blackApiKey": "ollama-no-auth",
-      
-      "enableStockfish": false,
-      "moveDelayMs": 500,
-      "maxMoves": 80
-    },
-    {
-      "whiteModel": "tinyllama-b",
-      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "whiteApiModel": "tinyllama:latest",
-      "whiteApiKey": "ollama-no-auth",
-      
-      "blackModel": "tinyllama-a",
-      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
-      "blackApiModel": "tinyllama:latest",
-      "blackApiKey": "ollama-no-auth",
-      
-      "enableStockfish": false,
-      "moveDelayMs": 500,
-      "maxMoves": 80
-    }
-  ],
-  "outputDir": "./tournaments/ollama_quick_test",
-  "resumeOnFail": true,
-  "moveTimeoutMs": 60000,
-  "gameTimeoutMs": 900000,
-  "maxRetries": 2,
-  "moveDelayMs": 500,
-  "interGameDelayMs": 2000
+  "games": 4,
+  "outputDir": "server/game-data",
+  "models": {
+    "white": "tinyllama:latest",
+    "black": "phi3:latest"
+  },
+  "settings": {
+    "maxMoves": 80,
+    "moveTimeoutMs": 10000,
+    "gameTimeoutMs": 300000,
+    "moveDelayMs": 50,
+    "interGameDelayMs": 200,
+    "exportInterval": 5
+  }
 }

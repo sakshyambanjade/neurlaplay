@@ -1,311 +1,310 @@
-import { Express } from 'express';
-import { SequentialGameRunner, GameConfig, SequentialBatchConfig } from '../research/SequentialGameRunner';
-import { Server as SocketServer } from 'socket.io';
-import * as path from 'path';
+import { Router } from 'express';
+import type { Response } from 'express';
+import type { Server as SocketIOServer } from 'socket.io';
+import { readFile } from 'node:fs/promises';
+import fs from 'node:fs';
+import path from 'node:path';
+import { PaperDataCollector } from '../research/PaperDataCollector.js';
+import { SequentialGameRunner } from '../research/SequentialGameRunner.js';
+import type { BatchConfig, PaperCollectionOptions, PaperDatapoint } from '../research/types.js';
 
-let activeBatchRunner: SequentialGameRunner | null = null;
-
-type ProviderConfig = {
-  env: false;
-  endpoint: string;
-  apiModel: string;
+type StreamClient = {
+  id: number;
+  send: (event: string, payload: unknown) => void;
+  close: () => void;
 };
 
-const PROVIDER_KEYS: Record<string, ProviderConfig> = {
-  'ollama-qwen3-32b': {
-    env: false,
-    endpoint: 'http://localhost:11434/v1/chat/completions',
-    apiModel: 'qwen2.5-coder:32b'
-  },
-  'ollama-mistral': {
-    env: false,
-    endpoint: 'http://localhost:11434/v1/chat/completions',
-    apiModel: 'mistral:latest'
-  },
-  'ollama-neural-chat': {
-    env: false,
-    endpoint: 'http://localhost:11434/v1/chat/completions',
-    apiModel: 'neural-chat:latest'
-  },
-  'ollama-dolphin': {
-    env: false,
-    endpoint: 'http://localhost:11434/v1/chat/completions',
-    apiModel: 'dolphin-mixtral:latest'
-  }
-};
+let streamClientCounter = 0;
 
-function getModelConfig(modelKey: string) {
-  const config = PROVIDER_KEYS[modelKey];
-  if (!config) {
-    throw new Error(`Unknown model: ${modelKey}`);
-  }
+function createSseClient(res: Response): StreamClient {
+  const id = ++streamClientCounter;
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
 
-  // Ollama models don't need API keys
   return {
-    ...config,
-    apiKey: 'ollama-no-auth'
-  };
-}
-
-function toGameConfig(
-  whiteModel: string,
-  blackModel: string,
-  whiteConfig: ReturnType<typeof getModelConfig>,
-  blackConfig: ReturnType<typeof getModelConfig>
-): GameConfig {
-  return {
-    whiteModel,
-    whiteApiModel: whiteConfig.apiModel,
-    whiteEndpointUrl: whiteConfig.endpoint,
-    whiteApiKey: whiteConfig.apiKey,
-    blackModel,
-    blackApiModel: blackConfig.apiModel,
-    blackEndpointUrl: blackConfig.endpoint,
-    blackApiKey: blackConfig.apiKey,
-    enableStockfish: false,
-    moveDelayMs: 500
-  };
-}
-
-export function setupResearchRoutes(app: Express, io: SocketServer): void {
-  app.post('/api/research/batch', async (req, res) => {
-    if (activeBatchRunner) {
-      return res.status(400).json({ success: false, error: 'Batch already running' });
+    id,
+    send(event: string, payload: unknown) {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    },
+    close() {
+      res.end();
     }
+  };
+}
 
+export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
+  const router = Router();
+  const runner = new SequentialGameRunner(ollamaBaseUrl);
+  const streamClients = new Map<number, StreamClient>();
+
+  const broadcast = (event: string, payload: unknown) => {
+    for (const client of streamClients.values()) {
+      client.send(event, payload);
+    }
+  };
+
+  router.get('/stream', (_req, res) => {
+    const client = createSseClient(res);
+    streamClients.set(client.id, client);
+    client.send('connected', { ok: true, clientId: client.id });
+
+    const keepAlive = setInterval(() => {
+      client.send('ping', { ts: Date.now() });
+    }, 20000);
+
+    res.on('close', () => {
+      clearInterval(keepAlive);
+      streamClients.delete(client.id);
+    });
+  });
+
+  router.post('/quick', async (_req, res) => {
     try {
-      const { whiteModel, blackModel, games = 50, balanced = true } = req.body;
+      const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
+      const raw = await readFile(configPath, 'utf-8');
+      const config = JSON.parse(raw) as BatchConfig;
+      const result = await runner.run(config);
+      res.json({ ok: true, ...result });
+    } catch (error) {
+      res.status(500).json({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
-      if (!whiteModel || !blackModel) {
-        return res.status(400).json({ success: false, error: 'whiteModel and blackModel are required' });
-      }
-
-      const whiteConfig = getModelConfig(whiteModel);
-      const blackConfig = getModelConfig(blackModel);
-
-      const batchId = `batch_${Date.now()}`;
-      const outputDir = path.resolve(`./batches/${batchId}`);
-
-      const gameConfigs: GameConfig[] = [];
-      for (let i = 0; i < games; i++) {
-        const isWhiteFirst = !balanced || i % 2 === 0;
-
-        if (isWhiteFirst) {
-          gameConfigs.push(toGameConfig(whiteModel, blackModel, whiteConfig, blackConfig));
-        } else {
-          gameConfigs.push(toGameConfig(blackModel, whiteModel, blackConfig, whiteConfig));
-        }
-      }
-
-      const config: SequentialBatchConfig = {
-        totalGames: games,
-        games: gameConfigs,
-        outputDir,
-        moveTimeoutMs: 30000,
-        gameTimeoutMs: 600000,
-        moveDelayMs: 500,
-        interGameDelayMs: 1000,
-        exportInterval: 1
+  router.post('/batch-paper', async (req, res) => {
+    try {
+      const body = req.body as {
+        totalGames?: number;
+        whiteModel?: string;
+        blackModel?: string;
+        collect?: string[];
       };
 
-      activeBatchRunner = new SequentialGameRunner(config);
+      const totalGames = Math.max(1, Math.min(200, Number(body.totalGames ?? 50)));
+      const whiteModel = String(body.whiteModel ?? 'tinyllama:latest');
+      const blackModel = String(body.blackModel ?? 'phi3:latest');
 
-      activeBatchRunner.on('progress', (data) => {
-        io.emit('batch:progress', {
-          current: data.completedGames,
-          total: data.totalGames,
-          status: 'running'
-        });
+      const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
+      const raw = await readFile(configPath, 'utf-8');
+      const baseConfig = JSON.parse(raw) as BatchConfig;
+
+      const config: BatchConfig = {
+        ...baseConfig,
+        games: totalGames,
+        models: {
+          white: whiteModel,
+          black: blackModel
+        },
+        outputDir: baseConfig.outputDir ?? 'server/game-data'
+      };
+
+      const collectSet = new Set((body.collect ?? []).map((value) => value.toLowerCase()));
+      const collectionOptions: PaperCollectionOptions = {
+        enabled: collectSet.size === 0 || collectSet.has('cpl'),
+        trackReasoning: collectSet.size === 0 || collectSet.has('reasoning'),
+        trackConfidence: collectSet.size === 0 || collectSet.has('confidence')
+      };
+
+      const paperOutputDir = path.resolve(process.cwd(), '../research');
+      const collector = new PaperDataCollector(whiteModel, blackModel);
+
+      broadcast('batch-status', {
+        status: 'running',
+        totalGames,
+        whiteModel,
+        blackModel
+      });
+      io?.to('research').emit('batch-status', {
+        status: 'running',
+        totalGames,
+        whiteModel,
+        blackModel
       });
 
-      activeBatchRunner.on('game_done', (gameData) => {
-        io.emit('batch:game_done', {
-          fen: gameData.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-          moves: gameData.moves || [],
-          result: gameData.result || 'pending'
-        });
-      });
-
-      activeBatchRunner.on('complete', (finalResults) => {
-        io.emit('batch:complete', {
-          whiteWins: finalResults.whiteWins || 0,
-          blackWins: finalResults.blackWins || 0,
-          draws: finalResults.draws || 0,
-          whiteCpl: finalResults.whiteCpl || 0,
-          blackCpl: finalResults.blackCpl || 0
-        });
-        activeBatchRunner = null;
-      });
-
-      activeBatchRunner.run(io).catch((error) => {
-        console.error('Batch error:', error);
-        io.emit('batch:error', { error: error.message });
-        activeBatchRunner = null;
-      });
-
-      return res.json({ success: true, batchId, outputDir });
-    } catch (error) {
-      console.error('Batch setup error:', error);
-      return res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  app.get('/api/research/status', (_req, res) => {
-    res.json({ isRunning: activeBatchRunner !== null });
-  });
-
-  app.get('/api/research/export/latex', (_req, res) => {
-    const latex = `\\begin{table}[h]
-\\centering
-\\begin{tabular}{|c|c|c|c|}
-\\hline
-\\textbf{Model} & \\textbf{Wins} & \\textbf{Draws} & \\textbf{Loss Rate} \\\\
-\\hline
-Results Coming Soon & -- & -- & -- \\\\
-\\hline
-\\end{tabular}
-\\caption{Chess LLM Comparison Results}
-\\label{table:chess_llm_results}
-\\end{table}`;
-
-    res.set('Content-Type', 'text/plain');
-    res.send(latex);
-  });
-
-  app.get('/api/research/export/all', (_req, res) => {
-    const csv = 'Model,Wins,Draws,Losses\nResults Coming Soon,,,';
-    res.set('Content-Type', 'text/csv');
-    res.set('Content-Disposition', 'attachment; filename="research_results.csv"');
-    res.send(csv);
-  });
-
-  app.post('/api/research/test-apis', async (req, res) => {
-    try {
-      const { models } = req.body;
-
-      if (!models || !Array.isArray(models) || models.length === 0) {
-        return res.status(400).json({ success: false, error: 'models array is required' });
-      }
-
-      const results: Record<string, { status: string; error?: string }> = {};
-
-      for (const modelKey of models) {
-        try {
-          getModelConfig(modelKey);
-          results[modelKey] = { status: 'valid' };
-        } catch (error) {
-          results[modelKey] = {
-            status: 'invalid',
-            error: error instanceof Error ? error.message : 'Unknown error'
+      const runResult = await runner.runPaperBatch(config, collectionOptions, {
+        onDatapoint: (point: PaperDatapoint) => {
+          collector.addDatapoint(point);
+          const updatePayload = {
+            gameId: point.gameId,
+            gameIndex: point.gameIndex,
+            moveNumber: point.moveNumber,
+            move: point.move,
+            fen: point.fenAfter,
+            side: point.side,
+            model: point.model,
+            reasoning: point.reasoning,
+            confidence: point.confidence,
+            cpl: point.cpl,
+            gamePhase: point.gamePhase,
+            stats: {
+              ...collector.getLiveStats(),
+              totalGames: point.gameIndex
+            }
           };
-        }
-      }
 
-      const allValid = Object.values(results).every((r) => r.status === 'valid');
-      return res.json({ success: allValid, allValid, results });
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Test failed'
+          broadcast('game-update', updatePayload);
+          io?.to('research').emit('game-update', updatePayload);
+        },
+        onGameComplete: (gameSummary) => {
+          collector.addGameSummary(gameSummary);
+          broadcast('game-complete', {
+            gameId: gameSummary.gameId,
+            gameIndex: gameSummary.gameIndex,
+            result: gameSummary.result,
+            moveCount: gameSummary.moveCount,
+            averageCplWhite: gameSummary.averageCplWhite,
+            averageCplBlack: gameSummary.averageCplBlack,
+            stats: collector.getLiveStats()
+          });
+        }
       });
-    }
-  });
 
-  app.post('/api/research/tournament', async (req, res) => {
-    if (activeBatchRunner) {
-      return res.status(400).json({ success: false, error: 'Batch already running' });
-    }
+      const artifacts = await collector.generatePaperArtifacts(paperOutputDir);
 
-    try {
-      const { models } = req.body;
-
-      if (!models || !Array.isArray(models) || models.length < 2 || models.length > 5) {
-        return res.status(400).json({ success: false, error: 'Select 2-5 models for tournament' });
-      }
-
-      const configs: Record<string, ReturnType<typeof getModelConfig>> = {};
-      for (const modelKey of models) {
-        configs[modelKey] = getModelConfig(modelKey);
-      }
-
-      const gameConfigs: GameConfig[] = [];
-      for (let i = 0; i < models.length; i++) {
-        for (let j = i + 1; j < models.length; j++) {
-          const m1 = models[i];
-          const m2 = models[j];
-          const c1 = configs[m1];
-          const c2 = configs[m2];
-
-          gameConfigs.push(toGameConfig(m1, m2, c1, c2));
-          gameConfigs.push(toGameConfig(m2, m1, c2, c1));
-        }
-      }
-
-      const tournamentId = `tournament_${Date.now()}`;
-      const outputDir = path.resolve(`./tournaments/${tournamentId}`);
-
-      const config: SequentialBatchConfig = {
-        totalGames: gameConfigs.length,
-        games: gameConfigs,
-        outputDir,
-        moveTimeoutMs: 30000,
-        gameTimeoutMs: 600000,
-        moveDelayMs: 500,
-        interGameDelayMs: 1000,
-        exportInterval: 1
+      const stats = artifacts.statsSummary;
+      const paperOutput = {
+        totalGames: stats.totalGames,
+        whiteWinRate: stats.whiteWinRate.toFixed(3),
+        avgGameLength:
+          runResult.games.length > 0
+            ? (runResult.games.reduce((sum, game) => sum + game.moveCount, 0) / runResult.games.length).toFixed(1)
+            : '0.0',
+        dataPath: './research'
       };
 
-      activeBatchRunner = new SequentialGameRunner(config);
+      fs.writeFileSync(path.resolve(process.cwd(), '../research/paper-results.json'), JSON.stringify(paperOutput, null, 2));
 
-      activeBatchRunner.on('progress', (data) => {
-        io.emit('tournament:progress', {
-          current: data.completedGames,
-          total: data.totalGames,
-          status: 'running',
-          tournamentId
-        });
+      broadcast('batch-complete', {
+        status: 'complete',
+        outputFile: runResult.outputFile,
+        artifacts
       });
+      io?.to('research').emit('batch-complete', paperOutput);
 
-      activeBatchRunner.on('game_done', (gameData) => {
-        io.emit('tournament:game_done', {
-          fen: gameData.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-          moves: gameData.moves || [],
-          result: gameData.result || 'pending',
-          whiteModel: gameData.whiteModel,
-          blackModel: gameData.blackModel
-        });
-      });
-
-      activeBatchRunner.on('complete', (finalResults) => {
-        io.emit('tournament:complete', {
-          tournamentId,
-          ...finalResults
-        });
-        activeBatchRunner = null;
-      });
-
-      activeBatchRunner.run(io).catch((error) => {
-        console.error('Tournament error:', error);
-        io.emit('tournament:error', { error: error.message });
-        activeBatchRunner = null;
-      });
-
-      return res.json({
-        success: true,
-        tournamentId,
-        totalGames: gameConfigs.length,
-        models,
-        matchups: gameConfigs.map((gc, idx) => ({ gameNumber: idx + 1, white: gc.whiteModel, black: gc.blackModel }))
-      });
+      res.json({ ok: true, outputFile: runResult.outputFile, summary: runResult.summary, artifacts });
     } catch (error) {
-      console.error('Tournament setup error:', error);
-      return res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      const message = error instanceof Error ? error.message : String(error);
+      broadcast('batch-status', { status: 'failed', error: message });
+      io?.to('research').emit('batch-status', { status: 'failed', error: message });
+      res.status(500).json({ ok: false, error: message });
     }
   });
+
+  router.post('/live-batch', async (req, res) => {
+    try {
+      const body = req.body as {
+        totalGames?: number;
+        whiteModel?: string;
+        blackModel?: string;
+      };
+
+      const totalGames = Math.max(1, Math.min(200, Number(body.totalGames ?? 200)));
+      const whiteModel = String(body.whiteModel ?? 'tinyllama:latest');
+      const blackModel = String(body.blackModel ?? 'phi3:latest');
+
+      console.log(`🔴 LIVE MODE: ${totalGames} games ${whiteModel} vs ${blackModel}`);
+
+      const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
+      const raw = await readFile(configPath, 'utf-8');
+      const baseConfig = JSON.parse(raw) as BatchConfig;
+
+      const config: BatchConfig = {
+        ...baseConfig,
+        games: totalGames,
+        models: {
+          white: whiteModel,
+          black: blackModel
+        },
+        outputDir: baseConfig.outputDir ?? 'server/game-data',
+        settings: {
+          ...baseConfig.settings,
+          moveDelayMs: 100,
+          interGameDelayMs: 100,
+          moveTimeoutMs: 8000
+        }
+      };
+
+      const collectionOptions: PaperCollectionOptions = {
+        enabled: true,
+        trackReasoning: true,
+        trackConfidence: true
+      };
+
+      const paperOutputDir = path.resolve(process.cwd(), '../research');
+      const collector = new PaperDataCollector(whiteModel, blackModel);
+
+      // Send immediate response
+      res.json({ success: true, message: 'Live batch started!', totalGames });
+
+      // Start batch in background
+      broadcast('batch-status', {
+        status: 'running',
+        totalGames,
+        whiteModel,
+        blackModel
+      });
+      io?.to('research').emit('batch-status', {
+        status: 'running',
+        totalGames,
+        whiteModel,
+        blackModel
+      });
+
+      const runResult = await runner.runPaperBatch(config, collectionOptions, {
+        onDatapoint: (point: PaperDatapoint) => {
+          collector.addDatapoint(point);
+          
+          // LIVE FEN updates
+          const liveUpdate = {
+            fen: point.fenAfter,
+            stats: {
+              ...collector.getLiveStats(),
+              currentGame: point.gameIndex,
+              totalGames: totalGames
+            }
+          };
+
+          broadcast('game-update', liveUpdate);
+          io?.to('research').emit('game-update', liveUpdate);
+        },
+        onGameComplete: (gameSummary) => {
+          collector.addGameSummary(gameSummary);
+          
+          broadcast('batch-progress', {
+            currentGame: gameSummary.gameIndex,
+            totalGames: totalGames
+          });
+          io?.to('research').emit('batch-progress', {
+            currentGame: gameSummary.gameIndex,
+            totalGames: totalGames
+          });
+        }
+      });
+
+      const artifacts = await collector.generatePaperArtifacts(paperOutputDir);
+      
+      broadcast('batch-complete', {
+        status: 'complete',
+        outputFile: runResult.outputFile,
+        artifacts
+      });
+      io?.to('research').emit('batch-complete', {
+        status: 'complete',
+        artifacts
+      });
+
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Live batch error:', message);
+      broadcast('batch-status', { status: 'failed', error: message });
+      io?.to('research').emit('batch-status', { status: 'failed', error: message });
+    }
+  });
+
+  return router;
 }

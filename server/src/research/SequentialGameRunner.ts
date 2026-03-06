@@ -1,576 +1,640 @@
-/**
- * SequentialGameRunner - Run chess games sequentially (one-by-one)
- * 
- * Design principles:
- * - Games run strictly one at a time (no concurrency)
- * - Prevents API rate limiting and connection errors
- * - Robust error handling with automatic retries
- * - Research-paper grade output and logging
- * - Proper timeouts to prevent hangs
- */
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { Chess } from 'chess.js';
+import { chooseMoveWithOllama, chooseMoveWithOllamaDetailed } from './ollama.js';
+import { PaperResults, GameResult as PaperGameResult } from './PaperResults.js';
+import { StockfishAnalyzer } from './StockfishAnalyzer.js';
+import type {
+  BatchConfig,
+  GamePaperSummary,
+  GamePhase,
+  GameResult,
+  PaperCollectionOptions,
+  PaperDatapoint,
+  RuleAudit
+} from './types.js';
 
-import { EventEmitter } from 'events';
-import { MatchRoom } from '../game/MatchRoom';
-import { NeuroAgent } from '../agents/NeuroAgent';
-import { NEUROCHESS_EXPORTER } from '../research/DatasetExporter';
-import { GameLogger, MoveRecord as GameLoggerMoveRecord } from '../game/GameLogger';
-import * as fs from 'fs';
-import * as path from 'path';
-
-export interface GameConfig {
-  whiteModel: string;
-  whiteApiModel: string;
-  whiteEndpointUrl: string;
-  whiteApiKey: string;
-  
-  blackModel: string;
-  blackApiModel: string;
-  blackEndpointUrl: string;
-  blackApiKey: string;
-  
-  enableRobotExecution?: boolean;
-  moveDelayMs?: number;
-  maxMoves?: number;
-  enableStockfish?: boolean;
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export interface SequentialBatchConfig {
-  totalGames: number;
-  games: GameConfig[];
-  outputDir: string;
-  moveTimeoutMs?: number;    // Timeout per move (default: 30s)
-  gameTimeoutMs?: number;    // Timeout per game (default: 10 minutes)
-  maxRetries?: number;       // Max retries per failed game (default: 2)
-  moveDelayMs?: number;      // Delay between moves (default: 500ms)
-  interGameDelayMs?: number; // Delay between games (default: 2s)
-  exportInterval?: number;   // Export every N games (default: 1)
+function pickFallbackMove(legalMoves: string[]): string {
+  return legalMoves[Math.floor(Math.random() * legalMoves.length)]!;
 }
 
-export interface GameProgress {
-  gameNumber: number;
-  gameId: string;
-  config: GameConfig;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  startTime?: number;
-  endTime?: number;
-  duration?: number;
-  moves?: number;
-  error?: string;
-  resultData?: any;
-  retryCount?: number;
-  result?: string;
-}
-
-export interface BatchResult {
-  totalGames: number;
-  completedGames: number;
-  failedGames: number;
-  totalDuration: number;
-  averageGameDuration: number;
-  averageMoves: number;
-  startTime: string;
-  endTime: string;
-  outputDir: string;
-  gamesData: GameProgress[];
-}
-
-export class SequentialGameRunner extends EventEmitter {
-  private config: SequentialBatchConfig;
-  private progress: Map<string, GameProgress> = new Map();
-  private completedGames: number = 0;
-  private failedGames: number = 0;
-  private startTime: number = 0;
-  private logFile: string;
-  private gameLogger: GameLogger;
-  
-  constructor(config: SequentialBatchConfig) {
-    super();
-    this.config = {
-      moveTimeoutMs: 30000,
-      gameTimeoutMs: 600000,
-      maxRetries: 2,
-      moveDelayMs: 500,
-      interGameDelayMs: 2000,
-      exportInterval: 1,
-      ...config
-    };
-    
-    // Create output directory
-    if (!fs.existsSync(this.config.outputDir)) {
-      fs.mkdirSync(this.config.outputDir, { recursive: true });
-    }
-    
-    // Setup log file
-    this.logFile = path.join(this.config.outputDir, `batch_${new Date().toISOString().slice(0, 10)}.log`);
-    
-    // Initialize GameLogger for web viewing
-    this.gameLogger = new GameLogger('./game-data');
-    
-    // Initialize progress tracking
-    for (let i = 0; i < this.config.totalGames; i++) {
-      const gameId = `seq-game-${String(i + 1).padStart(3, '0')}`;
-      const config = this.config.games[i % this.config.games.length];
-      this.progress.set(gameId, {
-        gameNumber: i + 1,
-        gameId,
-        config,
-        status: 'pending',
-        retryCount: 0
-      });
-    }
-  }
-  
-  /**
-   * Log message to both console and file
-   */
-  private log(message: string): void {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(message);
-    fs.appendFileSync(this.logFile, logMessage + '\n');
-  }
-  
-  /**
-   * Sleep for specified milliseconds
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-  
-  /**
-   * Wrap promise with timeout
-   */
-  private withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms: ${label}`)), timeoutMs)
-      )
-    ]);
-  }
-  
-  /**
-   * Main runner - execute all games sequentially
-   */
-  public async run(io: any): Promise<BatchResult> {
-    this.startTime = Date.now();
-    
-    this.log('\n' + '='.repeat(80));
-    this.log('🎮 NEUROCHESS SEQUENTIAL BATCH RUNNER');
-    this.log('='.repeat(80));
-    this.log(`📊 Configuration:`);
-    this.log(`   Total Games: ${this.config.totalGames}`);
-    this.log(`   Game Configs: ${this.config.games.length}`);
-    this.log(`   Move Timeout: ${this.config.moveTimeoutMs}ms`);
-    this.log(`   Game Timeout: ${this.config.gameTimeoutMs}ms`);
-    this.log(`   Max Retries: ${this.config.maxRetries}`);
-    this.log(`   Output Directory: ${this.config.outputDir}`);
-    this.log('='.repeat(80) + '\n');
-    
-    // Get pending games in order
-    const pendingGames = Array.from(this.progress.values())
-      .filter(p => p.status === 'pending')
-      .sort((a, b) => a.gameNumber - b.gameNumber);
-    
-    // Process games sequentially (one at a time)
-    for (const gameProgress of pendingGames) {
-      const gameId = gameProgress.gameId;
-      const gameNumber = gameProgress.gameNumber;
-      
-      try {
-        this.log(`\n⏱️  Game ${gameNumber}/${this.config.totalGames}: ${gameId}`);
-        await this.playGameWithRetries(gameId, gameProgress, io);
-        
-        // Delay between games (avoid API stress)
-        if (gameNumber < this.config.totalGames) {
-          this.log(`⏳ Waiting ${this.config.interGameDelayMs}ms before next game...`);
-          await this.sleep(this.config.interGameDelayMs!);
-        }
-        
-      } catch (error) {
-        this.log(`❌ Game ${gameNumber} failed permanently: ${error instanceof Error ? error.message : error}`);
-        gameProgress.status = 'failed';
-        gameProgress.error = error instanceof Error ? error.message : String(error);
-        gameProgress.endTime = Date.now();
-        gameProgress.duration = gameProgress.endTime - gameProgress.startTime!;
-        this.failedGames++;
-      }
-    }
-    
-    // Finalize batch
-    return this.finalizeBatch();
-  }
-  
-  /**
-   * Play a game with automatic retry logic
-   */
-  private async playGameWithRetries(
-    gameId: string,
-    gameProgress: GameProgress,
-    io: any
-  ): Promise<void> {
-    const maxRetries = this.config.maxRetries!;
-    let attempts = 0;
-    let lastError: Error | null = null;
-    
-    while (attempts < maxRetries) {
-      attempts++;
-      gameProgress.retryCount = attempts - 1;
-      
-      if (attempts > 1) {
-        const backoffMs = Math.min(5000 * attempts, 30000); // Exponential backoff, max 30s
-        this.log(`  🔄 Retry attempt ${attempts}/${maxRetries}, waiting ${backoffMs}ms...`);
-        await this.sleep(backoffMs);
-      }
-      
-      try {
-        await this.playGame(gameId, gameProgress, io);
-        this.completedGames++;
-        gameProgress.status = 'completed';
-        
-        // Export data
-        if (this.completedGames % this.config.exportInterval! === 0) {
-          this.log(`  💾 Exporting data after ${this.completedGames} games...`);
-          NEUROCHESS_EXPORTER.exportArxivDataset();
-        }
-        
-        this.logProgress();
-        return; // Success!
-        
-      } catch (error) {
-        lastError = error as Error;
-        this.log(`  ⚠️  Attempt ${attempts} failed: ${lastError.message}`);
-        
-        if (attempts >= maxRetries) {
-          throw lastError;
-        }
-      }
-    }
-    
-    throw lastError || new Error('Unknown error');
-  }
-  
-  /**
-   * Play a single complete game
-   */
-  private async playGame(
-    gameId: string,
-    gameProgress: GameProgress,
-    io: any
-  ): Promise<void> {
-    gameProgress.status = 'running';
-    gameProgress.startTime = Date.now();
-    
-    const config = gameProgress.config;
-    const matchupStr = `${config.whiteModel} vs ${config.blackModel}`;
-    
-    this.log(`  ▶️  Starting game: ${matchupStr}`);
-    
-    try {
-      // Create match room
-      const room = new MatchRoom(gameId);
-      room.start();
-      
-      // Create AI agents with API configuration
-      const whiteAgent = new NeuroAgent(
-        config.whiteModel,
-         config.whiteApiModel,
-         config.whiteEndpointUrl,
-         config.whiteApiKey
-      );
-      const blackAgent = new NeuroAgent(
-        config.blackModel,
-         config.blackApiModel,
-         config.blackEndpointUrl,
-         config.blackApiKey
-      );
-      
-      console.log(`\n🎮 [Game ${gameProgress.gameNumber}/${this.config.totalGames}] ${config.whiteModel} (White) vs ${config.blackModel} (Black)`);
-      console.log(`   White API: ${config.whiteEndpointUrl.split('//')[1]?.split('/')[0]}`);
-      console.log(`   Black API: ${config.blackEndpointUrl.split('//')[1]?.split('/')[0]}`);
-      
-      let moveCount = 0;
-      const maxMoves = config.maxMoves || 300; // Increased from 100 to 300 for longer games
-      const gameStartTime = Date.now();
-      
-      // Game loop
-      while (!room.isOver && moveCount < maxMoves) {
-        const fen = room.chess.fen();
-        const legalMoves = room.legalMovesUCI;
-        
-        if (legalMoves.length === 0) break;
-        
-        // Check game timeout
-        if (Date.now() - gameStartTime > this.config.gameTimeoutMs!) {
-          throw new Error(`Game timeout after ${moveCount} moves`);
-        }
-        
-        // Get move from appropriate agent
-        const isWhiteTurn = room.currentTurn === 'white';
-        const agent = isWhiteTurn ? whiteAgent : blackAgent;
-        const agentColor = isWhiteTurn ? 'white' : 'black';
-        const agentColorLabel = isWhiteTurn ? 'White' : 'Black';
-        
-        try {
-          // Timeout wraps the move decision
-          const decision = await this.withTimeout(
-            agent.decideMove(fen, legalMoves, ''),
-            this.config.moveTimeoutMs!,
-            `${agentColorLabel} move ${moveCount + 1}`
-          );
-          
-          const move = decision.move;
-          
-          // Validate move
-          if (!legalMoves.includes(move)) {
-            throw new Error(`Illegal move '${move}' for ${agentColorLabel}`);
-          }
-          
-          // Store position before move
-          const fenBefore = fen;
-          
-          // Process move using applyMove
-          const moveApplied = room.applyMove(move);
-          if (!moveApplied) {
-            throw new Error(`Failed to apply move ${move}`);
-          }
-          
-          const fenAfter = room.chess.fen();
-          
-          // Record the move for research
-          await room.recordMove(
-            moveCount + 1,
-            agentColor as any,
-            move,
-            '', // SAN format would need conversion
-            fenBefore,
-            fenAfter,
-            decision.reasoning || '',
-            decision.latencyMs || 0
-          );
-          
-          // Log move to GameLogger (for web viewing)
-          this.gameLogger.logMove(gameId, {
-            moveNumber: moveCount + 1,
-            color: agentColor as 'white' | 'black',
-            move: move,
-            fen: fenAfter,
-            confidence: decision.finalConfidence || 0.5,
-            spikeEfficiency: 0.5,
-            latencyMs: decision.latencyMs || 0,
-            reasoning: decision.reasoning || '',
-            timestamp: new Date().toISOString()
-          });
-          
-          // Add to research dataset
-          NEUROCHESS_EXPORTER.addDatapoint({
-            gameId,
-            moveNumber: moveCount + 1,
-            timestamp: Date.now(),
-            
-            // Brain
-            llmCandidates: [move],
-            llmConfidences: [decision.llmConfidence || 0.5],
-            snnSpikeVotes: [decision.finalConfidence || 0.5],
-            snnSpikingEfficiency: decision.finalConfidence || 0.5,
-            llmSnnIntegratedConfidence: decision.finalConfidence || 0.5,
-            
-            // Game
-            fen: fenBefore,
-            fenAfter: fenAfter,
-            selectedMove: move,
-            cpl: 0,
-            materialBalance: 0,
-            boardPressure: Math.random(),
-            isCheckmate: room.isOver,
-            isCheck: false,
-            isPieceLoss: false,
-            
-            // Robot
-            trajectoryWaypoints: [],
-            trajectoryDuration: 0,
-            robotSuccess: true,
-            
-            llmReasoning: decision.reasoning || ''
-          });
-          
-          moveCount++;
-          
-          // Delay between moves (prevent API flooding)
-          await this.sleep(this.config.moveDelayMs!);
-          
-        } catch (error) {
-          throw new Error(`Error in move ${moveCount + 1}: ${error instanceof Error ? error.message : error}`);
-        }
-      }
-      
-      // Complete the game
-      room.complete();
-      
-      // Save game to GameLogger (for web viewing)
-      this.gameLogger.saveGameResult({
-        matchId: gameId,
-        timestamp: new Date().toISOString(),
-        whiteBotName: config.whiteModel.split('/').pop() || config.whiteModel,
-        whiteModel: config.whiteModel,
-        blackBotName: config.blackModel.split('/').pop() || config.blackModel,
-        blackModel: config.blackModel,
-        result: room.isOver && room.result === 'white' ? 'white' : 
-                room.isOver && room.result === 'black' ? 'black' : 'draw',
-        pgn: '', // Could generate PGN if needed
-        fen: room.chess.fen(),
-        moves: [],
-        totalMoves: moveCount,
-        gameStatus: room.isOver ? 'completed' : 'stopped',
-        duration_ms: Date.now() - gameStartTime
-      });
-      
-      gameProgress.moves = moveCount;
-      gameProgress.result = room.isOver 
-        ? `Completed (${moveCount} moves, ${room.result})` 
-        : `Stopped at ${moveCount} moves`;
-      gameProgress.resultData = {
-        moves: moveCount,
-        gameOver: room.isOver,
-        finalFEN: room.chess.fen(),
-        result: room.result,
-        summary: room.getSummary()
-      };
-      
-      this.log(`  ✅ Game completed: ${gameProgress.result}`);
-      
-    } catch (error) {
-      throw new Error(`Game failed: ${error instanceof Error ? error.message : error}`);
-    }
-  }
-  
-  /**
-   * Log progress
-   */
-  private logProgress(): void {
-    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-    const remaining = this.config.totalGames - this.completedGames;
-    
-    let eta = 'calculating...';
-    if (this.completedGames > 0 && remaining > 0) {
-      const avgTimePerGame = elapsed / this.completedGames;
-      eta = `${Math.floor(avgTimePerGame * remaining)}s`;
-    }
-    
-    const percentage = Math.floor((this.completedGames / this.config.totalGames) * 100);
-    
-    this.log(
-      `📊 Progress: ${this.completedGames}/${this.config.totalGames} (${percentage}%) | ` +
-      `Failed: ${this.failedGames} | ` +
-      `Elapsed: ${elapsed}s | ` +
-      `ETA: ${eta}`
-    );
-  }
-  
-  /**
-   * Finalize batch and generate summary
-   */
-  private finalizeBatch(): BatchResult {
-    const endTime = Date.now();
-    const totalDuration = endTime - this.startTime;
-    const totalDurationSeconds = totalDuration / 1000;
-    
-    const completedProgresses = Array.from(this.progress.values())
-      .filter(p => p.status === 'completed');
-    
-    const avgGameDuration = completedProgresses.length > 0
-      ? completedProgresses.reduce((sum, p) => sum + (p.duration || 0), 0) / completedProgresses.length
-      : 0;
-    
-    const avgMoves = completedProgresses.length > 0
-      ? completedProgresses.reduce((sum, p) => sum + (p.moves || 0), 0) / completedProgresses.length
-      : 0;
-    
-    const result: BatchResult = {
-      totalGames: this.config.totalGames,
-      completedGames: this.completedGames,
-      failedGames: this.failedGames,
-      totalDuration: totalDurationSeconds,
-      averageGameDuration: avgGameDuration / 1000,
-      averageMoves: avgMoves,
-      startTime: new Date(this.startTime).toISOString(),
-      endTime: new Date(endTime).toISOString(),
-      outputDir: this.config.outputDir,
-      gamesData: Array.from(this.progress.values()).sort((a, b) => a.gameNumber - b.gameNumber)
-    };
-    
-    // Write summary
-    const summaryPath = path.join(this.config.outputDir, 'batch_summary.json');
-    fs.writeFileSync(summaryPath, JSON.stringify(result, null, 2));
-    
-    // Log final summary
-    this.log('\n' + '='.repeat(80));
-    this.log('🏁 BATCH EXECUTION COMPLETE');
-    this.log('='.repeat(80));
-    this.log(`✅ Completed: ${this.completedGames}/${this.config.totalGames}`);
-    this.log(`❌ Failed: ${this.failedGames}`);
-    this.log(`⏱️  Total Duration: ${totalDurationSeconds}s (${(totalDurationSeconds/60).toFixed(2)} minutes)`);
-    this.log(`📈 Average Game Duration: ${(avgGameDuration/1000).toFixed(2)}s`);
-    this.log(`📊 Average Moves per Game: ${avgMoves.toFixed(1)}`);
-    this.log(`💾 Output Directory: ${this.config.outputDir}`);
-    this.log(`📋 Summary: ${summaryPath}`);
-    this.log('='.repeat(80) + '\n');
-    
-    return result;
-  }
-}
-
-/**
- * Pre-configured scenarios for sequential execution
- */
-export const SEQUENTIAL_PRESETS = {
-  // 6-game sequential batch
-  six_games_sequential: {
-    totalGames: 6,
-    moveTimeoutMs: 30000,
-    gameTimeoutMs: 600000,
-    maxRetries: 2,
-    moveDelayMs: 500,
-    interGameDelayMs: 2000,
-    exportInterval: 1,
-    games: [
-      {
-        whiteModel: 'gpt-4o',
-        whiteEndpointUrl: 'https://api.openai.com/v1',
-        whiteApiKey: process.env.OPENAI_API_KEY || '',
-        blackModel: 'claude-3.5-sonnet',
-        blackEndpointUrl: 'https://api.anthropic.com',
-        blackApiKey: process.env.ANTHROPIC_API_KEY || '',
-        enableRobotExecution: false,
-        moveDelayMs: 500,
-        maxMoves: 100
-      }
-    ],
-    outputDir: './batch_results/sequential_6games'
-  } as any,
-  
-  // 2-game test
-  two_games_test: {
-    totalGames: 2,
-    moveTimeoutMs: 30000,
-    gameTimeoutMs: 600000,
-    maxRetries: 2,
-    moveDelayMs: 500,
-    interGameDelayMs: 2000,
-    exportInterval: 1,
-    games: [
-      {
-        whiteModel: 'gpt-4o',
-        whiteEndpointUrl: 'https://api.openai.com/v1',
-        whiteApiKey: process.env.OPENAI_API_KEY || '',
-        blackModel: 'gpt-4o',
-        blackEndpointUrl: 'https://api.openai.com/v1',
-        blackApiKey: process.env.OPENAI_API_KEY || '',
-        enableRobotExecution: false,
-        moveDelayMs: 500,
-        maxMoves: 100
-      }
-    ],
-    outputDir: './batch_results/sequential_2games_test'
-  } as any
+type PaperRunHooks = {
+  onDatapoint?: (datapoint: PaperDatapoint) => void;
+  onGameComplete?: (summary: GamePaperSummary) => void;
 };
+
+function inferGamePhase(moveNumber: number): GamePhase {
+  if (moveNumber <= 10) {
+    return 'opening';
+  }
+  if (moveNumber <= 40) {
+    return 'midgame';
+  }
+  return 'endgame';
+}
+
+function estimateMaterialBalance(chess: Chess): number {
+  const board = chess.board();
+  const pieceValues: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+  let balance = 0;
+  for (const rank of board) {
+    for (const piece of rank) {
+      if (!piece) {
+        continue;
+      }
+      const value = pieceValues[piece.type] ?? 0;
+      balance += piece.color === 'w' ? value : -value;
+    }
+  }
+  return balance;
+}
+
+function estimateWinProbability(materialBalance: number): number {
+  const scaled = materialBalance / 10;
+  return 1 / (1 + Math.exp(-scaled));
+}
+
+function clampCpl(cpl: number): number {
+  if (!Number.isFinite(cpl)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1000, cpl));
+}
+
+type GameOutcome = {
+  result: '1-0' | '0-1' | '1/2-1/2';
+  termination: string;
+};
+
+const STARTING_POSITION_PREFIX = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+
+function createRuleAudit(chess: Chess): RuleAudit {
+  return {
+    boardSetupValid: chess.fen().startsWith(STARTING_POSITION_PREFIX),
+    kingPresenceValid: hasExactlyOneKingPerSide(chess),
+    turnAlternationValid: true,
+    legalMoveOnly: true,
+    ownKingSafetyMaintained: true,
+    castlingMoves: 0,
+    enPassantCaptures: 0,
+    promotions: 0,
+    fallbackMovesUsed: 0,
+    invalidModelMoveAttempts: 0
+  };
+}
+
+function hasExactlyOneKingPerSide(chess: Chess): boolean {
+  let whiteKings = 0;
+  let blackKings = 0;
+  for (const rank of chess.board()) {
+    for (const piece of rank) {
+      if (!piece || piece.type !== 'k') {
+        continue;
+      }
+      if (piece.color === 'w') {
+        whiteKings += 1;
+      } else {
+        blackKings += 1;
+      }
+    }
+  }
+  return whiteKings === 1 && blackKings === 1;
+}
+
+function movedSideStillInCheck(chessAfterMove: Chess, side: 'white' | 'black'): boolean {
+  const fenParts = chessAfterMove.fen().split(' ');
+  if (fenParts.length < 6) {
+    return true;
+  }
+  fenParts[1] = side === 'white' ? 'w' : 'b';
+  const sideView = new Chess(fenParts.join(' '));
+  return sideView.inCheck();
+}
+
+function updateRuleAuditAfterMove(
+  audit: RuleAudit,
+  chessAfterMove: Chess,
+  moveFlags: string,
+  side: 'white' | 'black',
+  turnBeforeMove: 'w' | 'b'
+): void {
+  const expectedTurn = side === 'white' ? 'w' : 'b';
+  if (turnBeforeMove !== expectedTurn || chessAfterMove.turn() === turnBeforeMove) {
+    audit.turnAlternationValid = false;
+  }
+
+  if (moveFlags.includes('k') || moveFlags.includes('q')) {
+    audit.castlingMoves += 1;
+  }
+  if (moveFlags.includes('e')) {
+    audit.enPassantCaptures += 1;
+  }
+  if (moveFlags.includes('p')) {
+    audit.promotions += 1;
+  }
+
+  if (movedSideStillInCheck(chessAfterMove, side)) {
+    audit.ownKingSafetyMaintained = false;
+  }
+
+  audit.kingPresenceValid = audit.kingPresenceValid && hasExactlyOneKingPerSide(chessAfterMove);
+}
+
+export class SequentialGameRunner {
+  private stockfishLoaded = false;
+  private stockfishFactory: null | (() => {
+    postMessage: (command: string) => void;
+    onmessage?: (event: unknown) => void;
+  }) = null;
+  private paperResults: PaperResults | null = null;
+  private stockfishAnalyzer: StockfishAnalyzer | null = null;
+
+  constructor(private readonly ollamaBaseUrl: string) {
+    this.stockfishAnalyzer = new StockfishAnalyzer();
+  }
+
+  async run(config: BatchConfig): Promise<{ outputFile: string; summary: Record<string, unknown> }> {
+    const startedAt = new Date();
+    const results: GameResult[] = [];
+    const outDir = path.resolve(config.outputDir);
+    await mkdir(outDir, { recursive: true });
+    const outputFile = path.join(outDir, `research-match-${Date.now()}.json`);
+    const exportEvery = Math.max(1, config.settings.exportInterval || 1);
+
+    console.log('NEUROCHESS SEQUENTIAL BATCH RUNNER');
+    console.log(`Games: ${config.games}`);
+    console.log(`Models: ${config.models.white} vs ${config.models.black}`);
+
+    for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
+      const gameId = `seq-game-${String(gameIndex + 1).padStart(3, '0')}`;
+      console.log(`Game ${gameIndex + 1}/${config.games}: ${gameId}`);
+      const gameResult = await this.runSingleGame(gameId, config);
+      results.push(gameResult);
+
+      if ((gameIndex + 1) % exportEvery === 0 || gameIndex === config.games - 1) {
+        const partialSummary = {
+          completedGames: results.length,
+          totalGames: config.games,
+          totalDurationMs: Date.now() - startedAt.getTime(),
+          startedAt: startedAt.toISOString(),
+          lastCheckpointAt: new Date().toISOString(),
+          status: gameIndex === config.games - 1 ? 'completed' : 'in_progress'
+        };
+        await writeFile(outputFile, JSON.stringify({ summary: partialSummary, games: results }, null, 2), 'utf-8');
+      }
+
+      if (gameIndex < config.games - 1) {
+        await sleep(config.settings.interGameDelayMs);
+      }
+    }
+
+    const endedAt = new Date();
+    const durationMs = endedAt.getTime() - startedAt.getTime();
+
+    const summary = {
+      completedGames: results.length,
+      totalDurationMs: durationMs,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString()
+    };
+
+    await writeFile(outputFile, JSON.stringify({ summary, games: results }, null, 2), 'utf-8');
+
+    console.log('Batch complete.');
+    console.log(`Completed games: ${results.length}`);
+    console.log(`Total duration (ms): ${durationMs}`);
+    console.log(`Output: ${outputFile}`);
+
+    return { outputFile, summary };
+  }
+
+  private async runSingleGame(gameId: string, config: BatchConfig): Promise<GameResult> {
+    const chess = new Chess();
+    const startedAt = new Date();
+    const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
+    let timedOut = false;
+    const ruleAudit = createRuleAudit(chess);
+
+    while (!chess.isGameOver() && chess.history().length < config.settings.maxMoves) {
+      if (Date.now() >= deadline) {
+        timedOut = true;
+        break;
+      }
+
+      const legalMoves = chess.moves();
+      if (legalMoves.length === 0) {
+        break;
+      }
+
+      const isWhiteTurn = chess.turn() === 'w';
+      const model = isWhiteTurn ? config.models.white : config.models.black;
+      const side = isWhiteTurn ? 'white' : 'black';
+      const turnBeforeMove = chess.turn();
+
+      const candidateMove =
+        (await chooseMoveWithOllama(
+          this.ollamaBaseUrl,
+          model,
+          chess.fen(),
+          legalMoves,
+          config.settings.moveTimeoutMs
+        )) ?? null;
+
+      let chosenMove = candidateMove;
+      if (!chosenMove || !legalMoves.includes(chosenMove)) {
+        ruleAudit.invalidModelMoveAttempts += 1;
+        ruleAudit.fallbackMovesUsed += 1;
+        ruleAudit.legalMoveOnly = false;
+        chosenMove = pickFallbackMove(legalMoves);
+      }
+
+      const moveResult = chess.move(chosenMove, { strict: true });
+      if (!moveResult) {
+        ruleAudit.fallbackMovesUsed += 1;
+        ruleAudit.legalMoveOnly = false;
+        const fallbackMove = pickFallbackMove(legalMoves);
+        const fallbackResult = chess.move(fallbackMove, { strict: true });
+        if (!fallbackResult) {
+          throw new Error(`Unable to apply legal move for ${gameId}`);
+        }
+        updateRuleAuditAfterMove(ruleAudit, chess, fallbackResult.flags, side, turnBeforeMove);
+      } else {
+        updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
+      }
+
+      await sleep(config.settings.moveDelayMs);
+    }
+
+    const endedAt = new Date();
+    const { result, termination } = this.determineGameOutcome(chess, config.settings.maxMoves, timedOut);
+
+    return {
+      gameId,
+      whiteModel: config.models.white,
+      blackModel: config.models.black,
+      result,
+      termination,
+      moveCount: chess.history().length,
+      pgn: chess.pgn(),
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      ruleAudit
+    };
+  }
+
+  async runPaperBatch(
+    config: BatchConfig,
+    options: PaperCollectionOptions,
+    hooks: PaperRunHooks = {}
+  ): Promise<{ outputFile: string; summary: Record<string, unknown>; games: GamePaperSummary[] }> {
+    const startedAt = new Date();
+    const gameSummaries: GamePaperSummary[] = [];
+    const outDir = path.resolve(config.outputDir);
+    await mkdir(outDir, { recursive: true });
+    const outputFile = path.join(outDir, `paper-research-match-${Date.now()}.json`);
+    const exportEvery = Math.max(1, config.settings.exportInterval || 1);
+    
+    // Initialize paper results collector
+    this.paperResults = new PaperResults(config.models.white, config.models.black);
+
+    for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
+      const gameId = `paper-game-${String(gameIndex + 1).padStart(3, '0')}`;
+      const gameStartTime = Date.now();
+      const game = await this.runSinglePaperGame(gameId, gameIndex + 1, config, options, hooks.onDatapoint);
+      gameSummaries.push(game);
+      hooks.onGameComplete?.(game);
+
+      if ((gameIndex + 1) % exportEvery === 0 || gameIndex === config.games - 1) {
+        const partialSummary = {
+          completedGames: gameSummaries.length,
+          totalGames: config.games,
+          totalDurationMs: Date.now() - startedAt.getTime(),
+          startedAt: startedAt.toISOString(),
+          lastCheckpointAt: new Date().toISOString(),
+          whiteModel: config.models.white,
+          blackModel: config.models.black,
+          status: gameIndex === config.games - 1 ? 'completed' : 'in_progress'
+        };
+        await writeFile(outputFile, JSON.stringify({ summary: partialSummary, games: gameSummaries }, null, 2), 'utf-8');
+      }
+      
+      // Collect paper results
+      if (this.paperResults) {
+        const winner = game.result === '1-0' ? 'white' : game.result === '0-1' ? 'black' : 'draw';
+        const chessForFen = new Chess();
+        try {
+          chessForFen.loadPgn(game.pgn);
+        } catch {
+          // Keep default starting FEN when PGN cannot be parsed.
+        }
+        const paperGameResult: PaperGameResult = {
+          gameId,
+          whiteModel: config.models.white,
+          blackModel: config.models.black,
+          winner,
+          totalMoves: game.moveCount,
+          durationMs: Date.now() - gameStartTime,
+          avgCPL: (game.averageCplWhite + game.averageCplBlack) / 2,
+          blunders: Math.floor((game.averageCplWhite > 200 ? 1 : 0) + (game.averageCplBlack > 200 ? 1 : 0)),
+          gamePhases: {
+            openingMoves: Math.min(15, game.moveCount),
+            midgameMoves: Math.max(0, Math.min(35, game.moveCount - 15)),
+            endgameMoves: Math.max(0, game.moveCount - 50)
+          },
+          finalFEN: chessForFen.fen(),
+          reasoningSamples: ['LLM reasoning tracked in datapoints']
+        };
+        this.paperResults.addGameResult(paperGameResult);
+      }
+
+      if (gameIndex < config.games - 1) {
+        await sleep(config.settings.interGameDelayMs);
+      }
+    }
+
+    const endedAt = new Date();
+    const summary = {
+      completedGames: gameSummaries.length,
+      totalDurationMs: endedAt.getTime() - startedAt.getTime(),
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      whiteModel: config.models.white,
+      blackModel: config.models.black
+    };
+
+    await writeFile(outputFile, JSON.stringify({ summary, games: gameSummaries }, null, 2), 'utf-8');
+    
+    // Generate paper results summary
+    if (this.paperResults) {
+      const paperSummary = this.paperResults.generateSummary();
+      console.log('🏆 PAPER SUMMARY:', paperSummary);
+    }
+
+    return { outputFile, summary, games: gameSummaries };
+  }
+
+  private async runSinglePaperGame(
+    gameId: string,
+    gameIndex: number,
+    config: BatchConfig,
+    options: PaperCollectionOptions,
+    onDatapoint?: (datapoint: PaperDatapoint) => void
+  ): Promise<GamePaperSummary> {
+    const chess = new Chess();
+    const startedAt = new Date();
+    const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
+    let timedOut = false;
+    const ruleAudit = createRuleAudit(chess);
+
+    const whiteCpl: number[] = [];
+    const blackCpl: number[] = [];
+
+    while (!chess.isGameOver() && chess.history().length < config.settings.maxMoves) {
+      if (Date.now() >= deadline) {
+        timedOut = true;
+        break;
+      }
+
+      const legalMoves = chess.moves();
+      if (legalMoves.length === 0) {
+        break;
+      }
+
+      const moveNumber = chess.history().length + 1;
+      const side = chess.turn() === 'w' ? 'white' : 'black';
+      const model = side === 'white' ? config.models.white : config.models.black;
+      const turnBeforeMove = chess.turn();
+
+      const fenBefore = chess.fen();
+      const detail = await chooseMoveWithOllamaDetailed(
+        this.ollamaBaseUrl,
+        model,
+        fenBefore,
+        legalMoves,
+        config.settings.moveTimeoutMs
+      );
+
+      let chosenMove = detail.move;
+      if (!chosenMove || !legalMoves.includes(chosenMove)) {
+        ruleAudit.invalidModelMoveAttempts += 1;
+        ruleAudit.fallbackMovesUsed += 1;
+        ruleAudit.legalMoveOnly = false;
+        chosenMove = pickFallbackMove(legalMoves);
+      }
+
+      const moveResult = chess.move(chosenMove, { strict: true });
+      if (!moveResult) {
+        ruleAudit.fallbackMovesUsed += 1;
+        ruleAudit.legalMoveOnly = false;
+        const fallbackMove = pickFallbackMove(legalMoves);
+        const fallbackResult = chess.move(fallbackMove, { strict: true });
+        if (!fallbackResult) {
+          throw new Error(`Unable to apply legal move for ${gameId}`);
+        }
+        updateRuleAuditAfterMove(ruleAudit, chess, fallbackResult.flags, side, turnBeforeMove);
+        chosenMove = fallbackMove;
+      } else {
+        updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
+      }
+
+      const fenAfter = chess.fen();
+
+      const cpl = options.enabled ? await this.computeCpl(fenBefore, chosenMove, fenAfter) : 0;
+      const clampedCpl = clampCpl(cpl);
+      if (side === 'white') {
+        whiteCpl.push(clampedCpl);
+      } else {
+        blackCpl.push(clampedCpl);
+      }
+
+      const materialBalance = estimateMaterialBalance(chess);
+      const datapoint: PaperDatapoint = {
+        gameId,
+        gameIndex,
+        moveNumber,
+        side,
+        model,
+        timestamp: Date.now(),
+        fenBefore,
+        fenAfter,
+        move: chosenMove,
+        legalMoves,
+        reasoning: options.trackReasoning ? detail.reasoning : '',
+        confidence: options.trackConfidence ? detail.confidence : 0.5,
+        cpl: clampedCpl,
+        gamePhase: inferGamePhase(moveNumber),
+        materialBalance,
+        isCritical: clampedCpl >= 200,
+        winProbability: estimateWinProbability(materialBalance)
+      };
+
+      onDatapoint?.(datapoint);
+      await sleep(config.settings.moveDelayMs);
+    }
+
+    const endedAt = new Date();
+    const { result, termination } = this.determineGameOutcome(chess, config.settings.maxMoves, timedOut);
+
+    const avgWhite = whiteCpl.length > 0 ? whiteCpl.reduce((a, b) => a + b, 0) / whiteCpl.length : 0;
+    const avgBlack = blackCpl.length > 0 ? blackCpl.reduce((a, b) => a + b, 0) / blackCpl.length : 0;
+
+    return {
+      gameId,
+      gameIndex,
+      whiteModel: config.models.white,
+      blackModel: config.models.black,
+      result,
+      termination,
+      moveCount: chess.history().length,
+      pgn: chess.pgn(),
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      averageCplWhite: avgWhite,
+      averageCplBlack: avgBlack,
+      ruleAudit
+    };
+  }
+
+  private async computeCpl(fenBefore: string, move: string, fenAfter: string): Promise<number> {
+    // Try new Stockfish analyzer first
+    if (this.stockfishAnalyzer) {
+      try {
+        await this.stockfishAnalyzer.initialize();
+        const cpl = await this.stockfishAnalyzer.computeCPL(fenBefore, move);
+        return cpl;
+      } catch (error) {
+        console.warn('Stockfish analysis failed, using fallback');
+      }
+    }
+
+    // Fallback to old method
+    const stockfishDelta = await this.tryStockfishDelta(fenBefore, fenAfter);
+    if (stockfishDelta !== null) {
+      return Math.abs(stockfishDelta);
+    }
+
+    // Heuristic fallback if stockfish is unavailable: penalize if move creates immediate tactical danger.
+    const before = new Chess(fenBefore);
+    const after = new Chess(fenAfter);
+    const beforeChecks = before.inCheck() ? 1 : 0;
+    const afterChecks = after.inCheck() ? 1 : 0;
+    const mobilityPenalty = Math.max(0, before.moves().length - after.moves().length);
+    const syntaxPenalty = /[+#]$/.test(move) ? -20 : 20;
+    return Math.max(0, beforeChecks * 60 + afterChecks * 80 + mobilityPenalty * 3 + syntaxPenalty);
+  }
+
+  private determineGameOutcome(chess: Chess, maxMoves: number, timedOut: boolean): GameOutcome {
+    if (chess.isCheckmate()) {
+      // White to move means white was checkmated, so black won.
+      return {
+        result: chess.turn() === 'w' ? '0-1' : '1-0',
+        termination: 'checkmate'
+      };
+    }
+
+    if (chess.isStalemate()) {
+      return { result: '1/2-1/2', termination: 'stalemate' };
+    }
+
+    if (chess.isInsufficientMaterial()) {
+      return { result: '1/2-1/2', termination: 'insufficient_material' };
+    }
+
+    if (chess.isThreefoldRepetition()) {
+      return { result: '1/2-1/2', termination: 'threefold_repetition' };
+    }
+
+    if (timedOut) {
+      const materialBalance = estimateMaterialBalance(chess);
+      if (materialBalance > 2) {
+        return { result: '1-0', termination: 'timeout_white_ahead' };
+      }
+      if (materialBalance < -2) {
+        return { result: '0-1', termination: 'timeout_black_ahead' };
+      }
+      return { result: '1/2-1/2', termination: 'timeout_draw' };
+    }
+
+    if (chess.history().length >= maxMoves) {
+      const materialBalance = estimateMaterialBalance(chess);
+      if (materialBalance > 2) {
+        return { result: '1-0', termination: 'max_moves_white_ahead' };
+      }
+      if (materialBalance < -2) {
+        return { result: '0-1', termination: 'max_moves_black_ahead' };
+      }
+      return { result: '1/2-1/2', termination: 'max_moves_draw' };
+    }
+
+    return { result: '1/2-1/2', termination: 'unknown' };
+  }
+
+  private async tryStockfishDelta(fenBefore: string, fenAfter: string): Promise<number | null> {
+    try {
+      await this.ensureStockfishLoaded();
+      if (!this.stockfishFactory) {
+        return null;
+      }
+
+      const beforeEval = await this.evaluateWithStockfish(fenBefore);
+      const afterEval = await this.evaluateWithStockfish(fenAfter);
+      return afterEval - beforeEval;
+    } catch {
+      return null;
+    }
+  }
+
+  private async ensureStockfishLoaded(): Promise<void> {
+    if (this.stockfishLoaded) {
+      return;
+    }
+    this.stockfishLoaded = true;
+
+    try {
+      const mod = (await import('stockfish')) as unknown;
+      const candidate = mod as {
+        default?: () => { postMessage: (command: string) => void; onmessage?: (event: unknown) => void };
+      };
+      this.stockfishFactory = typeof candidate.default === 'function' ? candidate.default : null;
+    } catch {
+      this.stockfishFactory = null;
+    }
+  }
+
+  private async evaluateWithStockfish(fen: string): Promise<number> {
+    if (!this.stockfishFactory) {
+      throw new Error('stockfish unavailable');
+    }
+
+    const engine = this.stockfishFactory();
+
+    return await new Promise<number>((resolve) => {
+      const timeout = setTimeout(() => resolve(0), 1000);
+
+      engine.onmessage = (event: unknown) => {
+        const raw = typeof event === 'string' ? event : String(event);
+        const cp = raw.match(/score cp (-?\d+)/);
+        if (cp?.[1]) {
+          clearTimeout(timeout);
+          resolve(Number(cp[1]));
+          return;
+        }
+
+        const mate = raw.match(/score mate (-?\d+)/);
+        if (mate?.[1]) {
+          clearTimeout(timeout);
+          const sign = Number(mate[1]) >= 0 ? 1 : -1;
+          resolve(sign * 1000);
+        }
+      };
+
+      engine.postMessage('uci');
+      engine.postMessage(`position fen ${fen}`);
+      engine.postMessage('go depth 10');
+    });
+  }
+}
