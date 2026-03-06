@@ -58,8 +58,14 @@ async function main() {
     cors: { origin: '*' }
   });
   
-  // Start listening (but don't have clients connect)
-  server.listen(3001, 'localhost');
+  // Start listening on an ephemeral port to avoid conflicts with existing dev server (e.g. :3001)
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, 'localhost', () => {
+      server.off('error', reject);
+      resolve();
+    });
+  });
   
   try {
     // Run the sequential batch

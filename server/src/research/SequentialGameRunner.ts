@@ -19,10 +19,12 @@ import * as path from 'path';
 
 export interface GameConfig {
   whiteModel: string;
+  whiteApiModel: string;
   whiteEndpointUrl: string;
   whiteApiKey: string;
   
   blackModel: string;
+  blackApiModel: string;
   blackEndpointUrl: string;
   blackApiKey: string;
   
@@ -272,15 +274,15 @@ export class SequentialGameRunner extends EventEmitter {
       // Create AI agents with API configuration
       const whiteAgent = new NeuroAgent(
         config.whiteModel,
-        config.whiteEndpointUrl,
-        config.whiteApiKey,
-        config.enableRobotExecution
+         config.whiteApiModel,
+         config.whiteEndpointUrl,
+         config.whiteApiKey
       );
       const blackAgent = new NeuroAgent(
         config.blackModel,
-        config.blackEndpointUrl,
-        config.blackApiKey,
-        config.enableRobotExecution
+         config.blackApiModel,
+         config.blackEndpointUrl,
+         config.blackApiKey
       );
       
       console.log(`\n🎮 [Game ${gameProgress.gameNumber}/${this.config.totalGames}] ${config.whiteModel} (White) vs ${config.blackModel} (Black)`);
@@ -354,7 +356,7 @@ export class SequentialGameRunner extends EventEmitter {
             move: move,
             fen: fenAfter,
             confidence: decision.finalConfidence || 0.5,
-            spikeEfficiency: decision.spikeEfficiency || 1.0,
+            spikeEfficiency: 0.5,
             latencyMs: decision.latencyMs || 0,
             reasoning: decision.reasoning || '',
             timestamp: new Date().toISOString()
@@ -369,8 +371,8 @@ export class SequentialGameRunner extends EventEmitter {
             // Brain
             llmCandidates: [move],
             llmConfidences: [decision.llmConfidence || 0.5],
-            snnSpikeVotes: decision.spikeVotes || [],
-            snnSpikingEfficiency: decision.spikeEfficiency || 0,
+            snnSpikeVotes: [decision.finalConfidence || 0.5],
+            snnSpikingEfficiency: decision.finalConfidence || 0.5,
             llmSnnIntegratedConfidence: decision.finalConfidence || 0.5,
             
             // Game

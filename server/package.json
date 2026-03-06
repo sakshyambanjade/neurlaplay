@@ -8,11 +8,13 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "vitest",
-    "batch:sequential:6games": "tsx src/research/sequential-cli.ts 6games",
+    "research": "npm run dev",
+    "batch:sequential": "tsx src/research/sequential-cli.ts",
     "batch:sequential:test": "tsx src/research/sequential-cli.ts test",
-    "batch:sequential:custom": "tsx src/research/sequential-cli.ts custom",
-    "batch:sequential": "tsx src/research/sequential-cli.ts"
+    "batch:sequential:6games": "tsx src/research/sequential-cli.ts 6games",
+      "batch:ollama:tiny": "tsx src/research/sequential-cli.ts ../research/configs/batch_config_ollama_tiny_test.json",
+    "batch:ollama:quick": "tsx src/research/sequential-cli.ts ../research/configs/batch_config_ollama_quick_test.json",
+    "batch:ollama:tournament": "tsx src/research/sequential-cli.ts ../research/configs/batch_config_ollama_tournament.json"
   },
   "keywords": [
     "chess",

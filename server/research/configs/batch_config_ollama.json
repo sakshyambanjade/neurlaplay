@@ -1,0 +1,42 @@
+{
+  "totalGames": 2,
+  "games": [
+    {
+      "whiteModel": "ollama-qwen3-32b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "qwen2.5-coder:32b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "ollama-mistral",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "mistral:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": false,
+      "moveDelayMs": 2000,
+      "maxMoves": 300
+    },
+    {
+      "whiteModel": "ollama-mistral",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "mistral:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "ollama-qwen3-32b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "qwen2.5-coder:32b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": false,
+      "moveDelayMs": 2000,
+      "maxMoves": 300
+    }
+  ],
+  "outputDir": "./tournaments/ollama_games",
+  "moveTimeoutMs": 60000,
+  "gameTimeoutMs": 1200000,
+  "maxRetries": 2,
+  "moveDelayMs": 2000,
+  "interGameDelayMs": 2000,
+  "exportInterval": 5
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stockfish Test</title>
+</head>
+<body>
+    <h1>Stockfish Test</h1>
+    <div id="output">Loading Stockfish...</div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        // Initialize Stockfish
+        const worker = new Worker('/stockfish/stockfish.js');
+        
+        worker.onmessage = function(e) {
+            output.innerHTML += '<br>' + e.data;
+            
+            if (e.data.includes('readyok')) {
+                output.innerHTML += '<br><strong>✅ Stockfish is ready!</strong>';
+                
+                // Test analysis
+                worker.postMessage('position startpos');
+                worker.postMessage('go depth 10');
+            }
+            
+            if (e.data.includes('bestmove')) {
+                output.innerHTML += '<br><strong>✅ Analysis complete!</strong>';
+            }
+        };
+        
+        worker.postMessage('uci');
+        worker.postMessage('isready');
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "matchId": "seq-game-001",
+  "timestamp": "2026-03-06T10:00:04.705Z",
+  "whiteBotName": "tinyllama-a",
+  "whiteModel": "tinyllama-a",
+  "blackBotName": "tinyllama-b",
+  "blackModel": "tinyllama-b",
+  "result": "draw",
+  "pgn": "",
+  "fen": "2k2b1r/2pqpPpp/2n4n/3p4/3P1PP1/N6b/7P/2BQKBNR w K - 1 41",
+  "moves": [],
+  "totalMoves": 80,
+  "gameStatus": "stopped",
+  "duration_ms": 289367
+}

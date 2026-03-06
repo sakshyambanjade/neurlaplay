@@ -2,6 +2,8 @@
 
 **Publication-ready research system for LLM chess games**
 
+**NEW**: 🦙 Ollama local model support + 📊 Enhanced chess-specific analytics!
+
 ---
 
 ## 📚 Documentation
@@ -10,6 +12,7 @@
 
 | Document | Purpose | Time |
 |----------|---------|------|
+| **[docs/OLLAMA_GUIDE.md](docs/OLLAMA_GUIDE.md)** | 🆕 Ollama integration guide | 5 min |
 | **[docs/SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md)** | Setup guide (first time only) | 5 min |
 | **[docs/SEQUENTIAL_FOR_RESEARCH.md](docs/SEQUENTIAL_FOR_RESEARCH.md)** | Complete research guide | 10 min |
 | **[docs/README.md](docs/README.md)** | Documentation index | 2 min |
@@ -17,6 +20,29 @@
 ---
 
 ## 🚀 Quick Start
+
+### Option A: Ollama Local Models (Recommended - FREE!)
+
+```bash
+# 1. Ensure Ollama is running
+ollama serve
+
+# 2. Run quick test (4 games, 2 minutes)
+cd server
+npm run batch:ollama:quick
+
+# 3. Analyze results with enhanced metrics
+cd ../research
+python analyze_research.py ../server/game-data/research-match-*.json --paper
+
+# 4. Generate visualizations
+pip install matplotlib seaborn
+python visualize_research.py ../server/game-data/research-match-*_paper.json
+```
+
+**See [docs/OLLAMA_GUIDE.md](docs/OLLAMA_GUIDE.md) for complete guide!**
+
+### Option B: Cloud API Models
 
 ```bash
 # 1. Create API keys (.env)
@@ -74,14 +100,46 @@ research/
 
 ## 🎯 What You Can Do
 
-### Run Batch Games
-```powershell
-npm run batch:quick     # 3 games in 2 min (test)
-npm run batch:50        # 50 games in 45 min (full batch)
-npm run batch:compare   # 12 games comparing models
+### Run Batch Games with Ollama (NEW!)
+```bash
+# From server directory:
+cd server
+
+# Quick test - 4 games
+npm run batch:ollama:quick
+
+# Full tournament - 18 games with all your models
+npm run batch:ollama:tournament
+
+# Or use custom config:
+npm run batch:sequential ../research/configs/your_config.json
+
+# Cloud models (built-in presets)
+npm run batch:sequential:test      # 2 games (test)
+npm run batch:sequential:6games    # 6 games (research)
 ```
 
-**Result:** All moves saved to database + 6 export formats (JSON, CSV, PGN, LaTeX, stats, figures)
+### Analyze with Enhanced Metrics (NEW!)
+```bash
+# Basic analysis with all new metrics
+python analyze_research.py game-data.json
+
+# Generate paper-ready export with comprehensive stats
+python analyze_research.py game-data.json --paper
+
+# Create visualizations (requires matplotlib)
+python visualize_research.py game-data_paper.json
+```
+
+**New Metrics Include:**
+- 📊 Game phase analysis (Opening/Middlegame/Endgame)
+- 🎯 6-category accuracy breakdown
+- ⚡ Critical moment detection
+- ⏱️ Time management analysis
+- 🤖 Head-to-head model comparison
+- 📈 Performance visualizations
+
+**Result:** All moves saved + comprehensive chess-specific analytics + publication-ready figures
 
 ### Publish to arXiv
 Follow [ARXIV_SUBMISSION_COMPLETE.md](docs/ARXIV_SUBMISSION_COMPLETE.md) to:

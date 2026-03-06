@@ -1,0 +1,284 @@
+{
+  "totalGames": 18,
+  "concurrentGames": 2,
+  "exportInterval": 3,
+  "games": [
+    {
+      "whiteModel": "qwen3-coder-30b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "qwen3-coder:30b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3.1-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3.1:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3.1-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3.1:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "qwen3-coder-30b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "qwen3-coder:30b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "qwen3-coder-30b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "qwen3-coder:30b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "phi3",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "phi3:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "phi3",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "phi3:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "qwen3-coder-30b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "qwen3-coder:30b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3.1-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3.1:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "phi3",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "phi3:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "phi3",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "phi3:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3.1-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3.1:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "tinyllama",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "tinyllama:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 500,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "tinyllama",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "tinyllama:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 500,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "qwen3-coder-30b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "qwen3-coder:30b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "tinyllama",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "tinyllama:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "tinyllama",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "tinyllama:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "qwen3-coder-30b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "qwen3-coder:30b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3.1-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3.1:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3.1-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3.1:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "phi3",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "phi3:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "tinyllama",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "tinyllama:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 500,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "tinyllama",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "tinyllama:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "phi3",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "phi3:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 500,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "phi3",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "phi3:latest",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "phi3",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "phi3:latest",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "qwen3-coder-30b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "qwen3-coder:30b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "llama3-8b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "llama3:8b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    },
+    {
+      "whiteModel": "llama3-8b",
+      "whiteEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "whiteApiModel": "llama3:8b",
+      "whiteApiKey": "ollama-no-auth",
+      
+      "blackModel": "qwen3-coder-30b",
+      "blackEndpointUrl": "http://localhost:11434/v1/chat/completions",
+      "blackApiModel": "qwen3-coder:30b",
+      "blackApiKey": "ollama-no-auth",
+      
+      "enableStockfish": true,
+      "moveDelayMs": 1000,
+      "maxMoves": 200
+    }
+  ],
+  "outputDir": "./tournaments/ollama_models_full_tournament",
+  "resumeOnFail": true,
+  "moveTimeoutMs": 90000,
+  "gameTimeoutMs": 1800000,
+  "maxRetries": 3,
+  "moveDelayMs": 1000,
+  "interGameDelayMs": 3000
+}

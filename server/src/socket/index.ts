@@ -1,35 +1,29 @@
 import { Server } from 'socket.io';
-import { registerMatchHandlers } from './matchHandlers';
-import { registerGameHandlers } from './gameHandlers';
-import { registerSpectatorHandlers } from './spectatorHandlers';
 
 /**
- * Initialize Socket.io and register all event handlers
+ * Initialize Socket.io - Batch events only
  */
 export function initSocket(io: Server) {
   io.on('connection', (socket) => {
-    console.log(`[Socket] NEW CONNECTION: ${socket.id} | Handshake auth:`, socket.handshake.auth);
+    console.log(`[Socket] Client connected: ${socket.id}`);
 
-    // Register match setup handlers
-    registerMatchHandlers(io, socket);
+    // Batch event: progress update
+    socket.on('batch:progress', (data) => {
+      io.emit('batch:progress', data);
+    });
 
-    // Register game handlers
-    registerGameHandlers(io, socket);
+    // Batch event: game completed
+    socket.on('batch:game_done', (data) => {
+      io.emit('batch:game_done', data);
+    });
 
-    // Register spectator handlers
-    registerSpectatorHandlers(io, socket);
-
-    // Ping/pong for connection health
-    socket.on('ping', () => {
-      socket.emit('pong');
+    // Batch event: batch completed
+    socket.on('batch:complete', (data) => {
+      io.emit('batch:complete', data);
     });
 
     socket.on('disconnect', (reason) => {
-      console.log(`[Socket] DISCONNECTED: ${socket.id} | Reason: ${reason}`);
-    });
-
-    socket.on('error', (error) => {
-      console.log(`[Socket] ERROR on ${socket.id}:`, error);
+      console.log(`[Socket] Client disconnected: ${socket.id} | Reason: ${reason}`);
     });
   });
 }
