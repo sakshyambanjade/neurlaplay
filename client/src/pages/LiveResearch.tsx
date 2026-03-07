@@ -5,6 +5,7 @@ import io from 'socket.io-client';
 function LiveResearch() {
   const [fen, setFen] = useState('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   const [status, setStatus] = useState('idle');
+  const [maxMoves, setMaxMoves] = useState(400);
   const [stats, setStats] = useState({ 
     whiteWins: 0, 
     blackWins: 0, 
@@ -170,7 +171,8 @@ function LiveResearch() {
       body: JSON.stringify({
         totalGames: 200,
         whiteModel: 'tinyllama:latest',
-        blackModel: 'phi3:latest'
+        blackModel: 'phi3:latest',
+        maxMoves
       })
     });
   };
@@ -302,6 +304,22 @@ function LiveResearch() {
 
             {/* START BUTTON */}
             <div className="text-center">
+              <div className="d-flex justify-content-center align-items-center gap-3 mb-4 text-white">
+                <label htmlFor="max-moves" className="fw-bold mb-0">Move cap / game</label>
+                <input
+                  id="max-moves"
+                  type="number"
+                  min={40}
+                  max={600}
+                  step={10}
+                  value={maxMoves}
+                  onChange={(e) => setMaxMoves(Math.max(40, Math.min(600, Number(e.target.value) || 400)))}
+                  disabled={status === 'running'}
+                  className="form-control form-control-lg"
+                  style={{ width: '140px', borderRadius: '12px' }}
+                />
+              </div>
+
               <button 
                 className={`glow-button btn btn-lg px-5 py-4 fs-3 fw-bold ${
                   status === 'running' ? 'btn-warning text-dark' : 
@@ -327,7 +345,7 @@ function LiveResearch() {
                 textShadow: '1px 1px 3px rgba(0,0,0,0.3)',
                 opacity: 0.9
               }}>
-                <div>💡 20 games • Real Stockfish analysis • Live updates</div>
+                <div>💡 200 games • Move cap: {maxMoves} • Live updates</div>
                 <div className="mt-2" style={{ fontSize: '0.9rem', opacity: 0.8 }}>
                   Results saved to <code style={{ 
                     background: 'rgba(0,0,0,0.2)', 
