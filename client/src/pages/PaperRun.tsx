@@ -149,24 +149,40 @@ export default function PaperRun() {
   }
 
   async function startRun() {
+    const latestCompletedByMatchup = await loadProgress();
+    const remainingMatchups = config.matchups
+      .map((m) => {
+        const completed = latestCompletedByMatchup[keyForMatchup(m.white, m.black)] ?? 0;
+        const remaining = Math.max(0, m.games - completed);
+        return { ...m, games: remaining };
+      })
+      .filter((m) => m.games > 0);
+
+    if (remainingMatchups.length === 0) {
+      setLogs((l) => [...l.slice(-199), "All configured matchup targets already reached."]);
+      return;
+    }
+
     localStorage.removeItem("paper_run_id");
     resetUiState();
 
     const r = await fetch(`${API}/api/paper/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
+      body: JSON.stringify({ ...config, matchups: remainingMatchups }),
     });
     const d = await r.json();
     setRunId(d.runId);
-    setLogs([]);
+    setLogs([`Resuming from last progress: ${remainingMatchups.map((m) => `${m.label}=${m.games}`).join(", ")}`]);
     localStorage.setItem("paper_run_id", d.runId);
   }
 
   async function loadProgress() {
     const r = await fetch(`${API}/api/paper/progress`);
     const d = await r.json();
-    setCompletedByMatchup(d.completedByMatchup || {});
+    const progressMap = d.completedByMatchup || {};
+    setCompletedByMatchup(progressMap);
+    return progressMap as Record<string, number>;
   }
 
   async function continueRemaining() {
