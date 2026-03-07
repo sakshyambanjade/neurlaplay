@@ -98,12 +98,12 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
           },
           outputDir: path.join(runDir, 'raw'),
           settings: {
-            maxMoves: 200,
-            moveTimeoutMs: 30000, // 30s per move
-            gameTimeoutMs: 600000, // 10 min per game
-            moveDelayMs: 100, // Reduced from 500ms to 100ms
-            interGameDelayMs: 200, // Reduced from 1000ms to 200ms
-            exportInterval: 25, // Export less frequently
+            maxMoves: 120, // 120 moves max - most games end by move 80
+            moveTimeoutMs: 5000, // 5s - Ryzen 5 4600H can do TinyLlama in 1-2s
+            gameTimeoutMs: 180000, // 3 min per game
+            moveDelayMs: 0, // ZERO delays - full throttle!
+            interGameDelayMs: 0, // No waiting between games
+            exportInterval: 1, // Save EVERY game immediately (crash-safe)
             stockfishEvalDepth: cfg.stockfishEvalDepth,
             blunderThresholdCp: cfg.blunderThresholdCp
           }

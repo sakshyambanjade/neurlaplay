@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import { chooseMoveWithOllama, chooseMoveWithOllamaDetailed } from './ollama.js';
 import { PaperResults, GameResult as PaperGameResult } from './PaperResults.js';
 import { StockfishAnalyzer } from './StockfishAnalyzer.js';
+import { GameLogger } from './GameLogger.js';
 import type {
   BatchConfig,
   GamePaperSummary,
@@ -162,9 +163,11 @@ export class SequentialGameRunner {
   private paperResults: PaperResults | null = null;
   private stockfishAnalyzer: StockfishAnalyzer | null = null;
   private stockfishEvalDepth = 10;
+  private gameLogger: GameLogger | null = null;
 
   constructor(private readonly ollamaBaseUrl: string) {
     this.stockfishAnalyzer = new StockfishAnalyzer();
+    this.gameLogger = new GameLogger();
   }
 
   async run(config: BatchConfig): Promise<{ outputFile: string; summary: Record<string, unknown> }> {
@@ -317,11 +320,29 @@ export class SequentialGameRunner {
     // Initialize paper results collector
     this.paperResults = new PaperResults(config.models.white, config.models.black);
 
+    console.log(`\n📊 LOGGING ENABLED:`);
+    console.log(`   - Run output: ${outputFile}`);
+    if (this.gameLogger) {
+      console.log(`   - Centralized log: ${this.gameLogger.getLogPath()}`);
+      console.log(`   - Format: JSONL (one game per line, crash-safe)\n`);
+    }
+
     for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
       const gameId = `paper-game-${String(gameIndex + 1).padStart(3, '0')}`;
       const gameStartTime = Date.now();
       const game = await this.runSinglePaperGame(gameId, gameIndex + 1, config, options, hooks.onDatapoint);
       gameSummaries.push(game);
+      
+      // 🔥 LOG EVERY GAME IMMEDIATELY (crash-safe)
+      if (this.gameLogger) {
+        await this.gameLogger.logGame(game, {
+          runType: 'paper',
+          matchup: `${config.models.white} vs ${config.models.black}`,
+          gameIndex: gameIndex + 1,
+          totalGames: config.games
+        });
+      }
+      
       hooks.onGameComplete?.(game);
 
       if ((gameIndex + 1) % exportEvery === 0 || gameIndex === config.games - 1) {
@@ -386,6 +407,14 @@ export class SequentialGameRunner {
     };
 
     await writeFile(outputFile, JSON.stringify({ summary, games: gameSummaries }, null, 2), 'utf-8');
+    
+    console.log(`\n✅ BATCH COMPLETE!`);
+    console.log(`   Games completed: ${gameSummaries.length}/${config.games}`);
+    console.log(`   Total duration: ${Math.round(summary.totalDurationMs / 1000)}s`);
+    console.log(`   Run output: ${outputFile}`);
+    if (this.gameLogger) {
+      console.log(`   Backup log: ${this.gameLogger.getLogPath()}`);
+    }
     
     // Generate paper results summary
     if (this.paperResults) {

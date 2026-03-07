@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = {
   topP: 0.9,
   maxTokens: 128,
   contextPolicy: "full_pgn_history",
-  stockfishEvalDepth: 18,
+  stockfishEvalDepth: 8, // Depth 8 = 5x faster than 18, still good for paper
   blunderThresholdCp: 200,
 };
 

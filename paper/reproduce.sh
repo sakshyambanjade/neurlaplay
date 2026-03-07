@@ -12,8 +12,17 @@ python research/tension/tension_graph.py
 # ── Step 2: Parse PGN → positions ────────────────────────────────────────────
 echo ""
 echo "▶ Step 2: Parse PGN → positions.csv"
+if [ -f "research/all-games-v2.pgn" ]; then
+  PGN_INPUT="research/all-games-v2.pgn"
+elif [ -f "research/all-games.pgn" ]; then
+  PGN_INPUT="research/all-games.pgn"
+else
+  echo "  ❌ No PGN found. Expected research/all-games-v2.pgn or research/all-games.pgn"
+  exit 1
+fi
+
 python research/tension/pgn_to_positions.py \
-  research/all-games-v2.pgn \
+  "$PGN_INPUT" \
   research/data/positions.csv
 
 # ── Step 3: Compute tension ───────────────────────────────────────────────────

@@ -81,7 +81,17 @@ export async function chooseMoveWithOllamaDetailed(
       body: JSON.stringify({
         model,
         stream: false,
-        messages: [{ role: 'user', content: prompt }]
+        messages: [{ role: 'user', content: prompt }],
+        options: {
+          num_gpu: 999,        // Force ALL layers to GPU (GTX 1650 4GB can handle TinyLlama/Phi3 fully)
+          num_predict: 40,     // Just move + 1 sentence
+          temperature: 0.0,    // Deterministic = faster
+          top_p: 0.9,
+          top_k: 20,           // Limit sampling space
+          num_ctx: 256,        // Minimal context (we only need current position)
+          num_thread: 12,      // Use all 12 threads (Ryzen 5 4600H)
+          repeat_penalty: 1.0, // No extra computation
+        }
       }),
       signal: controller.signal
     });
