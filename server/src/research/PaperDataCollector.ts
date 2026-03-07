@@ -227,7 +227,20 @@ export class PaperDataCollector {
             engine: this.stockfishEngine,
             depth: this.stockfishEvalDepth,
             blunder_threshold_cp: this.blunderThresholdCpl,
-            run_manifest_ref: this.runManifestRef
+            run_manifest_ref: this.runManifestRef,
+            uci_options: {
+              Threads: 'default',
+              Hash: 'default',
+              MultiPV: 'default',
+              UCI_AnalyseMode: 'default',
+              SyzygyPath: 'none'
+            },
+            statistics: {
+              ci_method: 'wilson',
+              cpl_ci_method: 'bootstrap_percentile',
+              alpha: 0.05,
+              confidence_level: 0.95
+            }
           },
           stats,
           games: this.gameSummaries
