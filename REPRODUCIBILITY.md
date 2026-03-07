@@ -24,6 +24,13 @@ pip install -r requirements.txt
 copy research\configs\batch_config_ollama_quick_test.json research\configs\my_run.json
 # Edit settings.stockfishEvalDepth, settings.blunderThresholdCp, model pairings, and games
 
+# 1a) Choose paper angle BEFORE collecting data
+# Option A: tension pipeline (paperAngle = option_a_tension)
+# Option B: capability/fallback study (paperAngle = option_b_capability)
+
+# 1b) For a stronger capability study, run the 3-model control template
+# See research\configs\paper_capability_3model.json
+
 # 2) Start backend (from repo root)
 cd server
 npm run dev
@@ -36,9 +43,11 @@ npm run research:paper -- --games=5
 ## Verify Artifacts
 After the run, confirm:
 - `research/runs/<run-id>/run_manifest.json` contains your exact config
+- `research/runs/<run-id>/run_manifest.json` contains `paperAngle`
 - `research/paper-stats.json` -> `eval_settings.depth` matches your config
 - `research/paper-stats.json` -> `eval_settings.blunder_threshold_cp` matches your config
 - `research/paper-stats.json` -> `eval_settings.statistics.ci_method` is `"wilson"`
+- `research/paper-stats.json` -> `stats.reliability.illegalFailureModes` is populated
 
 ## Re-run Exact Experiment
 To reproduce a previous run exactly:

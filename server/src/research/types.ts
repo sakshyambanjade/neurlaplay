@@ -25,6 +25,24 @@ export type PaperCollectionOptions = {
   trackConfidence: boolean;
 };
 
+export type IllegalMoveFailureMode =
+  | 'empty_output'
+  | 'wrong_format'
+  | 'non_chess_text'
+  | 'pseudo_legal_or_illegal'
+  | 'request_failed'
+  | 'timeout_or_abort'
+  | 'unparseable'
+  | 'unknown';
+
+export type BindingProfile = {
+  hasPiece: boolean;
+  hasOrigin: boolean;
+  hasDestination: boolean;
+  hasLegalConstraint: boolean;
+  boundCount: 0 | 1 | 2 | 3 | 4;
+};
+
 export type PaperDatapoint = {
   gameId: string;
   gameIndex: number;
@@ -44,6 +62,8 @@ export type PaperDatapoint = {
   isCritical: boolean;
   winProbability: number;
   illegalSuggestion: boolean;
+  illegalFailureMode: IllegalMoveFailureMode | null;
+  bindingProfile: BindingProfile | null;
   correctionApplied: boolean;
 };
 
@@ -74,6 +94,15 @@ export type RuleAudit = {
   promotions: number;
   fallbackMovesUsed: number;
   invalidModelMoveAttempts: number;
+  invalidMoveFailureModes: Partial<Record<IllegalMoveFailureMode, number>>;
+  bindingAttemptCount: number;
+  bindingBoundCountTotal: number;
+  bindingComponentHits: {
+    piece: number;
+    origin: number;
+    destination: number;
+    legalConstraint: number;
+  };
 };
 
 export type PaperStatsSummary = {
@@ -112,6 +141,7 @@ export type PaperStatsSummary = {
     correctionCount: number;
     illegalSuggestionRate: number;
     correctionRate: number;
+    illegalFailureModes: Partial<Record<IllegalMoveFailureMode, number>>;
   };
   compliance: {
     totalMoves: number;
@@ -128,9 +158,32 @@ export type PaperStatsSummary = {
       black: number;
     };
     invalidModelMoveAttempts: number;
+    invalidMoveFailureModes: Partial<Record<IllegalMoveFailureMode, number>>;
     gamesWithAnyLlmMove: number;
     gamesWithOnlyFallback: number;
     legalMoveOnlyGames: number;
+  };
+  binding: {
+    illegalAttempts: number;
+    meanBoundCount: number;
+    meanBoundCountPerGame: number;
+    meanBoundCountByPhase: {
+      opening: number;
+      midgame: number;
+      endgame: number;
+    };
+    meanBoundCountByModel: Record<string, number>;
+    bindingCurveByMove: Array<{
+      moveNumber: number;
+      meanBoundCount: number;
+      samples: number;
+    }>;
+    componentPresenceRate: {
+      piece: number;
+      origin: number;
+      destination: number;
+      legalConstraint: number;
+    };
   };
 };
 

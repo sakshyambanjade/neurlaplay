@@ -14,6 +14,7 @@ export interface MatchupConfig {
 
 export interface PaperRunConfig {
   matchups: MatchupConfig[];
+  paperAngle: "option_a_tension" | "option_b_capability";
   seed: number;
   temperature: number;
   topP: number;
@@ -112,6 +113,7 @@ function writeManifest(runId: string, config: PaperRunConfig, gitCommit: string)
       nodeVersion: process.version,
     },
     randomSeed: config.seed,
+    paperAngle: config.paperAngle,
     stockfishEvalDepth: config.stockfishEvalDepth,
     blunderThresholdCp: config.blunderThresholdCp,
     totalMatchups: config.matchups.length,

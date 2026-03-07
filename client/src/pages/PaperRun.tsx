@@ -15,6 +15,7 @@ const PRESET_MATRIX = [
 
 const DEFAULT_CONFIG = {
   matchups: PRESET_MATRIX,
+  paperAngle: "option_a_tension",
   seed: 42,
   temperature: 0.0,
   topP: 0.9,
@@ -330,6 +331,16 @@ export default function PaperRun() {
                   />
                 </label>
               ))}
+              <label style={{ fontSize: 14 }}>
+                Paper Angle
+                <select
+                  value={(config as any).paperAngle}
+                  style={{ display: "block", width: "100%", marginTop: 6, padding: 8, background: "#0a0a0a", color: "#fff", border: "1px solid #4C72B0", borderRadius: 4 }}
+                  onChange={e => setConfig({ ...config, paperAngle: e.target.value })}>
+                  <option value="option_a_tension">Option A: Tension Pipeline</option>
+                  <option value="option_b_capability">Option B: Capability/Fallback Study</option>
+                </select>
+              </label>
               <label style={{ fontSize: 14 }}>
                 Context Policy
                 <select 

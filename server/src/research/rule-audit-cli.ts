@@ -13,6 +13,7 @@ type GameWithAudit = {
 type MatchFile = {
   summary?: Record<string, unknown>;
   games?: GameWithAudit[];
+  stats?: Record<string, unknown>; // For paper-stats.json format
 };
 
 type AuditSummary = {
@@ -65,6 +66,7 @@ function hasFlag(flag: string): boolean {
 
 async function findLatestMatchFile(serverCwd: string): Promise<string> {
   const candidates = [
+    path.resolve(serverCwd, '../research/archive'),
     path.resolve(serverCwd, 'server/game-data'),
     path.resolve(serverCwd, 'game-data')
   ];
@@ -80,14 +82,22 @@ async function findLatestMatchFile(serverCwd: string): Promise<string> {
       continue;
     }
 
+    // Look for both paper-research-match-*.json and paper-stats.json
     const files = entries.filter(
       (entry) =>
-        entry.startsWith('paper-research-match-') &&
-        entry.endsWith('.json')
+        (entry.startsWith('paper-research-match-') && entry.endsWith('.json')) ||
+        entry === 'paper-stats.json'
     );
 
     for (const file of files) {
-      const fullPath = path.join(dir, file);
+      let fullPath = path.join(dir, file);
+      
+      // If it's paper-stats.json in archive, check subdirectories
+      if (file === 'paper-stats.json' && dir.includes('archive')) {
+        // Skip top-level, look in timestamped subdirs
+        continue;
+      }
+      
       try {
         const info = await stat(fullPath);
         const mtime = info.mtimeMs;
@@ -99,10 +109,32 @@ async function findLatestMatchFile(serverCwd: string): Promise<string> {
         // ignore unreadable file
       }
     }
+    
+    // Also check timestamped subdirectories in archive
+    if (dir.includes('archive')) {
+      try {
+        const subdirs = entries.filter(e => /^\d{8}-\d{6}$/.test(e));
+        for (const subdir of subdirs) {
+          const statsPath = path.join(dir, subdir, 'paper-stats.json');
+          try {
+            const info = await stat(statsPath);
+            const mtime = info.mtimeMs;
+            if (mtime > bestMtime) {
+              bestMtime = mtime;
+              bestPath = statsPath;
+            }
+          } catch {
+            // File doesn't exist in this subdir
+          }
+        }
+      } catch {
+        // readdir failed
+      }
+    }
   }
 
   if (!bestPath) {
-    throw new Error('No paper-research-match-*.json file found in expected game-data directories.');
+    throw new Error('No paper-stats.json or paper-research-match-*.json file found in expected directories.');
   }
 
   return bestPath;

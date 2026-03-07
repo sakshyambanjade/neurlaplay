@@ -81,7 +81,17 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
 
   router.post('/run', async (req, res) => {
     try {
-      const config = req.body as PaperRunConfig;
+      const body = req.body as Partial<PaperRunConfig>;
+      const config: PaperRunConfig = {
+        ...body,
+        paperAngle: body.paperAngle ?? 'option_a_tension'
+      } as PaperRunConfig;
+
+      if (config.paperAngle !== 'option_a_tension' && config.paperAngle !== 'option_b_capability') {
+        res.status(400).json({ error: 'paperAngle must be option_a_tension or option_b_capability' });
+        return;
+      }
+
       const runId = `paper-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
       const runStartedAtMs = Date.now();
       const totalGamesInRun = config.matchups.reduce((sum, m) => sum + m.games, 0);

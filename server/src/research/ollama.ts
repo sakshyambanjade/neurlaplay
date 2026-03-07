@@ -1,3 +1,6 @@
+import { Chess, type Square } from 'chess.js';
+import type { BindingProfile, IllegalMoveFailureMode } from './types.js';
+
 type OllamaResponse = {
   message?: {
     content?: string;
@@ -17,6 +20,17 @@ export type OllamaMoveResponse = {
   move: string | null;
   reasoning: string;
   confidence: number;
+  rawResponse: string;
+  failureMode: IllegalMoveFailureMode | null;
+  bindingProfile: BindingProfile;
+};
+
+const EMPTY_BINDING_PROFILE: BindingProfile = {
+  hasPiece: false,
+  hasOrigin: false,
+  hasDestination: false,
+  hasLegalConstraint: false,
+  boundCount: 0
 };
 
 function parseConfidence(text: string): number {
@@ -72,6 +86,95 @@ function tokenizeCandidates(text: string): string[] {
   return picks.filter(Boolean);
 }
 
+function isBoardSquare(token: string): boolean {
+  return /^[a-h][1-8]$/i.test(token.trim());
+}
+
+function hasExplicitPieceMention(text: string): boolean {
+  if (/(\bking\b|\bqueen\b|\brook\b|\bbishop\b|\bknight\b|\bpawn\b)/i.test(text)) {
+    return true;
+  }
+  const tokens = tokenizeCandidates(text);
+  return tokens.some((t) => /^[KQRBN]/.test(t.trim()));
+}
+
+function toBoundCount(profile: Omit<BindingProfile, 'boundCount'>): BindingProfile {
+  const boundCount =
+    Number(profile.hasPiece) +
+    Number(profile.hasOrigin) +
+    Number(profile.hasDestination) +
+    Number(profile.hasLegalConstraint);
+  return {
+    ...profile,
+    boundCount: Math.max(0, Math.min(4, boundCount)) as 0 | 1 | 2 | 3 | 4
+  };
+}
+
+function buildBindingProfile(raw: string, fen: string, legalMoves: LegalMoveOption[]): BindingProfile {
+  const compact = raw.trim();
+  if (!compact) {
+    return EMPTY_BINDING_PROFILE;
+  }
+
+  let chess: Chess | null = null;
+  try {
+    chess = new Chess(fen);
+  } catch {
+    chess = null;
+  }
+
+  const sideToMove = chess?.turn() ?? null;
+  const legalByUci = new Set(legalMoves.map((m) => normalizeUci(m.uci)).filter(Boolean));
+  const legalBySan = new Set(legalMoves.map((m) => normalizeSan(m.san)).filter(Boolean));
+
+  const uciMatch = compact.match(/\b([a-h][1-8])([a-h][1-8])([qrbn])?\b/i);
+  const sanMatch = compact.match(/\b(O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)\b/i);
+
+  let origin: string | null = null;
+  let destination: string | null = null;
+  let moveToken = '';
+
+  if (uciMatch) {
+    origin = uciMatch[1]!.toLowerCase();
+    destination = uciMatch[2]!.toLowerCase();
+    moveToken = `${origin}${destination}${(uciMatch[3] ?? '').toLowerCase()}`;
+  } else if (sanMatch) {
+    moveToken = sanMatch[1] ?? '';
+    const squares = moveToken.match(/[a-h][1-8]/gi) ?? [];
+    if (squares.length > 0) {
+      destination = squares[squares.length - 1]!.toLowerCase();
+    }
+  }
+
+  const anySquares = compact.match(/\b[a-h][1-8]\b/gi) ?? [];
+  const hasDestination = Boolean(destination) || anySquares.length >= 1;
+
+  let hasOrigin = false;
+  let hasPiece = hasExplicitPieceMention(compact);
+
+  if (origin && isBoardSquare(origin) && chess) {
+    const piece = chess.get(origin as Square);
+    hasOrigin = Boolean(piece && piece.color === sideToMove);
+    if (piece && piece.color === sideToMove) {
+      hasPiece = true;
+    }
+  }
+
+  let hasLegalConstraint = false;
+  if (moveToken) {
+    const normalizedUci = normalizeUci(moveToken);
+    const normalizedSan = normalizeSan(moveToken);
+    hasLegalConstraint = legalByUci.has(normalizedUci) || legalBySan.has(normalizedSan);
+  }
+
+  return toBoundCount({
+    hasPiece,
+    hasOrigin,
+    hasDestination,
+    hasLegalConstraint
+  });
+}
+
 function pickMoveFromText(text: string, legalMoves: LegalMoveOption[]): string | null {
   const compact = text.trim();
   if (!compact) {
@@ -108,6 +211,40 @@ function pickMoveFromText(text: string, legalMoves: LegalMoveOption[]): string |
   }
 
   return null;
+}
+
+function classifyIllegalMoveFailure(raw: string): IllegalMoveFailureMode {
+  const compact = raw.trim();
+  if (!compact) {
+    return 'empty_output';
+  }
+
+  const lower = compact.toLowerCase();
+  if (/(timeout|timed out|abort|aborted|cancelled)/i.test(lower)) {
+    return 'timeout_or_abort';
+  }
+  if (/(request failed|internal server error|connection refused|service unavailable|status\s*\d{3})/i.test(lower)) {
+    return 'request_failed';
+  }
+  if (/(sorry|cannot|can't|unable|as an ai|i do not)/i.test(lower)) {
+    return 'non_chess_text';
+  }
+
+  const tokens = tokenizeCandidates(compact);
+  const hasMoveTag = /\bmove\s*[:=]/i.test(compact);
+  const looksLikeUci = tokens.some((t) => /^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(t));
+  const looksLikeSan = tokens.some((t) => /^(?:O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)$/i.test(t));
+
+  if (looksLikeUci || looksLikeSan) {
+    return 'pseudo_legal_or_illegal';
+  }
+  if (!hasMoveTag && /\b(confidence|reason)\b/i.test(compact)) {
+    return 'wrong_format';
+  }
+  if (hasMoveTag && !looksLikeUci && !looksLikeSan) {
+    return 'wrong_format';
+  }
+  return 'unparseable';
 }
 
 export async function chooseMoveWithOllamaDetailed(
@@ -154,19 +291,37 @@ export async function chooseMoveWithOllamaDetailed(
     });
 
     if (!response.ok) {
-      return { move: null, reasoning: 'Model request failed.', confidence: 0.5 };
+      return {
+        move: null,
+        reasoning: 'Model request failed.',
+        confidence: 0.5,
+        rawResponse: `HTTP ${response.status}`,
+        failureMode: 'request_failed',
+        bindingProfile: EMPTY_BINDING_PROFILE
+      };
     }
 
     const data = (await response.json()) as OllamaResponse;
     const raw = (data.message?.content ?? '').trim();
+    const move = pickMoveFromText(raw, legalMoves);
 
     return {
-      move: pickMoveFromText(raw, legalMoves),
+      move,
       reasoning: sanitizeReasoning(raw),
-      confidence: parseConfidence(raw)
+      confidence: parseConfidence(raw),
+      rawResponse: raw,
+      failureMode: move ? null : classifyIllegalMoveFailure(raw),
+      bindingProfile: buildBindingProfile(raw, fen, legalMoves)
     };
   } catch {
-    return { move: null, reasoning: 'Model timed out or returned invalid output.', confidence: 0.5 };
+    return {
+      move: null,
+      reasoning: 'Model timed out or returned invalid output.',
+      confidence: 0.5,
+      rawResponse: '',
+      failureMode: 'timeout_or_abort',
+      bindingProfile: EMPTY_BINDING_PROFILE
+    };
   } finally {
     clearTimeout(timer);
   }

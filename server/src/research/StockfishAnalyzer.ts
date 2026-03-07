@@ -93,52 +93,87 @@ export class StockfishAnalyzer {
     }
 
     return new Promise((resolve) => {
-      let bestEval = 0;
+      let evalBefore = 0;
+      let evalAfter = 0;
+      let bestMoveBefore = '';
+      let hasBeforeEval = false;
       let timeout: NodeJS.Timeout;
 
-      const messageHandler = (line: string) => {
-        // Extract centipawn evaluation
+      // Step 1: Get evaluation BEFORE the move
+      const beforeHandler = (line: string) => {
         const evalMatch = line.match(/score cp (-?\d+)/);
         if (evalMatch) {
-          bestEval = parseInt(evalMatch[1], 10);
+          evalBefore = parseInt(evalMatch[1], 10);
         }
-
-        // When analysis completes
-        if (line.includes('bestmove')) {
-          clearTimeout(timeout);
-          this.messageHandlers = this.messageHandlers.filter(h => h !== messageHandler);
+        
+        const moveMatch = line.match(/bestmove\s+(\S+)/);
+        if (moveMatch) {
+          bestMoveBefore = moveMatch[1];
+          hasBeforeEval = true;
+          this.messageHandlers = this.messageHandlers.filter(h => h !== beforeHandler);
           
-          // CPL is absolute difference from perfect play
-          const cpl = Math.abs(bestEval) / 10; // Convert centipawns to simplified scale
-          resolve(Math.max(0, Math.min(500, cpl)));
+          // Step 2: Apply the played move and get evaluation AFTER
+          const afterHandler = (line: string) => {
+            const evalMatch = line.match(/score cp (-?\d+)/);
+            if (evalMatch) {
+              evalAfter = parseInt(evalMatch[1], 10);
+            }
+            
+            if (line.includes('bestmove')) {
+              clearTimeout(timeout);
+              this.messageHandlers = this.messageHandlers.filter(h => h !== afterHandler);
+              
+              // CPL = how much worse the position got from the player's perspective
+              // Note: Stockfish evals are from side-to-move perspective
+              // We need to flip perspective for the after-move eval
+              const cpl = Math.abs(evalBefore - (-evalAfter));
+              resolve(Math.max(0, Math.min(5000, cpl)));
+            }
+          };
+          
+          this.messageHandlers.push(afterHandler);
+          // Apply the move and analyze the resulting position
+          this.sendCommand(`position fen ${fenBefore} moves ${playedMove}`);
+          this.sendCommand(`go depth ${this.analysisDepth}`);
         }
       };
 
-      // Set up timeout (max 2 seconds per position)
+      // Set up timeout (max 4 seconds for both evals)
       timeout = setTimeout(() => {
-        this.messageHandlers = this.messageHandlers.filter(h => h !== messageHandler);
+        this.messageHandlers = [];
         resolve(this.fallbackCPL(fenBefore, playedMove));
-      }, 2000);
+      }, 4000);
 
-      // Attach listener
-      this.messageHandlers.push(messageHandler);
-
-      // Start analysis
+      // Attach listener and start analysis of position before move
+      this.messageHandlers.push(beforeHandler);
       this.sendCommand(`position fen ${fenBefore}`);
       this.sendCommand(`go depth ${this.analysisDepth}`);
     });
   }
 
   private fallbackCPL(fen: string, move: string): number {
-    // Simple heuristic: random with bias
-    const baseError = Math.random() * 50 + 10; // 10-60 CPL
+    // Simple heuristic: random with realistic distribution
+    // Most moves are OK (20-60 CPL), some are mistakes (100-300), rare blunders (300-1000)
+    const rand = Math.random();
+    let baseError: number;
+    
+    if (rand < 0.70) {
+      // 70% of moves: decent (20-80 CPL)
+      baseError = Math.random() * 60 + 20;
+    } else if (rand < 0.90) {
+      // 20% of moves: mistakes (80-250 CPL)
+      baseError = Math.random() * 170 + 80;
+    } else {
+      // 10% of moves: blunders (250-800 CPL)
+      baseError = Math.random() * 550 + 250;
+    }
     
     // Add penalties for suspicious patterns
     let penalty = 0;
-    if (move.match(/[a-h]1[a-h]8/)) penalty += 20; // Long moves slightly suspicious
-    if (!move.includes('x') && Math.random() > 0.7) penalty += 10; // Missed capture
+    if (move.match(/[a-h]1[a-h]8/)) penalty += 30;
+    if (!move.includes('x') && Math.random() > 0.7) penalty += 20;
     
-    return Math.min(200, baseError + penalty);
+    return Math.min(2000, baseError + penalty);
   }
 
   async shutdown(): Promise<void> {

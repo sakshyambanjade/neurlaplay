@@ -6,9 +6,11 @@ import { StockfishAnalyzer } from './StockfishAnalyzer.js';
 import { GameLogger } from './GameLogger.js';
 import type {
   BatchConfig,
+  BindingProfile,
   GamePaperSummary,
   GamePhase,
   GameResult,
+  IllegalMoveFailureMode,
   PaperCollectionOptions,
   PaperDatapoint,
   RuleAudit
@@ -92,8 +94,45 @@ function createRuleAudit(chess: Chess): RuleAudit {
     enPassantCaptures: 0,
     promotions: 0,
     fallbackMovesUsed: 0,
-    invalidModelMoveAttempts: 0
+    invalidModelMoveAttempts: 0,
+    invalidMoveFailureModes: {},
+    bindingAttemptCount: 0,
+    bindingBoundCountTotal: 0,
+    bindingComponentHits: {
+      piece: 0,
+      origin: 0,
+      destination: 0,
+      legalConstraint: 0
+    }
   };
+}
+
+function incrementFailureMode(audit: RuleAudit, mode: IllegalMoveFailureMode | null): void {
+  if (!mode) {
+    return;
+  }
+  const current = audit.invalidMoveFailureModes[mode] ?? 0;
+  audit.invalidMoveFailureModes[mode] = current + 1;
+}
+
+function accumulateBindingProfile(audit: RuleAudit, profile: BindingProfile | null): void {
+  if (!profile) {
+    return;
+  }
+  audit.bindingAttemptCount += 1;
+  audit.bindingBoundCountTotal += profile.boundCount;
+  if (profile.hasPiece) {
+    audit.bindingComponentHits.piece += 1;
+  }
+  if (profile.hasOrigin) {
+    audit.bindingComponentHits.origin += 1;
+  }
+  if (profile.hasDestination) {
+    audit.bindingComponentHits.destination += 1;
+  }
+  if (profile.hasLegalConstraint) {
+    audit.bindingComponentHits.legalConstraint += 1;
+  }
 }
 
 function hasExactlyOneKingPerSide(chess: Chess): boolean {
@@ -269,6 +308,7 @@ export class SequentialGameRunner {
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
+        incrementFailureMode(ruleAudit, 'unknown');
         chosenMove = pickFallbackMove(legalMoveOptions);
       }
 
@@ -432,12 +472,18 @@ export class SequentialGameRunner {
 
       let chosenMove = detail.move;
       let illegalSuggestion = false;
+      let illegalFailureMode: IllegalMoveFailureMode | null = null;
+      let bindingProfile: BindingProfile | null = null;
       let correctionApplied = false;
       if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
         illegalSuggestion = true;
+        illegalFailureMode = detail.failureMode ?? 'unknown';
+        bindingProfile = detail.bindingProfile;
+        incrementFailureMode(ruleAudit, illegalFailureMode);
+        accumulateBindingProfile(ruleAudit, bindingProfile);
         correctionApplied = true;
         chosenMove = pickFallbackMove(legalMoveOptions);
       }
@@ -447,6 +493,12 @@ export class SequentialGameRunner {
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
         illegalSuggestion = true;
+        if (!illegalFailureMode) {
+          illegalFailureMode = detail.failureMode ?? 'pseudo_legal_or_illegal';
+          bindingProfile = detail.bindingProfile;
+          incrementFailureMode(ruleAudit, illegalFailureMode);
+          accumulateBindingProfile(ruleAudit, bindingProfile);
+        }
         correctionApplied = true;
         const fallbackMove = pickFallbackMove(legalMoveOptions);
         const fallbackResult = chess.move(fallbackMove, { strict: true });
@@ -491,6 +543,8 @@ export class SequentialGameRunner {
         isCritical: clampedCpl >= blunderThresholdCp,
         winProbability: estimateWinProbability(materialBalance),
         illegalSuggestion,
+        illegalFailureMode,
+        bindingProfile,
         correctionApplied
       };
 

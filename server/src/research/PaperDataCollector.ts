@@ -1,6 +1,14 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { GamePaperSummary, GamePhase, PaperArtifacts, PaperDatapoint, PaperStatsSummary } from './types.js';
+import type {
+  BindingProfile,
+  GamePaperSummary,
+  GamePhase,
+  IllegalMoveFailureMode,
+  PaperArtifacts,
+  PaperDatapoint,
+  PaperStatsSummary
+} from './types.js';
 
 function average(values: number[]): number {
   if (values.length === 0) {
@@ -28,6 +36,34 @@ function clamp01(value: number): number {
     return 1;
   }
   return value;
+}
+
+function buildIllegalFailureModeCounts(
+  datapoints: PaperDatapoint[]
+): Partial<Record<IllegalMoveFailureMode, number>> {
+  const counts: Partial<Record<IllegalMoveFailureMode, number>> = {};
+  for (const point of datapoints) {
+    if (!point.illegalFailureMode) {
+      continue;
+    }
+    counts[point.illegalFailureMode] = (counts[point.illegalFailureMode] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function profileBoundCount(profile: BindingProfile | null): number {
+  if (!profile) {
+    return 0;
+  }
+  if (typeof profile.boundCount === 'number') {
+    return profile.boundCount;
+  }
+  return (
+    Number(profile.hasPiece) +
+    Number(profile.hasOrigin) +
+    Number(profile.hasDestination) +
+    Number(profile.hasLegalConstraint)
+  );
 }
 
 export class PaperDataCollector {
@@ -97,6 +133,7 @@ export class PaperDataCollector {
 
     const illegalSuggestionCount = this.datapoints.filter((d) => d.illegalSuggestion).length;
     const correctionCount = this.datapoints.filter((d) => d.correctionApplied).length;
+    const illegalFailureModes = buildIllegalFailureModeCounts(this.datapoints);
     const totalMoves = this.datapoints.length;
 
     return {
@@ -145,6 +182,8 @@ export class PaperDataCollector {
 
     const illegalSuggestionCount = this.datapoints.filter((d) => d.illegalSuggestion).length;
     const correctionCount = this.datapoints.filter((d) => d.correctionApplied).length;
+    const illegalFailureModes = buildIllegalFailureModeCounts(this.datapoints);
+    const illegalDatapoints = this.datapoints.filter((d) => d.illegalSuggestion && d.bindingProfile);
     const totalMoves = this.datapoints.length;
     const fallbackMoves = this.gameSummaries.reduce((sum, game) => sum + game.ruleAudit.fallbackMovesUsed, 0);
     const invalidModelMoveAttempts = this.gameSummaries.reduce(
@@ -159,6 +198,65 @@ export class PaperDataCollector {
     const gamesWithAnyLlmMove = this.gameSummaries.filter((game) => game.ruleAudit.fallbackMovesUsed < game.moveCount).length;
     const gamesWithOnlyFallback = this.gameSummaries.filter((game) => game.moveCount > 0 && game.ruleAudit.fallbackMovesUsed >= game.moveCount).length;
     const legalMoveOnlyGames = this.gameSummaries.filter((game) => game.ruleAudit.legalMoveOnly).length;
+
+    const illegalBoundCounts = illegalDatapoints.map((d) => profileBoundCount(d.bindingProfile));
+    const meanBoundCount = average(illegalBoundCounts);
+
+    const boundCountByGame = new Map<string, number[]>();
+    const boundCountByMove = new Map<number, number[]>();
+    const boundCountByModel = new Map<string, number[]>();
+    for (const d of illegalDatapoints) {
+      const value = profileBoundCount(d.bindingProfile);
+
+      const perGame = boundCountByGame.get(d.gameId) ?? [];
+      perGame.push(value);
+      boundCountByGame.set(d.gameId, perGame);
+
+      const perMove = boundCountByMove.get(d.moveNumber) ?? [];
+      perMove.push(value);
+      boundCountByMove.set(d.moveNumber, perMove);
+
+      const perModel = boundCountByModel.get(d.model) ?? [];
+      perModel.push(value);
+      boundCountByModel.set(d.model, perModel);
+    }
+
+    const gameMeans = Array.from(boundCountByGame.values()).map((vals) => average(vals));
+    const bindingCurveByMove = Array.from(boundCountByMove.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([moveNumber, values]) => ({
+        moveNumber,
+        meanBoundCount: average(values),
+        samples: values.length
+      }));
+
+    const meanBoundCountByModel: Record<string, number> = {};
+    for (const [model, values] of boundCountByModel.entries()) {
+      meanBoundCountByModel[model] = average(values);
+    }
+
+    const illegalOpenings = illegalDatapoints.filter((d) => d.gamePhase === 'opening');
+    const illegalMidgames = illegalDatapoints.filter((d) => d.gamePhase === 'midgame');
+    const illegalEndgames = illegalDatapoints.filter((d) => d.gamePhase === 'endgame');
+
+    const componentPresenceRate = {
+      piece:
+        illegalDatapoints.length > 0
+          ? illegalDatapoints.filter((d) => d.bindingProfile?.hasPiece).length / illegalDatapoints.length
+          : 0,
+      origin:
+        illegalDatapoints.length > 0
+          ? illegalDatapoints.filter((d) => d.bindingProfile?.hasOrigin).length / illegalDatapoints.length
+          : 0,
+      destination:
+        illegalDatapoints.length > 0
+          ? illegalDatapoints.filter((d) => d.bindingProfile?.hasDestination).length / illegalDatapoints.length
+          : 0,
+      legalConstraint:
+        illegalDatapoints.length > 0
+          ? illegalDatapoints.filter((d) => d.bindingProfile?.hasLegalConstraint).length / illegalDatapoints.length
+          : 0
+    };
 
     return {
       totalGames,
@@ -192,7 +290,8 @@ export class PaperDataCollector {
         illegalSuggestionCount,
         correctionCount,
         illegalSuggestionRate: totalMoves > 0 ? illegalSuggestionCount / totalMoves : 0,
-        correctionRate: totalMoves > 0 ? correctionCount / totalMoves : 0
+        correctionRate: totalMoves > 0 ? correctionCount / totalMoves : 0,
+        illegalFailureModes
       },
       compliance: {
         totalMoves,
@@ -209,9 +308,23 @@ export class PaperDataCollector {
           black: blackMoveCount > 0 ? blackFallbackMoves / blackMoveCount : 0
         },
         invalidModelMoveAttempts,
+        invalidMoveFailureModes: illegalFailureModes,
         gamesWithAnyLlmMove,
         gamesWithOnlyFallback,
         legalMoveOnlyGames
+      },
+      binding: {
+        illegalAttempts: illegalDatapoints.length,
+        meanBoundCount,
+        meanBoundCountPerGame: average(gameMeans),
+        meanBoundCountByPhase: {
+          opening: average(illegalOpenings.map((d) => profileBoundCount(d.bindingProfile))),
+          midgame: average(illegalMidgames.map((d) => profileBoundCount(d.bindingProfile))),
+          endgame: average(illegalEndgames.map((d) => profileBoundCount(d.bindingProfile)))
+        },
+        meanBoundCountByModel,
+        bindingCurveByMove,
+        componentPresenceRate
       }
     };
   }

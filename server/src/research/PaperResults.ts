@@ -116,11 +116,35 @@ export class PaperResults {
       };
     }
     
-    const opening = this.results.reduce((sum, g) => sum + g.gamePhases.openingMoves, 0) / this.results.length;
+    // Compute weighted average CPL for each phase
+    let openingCPL = 0, midgameCPL = 0, endgameCPL = 0;
+    let openingCount = 0, midgameCount = 0, endgameCount = 0;
+    
+    for (const g of this.results) {
+      const totalMoves = g.totalMoves;
+      const cpl = g.avgCPL;
+      
+      // Weight by number of moves in each phase
+      const openingMoves = Math.min(15, totalMoves);
+      const midgameMoves = Math.max(0, Math.min(35, totalMoves - 15));
+      const endgameMoves = Math.max(0, totalMoves - 50);
+      
+      openingCPL += cpl * openingMoves;
+      openingCount += openingMoves;
+      midgameCPL += cpl * midgameMoves;
+      midgameCount += midgameMoves;
+      endgameCPL += cpl * endgameMoves;
+      endgameCount += endgameMoves;
+    }
+    
+    const avgOpeningCPL = openingCount > 0 ? openingCPL / openingCount : 0;
+    const avgMidgameCPL = midgameCount > 0 ? midgameCPL / midgameCount : 0;
+    const avgEndgameCPL = endgameCount > 0 ? endgameCPL / endgameCount : 0;
+    
     return {
-      openingAccuracy: 85.2,  // TODO: compute from CPL
-      midgameAccuracy: 72.4,
-      endgameAccuracy: 68.1
+      openingAccuracy: Math.max(0, 100 - avgOpeningCPL / 2),
+      midgameAccuracy: Math.max(0, 100 - avgMidgameCPL / 2),
+      endgameAccuracy: Math.max(0, 100 - avgEndgameCPL / 2)
     };
   }
 
@@ -142,6 +166,28 @@ export class PaperResults {
     const whiteWins = this.results.filter(g => g.winner === 'white').length;
     const blackWins = this.results.filter(g => g.winner === 'black').length;
     
+    // Compute actual metrics from data
+    const whiteGames = this.results.filter(g => g.whiteModel === this.whiteModel);
+    const blackGames = this.results.filter(g => g.blackModel === this.blackModel);
+    
+    const avgCplWhite = whiteGames.length > 0 
+      ? whiteGames.reduce((sum, g) => sum + g.avgCPL, 0) / whiteGames.length 
+      : 0;
+    const avgCplBlack = blackGames.length > 0 
+      ? blackGames.reduce((sum, g) => sum + g.avgCPL, 0) / blackGames.length 
+      : 0;
+    
+    const blundersPerGameWhite = whiteGames.length > 0
+      ? whiteGames.reduce((sum, g) => sum + g.blunders, 0) / whiteGames.length
+      : 0;
+    const blundersPerGameBlack = blackGames.length > 0
+      ? blackGames.reduce((sum, g) => sum + g.blunders, 0) / blackGames.length
+      : 0;
+    
+    // Accuracy = 1 - (CPL / 100) as rough approximation
+    const accuracyWhite = Math.max(0, 100 - avgCplWhite / 2);
+    const accuracyBlack = Math.max(0, 100 - avgCplBlack / 2);
+    
     return `\\begin{table}[h!]
 \\centering
 \\caption{LLM Chess Performance Comparison (${totalGames} games)}
@@ -149,8 +195,8 @@ export class PaperResults {
 \\toprule
 Model & Win Rate & Avg CPL & Blunders/Game & Accuracy \\\\
 \\midrule
-${this.whiteModel} & ${(whiteWins/totalGames*100).toFixed(1)}\\% & 45.2 & 1.8 & 78.3\\% \\\\
-${this.blackModel} & ${(blackWins/totalGames*100).toFixed(1)}\\% & 52.1 & 2.3 & 74.2\\% \\\\
+${this.whiteModel} & ${(whiteWins/totalGames*100).toFixed(1)}\\% & ${avgCplWhite.toFixed(1)} & ${blundersPerGameWhite.toFixed(1)} & ${accuracyWhite.toFixed(1)}\\% \\\\
+${this.blackModel} & ${(blackWins/totalGames*100).toFixed(1)}\\% & ${avgCplBlack.toFixed(1)} & ${blundersPerGameBlack.toFixed(1)} & ${accuracyBlack.toFixed(1)}\\% \\\\
 \\bottomrule
 \\end{tabular}
 \\label{tab:llm-chess}
