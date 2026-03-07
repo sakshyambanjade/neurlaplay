@@ -1,5 +1,5 @@
-import LiveResearch from './pages/LiveResearch';
+import PaperRun from './pages/PaperRun';
 
 export default function App() {
-  return <LiveResearch />;
+  return <PaperRun />;
 }

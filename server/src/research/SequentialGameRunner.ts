@@ -428,10 +428,14 @@ export class SequentialGameRunner {
       );
 
       let chosenMove = detail.move;
+      let illegalSuggestion = false;
+      let correctionApplied = false;
       if (!chosenMove || !legalMoves.includes(chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
+        illegalSuggestion = true;
+        correctionApplied = true;
         chosenMove = pickFallbackMove(legalMoves);
       }
 
@@ -439,6 +443,8 @@ export class SequentialGameRunner {
       if (!moveResult) {
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
+        illegalSuggestion = true;
+        correctionApplied = true;
         const fallbackMove = pickFallbackMove(legalMoves);
         const fallbackResult = chess.move(fallbackMove, { strict: true });
         if (!fallbackResult) {
@@ -478,7 +484,9 @@ export class SequentialGameRunner {
         gamePhase: inferGamePhase(moveNumber),
         materialBalance,
         isCritical: clampedCpl >= 200,
-        winProbability: estimateWinProbability(materialBalance)
+        winProbability: estimateWinProbability(materialBalance),
+        illegalSuggestion,
+        correctionApplied
       };
 
       onDatapoint?.(datapoint);

@@ -41,6 +41,8 @@ export type PaperDatapoint = {
   materialBalance: number;
   isCritical: boolean;
   winProbability: number;
+  illegalSuggestion: boolean;
+  correctionApplied: boolean;
 };
 
 export type GamePaperSummary = {
@@ -103,6 +105,12 @@ export type PaperStatsSummary = {
     drawRate: [number, number];
   };
   pValueWhiteVsBlack: number;
+  reliability: {
+    illegalSuggestionCount: number;
+    correctionCount: number;
+    illegalSuggestionRate: number;
+    correctionRate: number;
+  };
 };
 
 export type PaperArtifacts = {

@@ -49,6 +49,14 @@ export class PaperDataCollector {
     this.gameSummaries.push(summary);
   }
 
+  getDatapointsSnapshot(): PaperDatapoint[] {
+    return [...this.datapoints];
+  }
+
+  getGameSummariesSnapshot(): GamePaperSummary[] {
+    return [...this.gameSummaries];
+  }
+
   getLiveStats(): {
     whiteWins: number;
     blackWins: number;
@@ -56,6 +64,10 @@ export class PaperDataCollector {
     avgCpl: { white: number; black: number };
     gamePhase: Record<GamePhase, number>;
     movesTracked: number;
+    illegalSuggestionCount: number;
+    correctionCount: number;
+    illegalSuggestionRate: number;
+    correctionRate: number;
   } {
     const whiteWins = this.gameSummaries.filter((game) => game.result === '1-0').length;
     const blackWins = this.gameSummaries.filter((game) => game.result === '0-1').length;
@@ -70,6 +82,10 @@ export class PaperDataCollector {
       endgame: this.datapoints.filter((d) => d.gamePhase === 'endgame').length
     };
 
+    const illegalSuggestionCount = this.datapoints.filter((d) => d.illegalSuggestion).length;
+    const correctionCount = this.datapoints.filter((d) => d.correctionApplied).length;
+    const totalMoves = this.datapoints.length;
+
     return {
       whiteWins,
       blackWins,
@@ -79,7 +95,11 @@ export class PaperDataCollector {
         black: average(blackCpl)
       },
       gamePhase: phaseCounts,
-      movesTracked: this.datapoints.length
+      movesTracked: totalMoves,
+      illegalSuggestionCount,
+      correctionCount,
+      illegalSuggestionRate: totalMoves > 0 ? illegalSuggestionCount / totalMoves : 0,
+      correctionRate: totalMoves > 0 ? correctionCount / totalMoves : 0
     };
   }
 
@@ -110,6 +130,10 @@ export class PaperDataCollector {
       endgame: average(this.datapoints.filter((d) => d.gamePhase === 'endgame').map((d) => d.cpl))
     };
 
+    const illegalSuggestionCount = this.datapoints.filter((d) => d.illegalSuggestion).length;
+    const correctionCount = this.datapoints.filter((d) => d.correctionApplied).length;
+    const totalMoves = this.datapoints.length;
+
     return {
       totalGames,
       whiteModel: this.whiteModel,
@@ -137,7 +161,13 @@ export class PaperDataCollector {
         drawRate: proportionConfidenceInterval95(draws, totalGames)
       },
       // Approximate two-sided p-value proxy from absolute win-rate gap.
-      pValueWhiteVsBlack: clamp01(1 - Math.abs(whiteWinRate - blackWinRate))
+      pValueWhiteVsBlack: clamp01(1 - Math.abs(whiteWinRate - blackWinRate)),
+      reliability: {
+        illegalSuggestionCount,
+        correctionCount,
+        illegalSuggestionRate: totalMoves > 0 ? illegalSuggestionCount / totalMoves : 0,
+        correctionRate: totalMoves > 0 ? correctionCount / totalMoves : 0
+      }
     };
   }
 

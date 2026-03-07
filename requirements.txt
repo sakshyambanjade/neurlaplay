@@ -1,0 +1,12 @@
+# Research Pipeline Dependencies
+chess>=1.10.0
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+networkx>=3.1
+scipy>=1.11.0
+python-chess>=1.999
+zstandard>=0.21.0
+
+# Optional: For Stockfish analysis
+# stockfish>=3.28.0

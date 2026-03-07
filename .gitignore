@@ -33,3 +33,10 @@ tmp/
 # Logs
 logs/
 *.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated research artifacts
+server/research/runs/
