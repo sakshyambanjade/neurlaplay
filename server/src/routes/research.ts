@@ -201,13 +201,15 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
         totalGames?: number;
         whiteModel?: string;
         blackModel?: string;
+        maxMoves?: number;
       };
 
       const totalGames = Math.max(1, Math.min(200, Number(body.totalGames ?? 200)));
       const whiteModel = String(body.whiteModel ?? 'tinyllama:latest');
       const blackModel = String(body.blackModel ?? 'phi3:latest');
+      const maxMoves = Math.max(40, Math.min(600, Number(body.maxMoves ?? 200)));
 
-      console.log(`🔴 LIVE MODE: ${totalGames} games ${whiteModel} vs ${blackModel}`);
+      console.log(`🔴 LIVE MODE: ${totalGames} games ${whiteModel} vs ${blackModel} (maxMoves=${maxMoves})`);
 
       const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
       const raw = await readFile(configPath, 'utf-8');
@@ -223,6 +225,7 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
         outputDir: baseConfig.outputDir ?? 'server/game-data',
         settings: {
           ...baseConfig.settings,
+          maxMoves,
           moveDelayMs: 100,
           interGameDelayMs: 100,
           moveTimeoutMs: 8000
