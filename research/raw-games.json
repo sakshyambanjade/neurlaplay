@@ -1,0 +1,3802 @@
+[
+  {
+    "gameId": "paper-game-001",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26161,
+    "avgCPL": 41.74800000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2k5/5P2/2b5/2p2P1K/8/1R3R2/8 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-002",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 25561,
+    "avgCPL": 66.0685,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6k1/1Q6/PR4P1/8/1b1p3p/3n4/8/K4BB1 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-003",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 147,
+    "durationMs": 18544,
+    "avgCPL": 40.71171788226582,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 97
+    },
+    "finalFEN": "2Q1k2b/7Q/8/3p2P1/1P1n1P1p/pn5P/6K1/5r2 b - - 2 74",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-004",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 25245,
+    "avgCPL": 46.72399999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k3/8/1P3K2/2P5/6B1/2N5/8/8 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-005",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26455,
+    "avgCPL": 60.766000000000005,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "b7/kBb5/2r2p2/3p4/p1p5/P5p1/8/4K3 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-006",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26539,
+    "avgCPL": 54.510000000000005,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5k2/5B2/4P3/pq6/6KR/8/n1b5/4B3 w - - 15 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-007",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27427,
+    "avgCPL": 59.59599999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1k6/1b6/4r3/7K/1p6/5R2/8/rq6 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-008",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26405,
+    "avgCPL": 97.02450000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/Q4R2/RP6/N2B2pP/6K1/5r2/1k6 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-009",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 29,
+    "durationMs": 3474,
+    "avgCPL": 21.906190476190474,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 14,
+      "endgameMoves": 0
+    },
+    "finalFEN": "2bqkbnr/rp1np3/p4pQ1/2pP2Np/P1PP4/NP3p2/4BKPP/R1B4R b k - 1 15",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-010",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27349,
+    "avgCPL": 72.95800000000003,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3k4/8/4Q1P1/5p2/1R2P3/6r1/2K5/8 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-011",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27330,
+    "avgCPL": 43.35249999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "r7/2k4n/7N/6P1/2K5/8/4R3/8 w - - 13 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-012",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26691,
+    "avgCPL": 28.977500000000003,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3K1k1N/8/4PN2/8/8/5p2/2R5/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-013",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26393,
+    "avgCPL": 55.882000000000005,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6b1/8/8/8/p5k1/4R3/3R4/1r1K4 w - - 17 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-014",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26526,
+    "avgCPL": 57.04400000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7k/3r4/3r4/2R2p2/5P1p/2p2K2/8/8 w - - 20 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-015",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26302,
+    "avgCPL": 44.51600000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/k7/2n1p3/4P3/7P/p1N5/8/K7 w - - 13 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-016",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26776,
+    "avgCPL": 35.241499999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1k6/1b2N3/8/7p/p3R3/7p/7n/7K w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-017",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26494,
+    "avgCPL": 37.179500000000004,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/P1r4p/2pk3P/4b3/4p3/1p2P3/1r6/7K w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-018",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26813,
+    "avgCPL": 42.236,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/8/p3pk1P/Pp6/2Rr4/K7/7N w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-019",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26871,
+    "avgCPL": 43.97500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3n4/8/b7/8/2pbN2p/k7/8/1K6 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-020",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 126,
+    "durationMs": 15927,
+    "avgCPL": 46.34206349206349,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 76
+    },
+    "finalFEN": "4k3/4p3/1Q4R1/pP4p1/1p3p1N/1n1P3b/PP3P1R/2r3KB w - - 5 64",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-021",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27411,
+    "avgCPL": 54.897000000000006,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1n2N3/4k3/8/1P5R/2P5/4B3/2b5/K4q2 w - - 7 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-022",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26424,
+    "avgCPL": 53.355999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7k/p2nB3/8/8/Q5P1/3r2K1/P7/1R6 w - - 16 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-023",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26112,
+    "avgCPL": 44.192499999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "n7/5k2/4n2p/P4rPP/3B1N2/n7/8/7K w - - 7 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-024",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26534,
+    "avgCPL": 51.446999999999996,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/5k2/6r1/8/p5K1/8/2N5 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-025",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26383,
+    "avgCPL": 41.19800000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2n2P2/1b6/5R2/k3K1p1/2P1P3/8/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-026",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26494,
+    "avgCPL": 69.38299999999998,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3b4/8/3n4/8/8/2kn3q/8/K1B5 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-027",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26114,
+    "avgCPL": 54.468999999999994,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1n1k4/5R2/p7/3r3p/Pb6/3r4/8/2K5 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-028",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26067,
+    "avgCPL": 55.094999999999985,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1N3k2/2Q5/2P2prP/p1P2P2/P6N/8/4KR2 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-029",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 25900,
+    "avgCPL": 66.487,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/3r1k1P/8/1P6/6B1/1R1K1PN1/2R5 w - - 12 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-030",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26437,
+    "avgCPL": 76.17099999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/5k2/3Q4/B2p4/3K2Q1/8/8 w - - 19 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-031",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 72,
+    "durationMs": 8837,
+    "avgCPL": 47.6375,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 22
+    },
+    "finalFEN": "3R1r2/1bk1p3/p4p1b/3p3p/7p/p6P/P1Pq2P1/3K1BR1 w - - 0 37",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-032",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26344,
+    "avgCPL": 34.44100000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5k2/8/8/r2P1N1p/1p5n/4N1K1/8/8 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-033",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 25881,
+    "avgCPL": 74.79500000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7B/3k4/p2P4/P7/8/1p6/2nn1Kb1/2n5 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-034",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 25180,
+    "avgCPL": 60.698000000000015,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/4k3/7p/P3P2P/8/K7/8 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-035",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26561,
+    "avgCPL": 37.83600000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/3k4/R7/5p1n/1p6/6K1/7N w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-036",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 153,
+    "durationMs": 19435,
+    "avgCPL": 43.412277853725215,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 103
+    },
+    "finalFEN": "2n1n3/4P3/3p1B1r/1p5k/1N4Q1/7K/7R/1R6 b - - 0 77",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-037",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 25401,
+    "avgCPL": 76.18499999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/B3k3/8/1p6/1P6/7p/8/7K w - - 12 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-038",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26160,
+    "avgCPL": 51.85499999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/k1P5/8/p2N4/P7/6rp/1K6/8 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-039",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26429,
+    "avgCPL": 37.27999999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2k5/4K3/2p4B/2n5/5N2/1pP5/8/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-040",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26546,
+    "avgCPL": 62.26050000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2N4Q/8/7R/5pkP/pPb4N/K4n2/8/n3n1B1 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-041",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26503,
+    "avgCPL": 43.84,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/3R4/8/P6P/5k2/8/1K6/7n w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-042",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 25707,
+    "avgCPL": 63.361999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "B7/3k4/8/7n/1P6/3P2N1/1N5K/6B1 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-043",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 136,
+    "durationMs": 17519,
+    "avgCPL": 30.988235294117647,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 86
+    },
+    "finalFEN": "7b/7B/4B3/Pp2p2p/3P1N2/6k1/2b5/R2nr1K1 w - - 1 69",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-044",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26185,
+    "avgCPL": 64.313,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "K7/2B2k2/b5p1/8/8/6r1/8/n7 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-045",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26613,
+    "avgCPL": 44.490500000000004,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/7k/5B2/1pKb3p/6N1/P7/8/6r1 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-046",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26297,
+    "avgCPL": 36.6455,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/P7/6p1/B1kb2P1/8/5K2/8 w - - 26 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-047",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 25761,
+    "avgCPL": 43.78250000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1r3k2/8/8/3pP3/2pP4/1R6/2bN4/2K5 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-048",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 188,
+    "durationMs": 24563,
+    "avgCPL": 86.06063829787234,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 138
+    },
+    "finalFEN": "2b5/8/2p1k3/8/5r2/1p2bn1p/r7/1K6 w - - 20 95",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-049",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26423,
+    "avgCPL": 50.26950000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/br1N4/8/P5n1/k7/4p3/2Kb4/8 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-050",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 117,
+    "durationMs": 14433,
+    "avgCPL": 68.50452951490357,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 67
+    },
+    "finalFEN": "5Bn1/1p6/r7/p3p3/4P1Qk/3P3P/1R4B1/5NKR b - - 4 59",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-051",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26487,
+    "avgCPL": 85.114,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/8/2R4P/5k1P/P6Q/8/5K2 w - - 20 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-052",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 25542,
+    "avgCPL": 55.17150000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/4q3/1k1pN3/3p2n1/5p2/3P1K2/8/8 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-053",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26412,
+    "avgCPL": 40.381000000000014,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2B5/7r/5r2/2p2P2/2P1p3/k2PR1R1/3B4/2K5 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-054",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26729,
+    "avgCPL": 42.495999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7N/6K1/2r5/3kp3/7p/8/8/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-055",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26432,
+    "avgCPL": 47.3195,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7k/8/1p1bb3/8/8/7q/8/6K1 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-056",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26006,
+    "avgCPL": 39.19799999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2r5/7k/1K4b1/6P1/P7/8/4R3 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-057",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26017,
+    "avgCPL": 52.97399999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5b2/8/6k1/p3B2p/P6P/2K5/1R6/6B1 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-058",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 196,
+    "durationMs": 25857,
+    "avgCPL": 60.059183673469384,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 146
+    },
+    "finalFEN": "1b5k/8/3r3p/4Kp1P/1p2b3/1P6/8/5r2 w - - 11 99",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-059",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26146,
+    "avgCPL": 36.61950000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/7k/7P/4n3/8/7K/2R1r3 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-060",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26561,
+    "avgCPL": 46.432000000000016,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/r2b4/8/5PPP/2B5/P4k2/8/2K5 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-061",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26032,
+    "avgCPL": 50.9695,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1Q6/8/4k3/1P6/8/p3K3/P7/5q2 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-062",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26291,
+    "avgCPL": 85.52399999999997,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/r1r1k3/1pB2p2/p1b5/7P/4b1K1/8/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-063",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 51,
+    "durationMs": 6304,
+    "avgCPL": 32.84369230769231,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 1
+    },
+    "finalFEN": "1rb2b1r/1p1pp1p1/p6p/2P5/5Pn1/2PQ3N/PB1N3P/R3k2K b - - 0 26",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-064",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26462,
+    "avgCPL": 50.968999999999994,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/8/6k1/3pP3/3P4/2K5/1n6 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-065",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26384,
+    "avgCPL": 38.30500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6b1/1R6/5nkp/2r5/1bPP1p1K/5P2/8/3N1B2 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-066",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26539,
+    "avgCPL": 30.890000000000004,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/6N1/8/8/b2b4/8/8/1K6 w - - 21 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-067",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 63,
+    "durationMs": 7880,
+    "avgCPL": 24.40680443548387,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 13
+    },
+    "finalFEN": "r1b1qk2/3p2Q1/p1p4P/1n3p2/2PP1PP1/5K2/P3P1R1/b2b2N1 b - - 1 32",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-068",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26715,
+    "avgCPL": 49.9515,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1B3n2/b7/5p2/p4P2/2n5/1k2p3/4K3 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-069",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 52,
+    "durationMs": 6298,
+    "avgCPL": 27.76730769230769,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 2
+    },
+    "finalFEN": "r1b2rk1/8/p1npp1p1/1p1N3P/q1n4P/NPPP2R1/P3Pb2/1R1QKB2 w - - 7 27",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-070",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 49,
+    "durationMs": 6048,
+    "avgCPL": 29.244499999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 34,
+      "endgameMoves": 0
+    },
+    "finalFEN": "R3k1nr/2pnp1bp/1pB1P1p1/3p1p1Q/2P5/1P1PP1P1/7P/1N2K2R b K - 0 25",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-071",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26397,
+    "avgCPL": 49.035,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/4b3/N3n3/P3k3/8/7P/4K3/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-072",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26613,
+    "avgCPL": 53.8275,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/4p3/8/p2N1r2/Pp3p2/1n3p2/5K2/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-073",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 198,
+    "durationMs": 26581,
+    "avgCPL": 54.646464646464636,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 148
+    },
+    "finalFEN": "4n3/8/8/8/r3b1rk/p7/7K/8 w - - 0 100",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-074",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26971,
+    "avgCPL": 63.28299999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5n2/6P1/2r5/8/5k2/4R1p1/8/7K w - - 10 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-075",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26732,
+    "avgCPL": 43.84599999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6k1/3nPR2/1P6/8/7N/1K5p/R7/1n6 w - - 12 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-076",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26606,
+    "avgCPL": 44.1435,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/7k/5Pn1/P3N3/1b6/QK6/6q1 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-077",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26503,
+    "avgCPL": 67.5035,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3Qb3/R3P1k1/P7/2P1P3/5P2/3p2KB/1N6/4R3 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-078",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26758,
+    "avgCPL": 33.395,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/6n1/6k1/8/2r5/1P2N2p/R2K4/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-079",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26495,
+    "avgCPL": 41.0065,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6r1/6p1/6P1/pk4P1/8/1P1N2n1/3K4/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-080",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27082,
+    "avgCPL": 32.995999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/6r1/2P1NB2/8/7P/5K2/2r5/4N3 w - - 12 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-081",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26649,
+    "avgCPL": 46.452999999999996,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4n3/8/4k2n/5p2/K4P2/1p6/NB6/4n2b w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-082",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26800,
+    "avgCPL": 54.89500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1q6/r4N1P/p5k1/6P1/1b1r1p2/3R4/1N3K2/8 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-083",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26463,
+    "avgCPL": 52.34949999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5k2/8/5P2/8/N7/1b4K1/8/3Q4 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-084",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 116,
+    "durationMs": 14705,
+    "avgCPL": 65.84655172413794,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 66
+    },
+    "finalFEN": "4R3/1k2pp2/p7/P1p2R1p/7p/1n1P1P2/3qBK1r/br6 w - - 4 59",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-085",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26415,
+    "avgCPL": 43.32500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1k5P/8/8/p3r3/6K1/4p3/8 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-086",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 25917,
+    "avgCPL": 68.78800000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/1B4P1/P2k4/B7/8/5K1R/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-087",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26614,
+    "avgCPL": 36.420500000000004,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6Nk/8/6P1/7P/8/3rb3/1K6/4n3 w - - 13 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-088",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26442,
+    "avgCPL": 85.31200000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/4P2P/k4B1P/8/2p5/2P1K3/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-089",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26615,
+    "avgCPL": 43.8775,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2n5/1p4B1/1P6/p1k5/P3p3/8/1K6 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-090",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26871,
+    "avgCPL": 46.015,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/6k1/P3B1b1/n5K1/1R6/1p6/7B/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-091",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26971,
+    "avgCPL": 44.691500000000005,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k3/7P/2P3p1/3b4/8/pQ4bP/p2K4/2RB4 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-092",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26596,
+    "avgCPL": 51.47500000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/N2N4/2P4n/PP6/1K2P3/7b/2B5/5r2 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-093",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27204,
+    "avgCPL": 42.36599999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4b3/4k3/8/6Pp/1n5P/7R/6K1/8 w - - 18 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-094",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26604,
+    "avgCPL": 43.01449999999998,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5k2/n7/1BR5/P5p1/6Pp/1p2P2P/N2K4/8 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-095",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26696,
+    "avgCPL": 48.94400000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2r1k2q/8/4N3/2p5/2p5/2p5/8/2K5 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-096",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26728,
+    "avgCPL": 40.71050000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7k/8/N2n4/4P1r1/8/1Q6/4B3/4bK2 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-097",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27649,
+    "avgCPL": 53.251000000000005,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/p6b/8/3r4/8/7k/3r4/5K2 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-098",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26695,
+    "avgCPL": 41.81950000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1K1p1k2/3p4/3P2P1/p3B3/P4p2/8/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-099",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27061,
+    "avgCPL": 31.996500000000005,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/p5P1/Pk3N2/8/b7/4R1K1/2r5/1r2nN2 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-100",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26088,
+    "avgCPL": 61.05800000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/7p/p7/3K3k/6n1/2p5/n2n4/8 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-101",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26788,
+    "avgCPL": 47.34349999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/5r2/6R1/p1k4p/P7/1pKb4/1p6/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-102",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26466,
+    "avgCPL": 75.0385,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "n6k/1r5P/8/1p6/8/b1p2K2/4r3/5b2 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-103",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26711,
+    "avgCPL": 63.5015,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5k2/1q3P2/2B5/2r3rR/7P/3K2n1/2b5/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-104",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26528,
+    "avgCPL": 40.624,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3k4/8/7P/2RK1Bp1/8/2pbP3/8/6b1 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-105",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26909,
+    "avgCPL": 48.139499999999984,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1k6/1N6/2p2Bb1/1pP5/5p2/3PpPbB/8/N6K w - - 17 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-106",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26663,
+    "avgCPL": 39.110500000000016,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2kr4/8/5b2/p6P/P1P3p1/1K6/2q2R2/6N1 w - - 17 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-107",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 56,
+    "durationMs": 7047,
+    "avgCPL": 25.003571428571426,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 6
+    },
+    "finalFEN": "2r2k2/pbp1r3/n5PP/1PbpQp1n/3KP1p1/3P1N2/1PPq1BB1/2R4R w - - 5 29",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-108",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26659,
+    "avgCPL": 53.8245,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/5P2/4P3/1BPN2k1/3R4/7K/8 w - - 15 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-109",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 79,
+    "durationMs": 9901,
+    "avgCPL": 41.05282051282052,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 29
+    },
+    "finalFEN": "2B1kQnr/6rN/1pn3p1/3PP1Pp/p1p4P/PPK5/4P3/1R1q2NR b - - 2 40",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-110",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27059,
+    "avgCPL": 53.678,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/P3R3/5k2/8/4K3/B4B2/8 w - - 29 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-111",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26534,
+    "avgCPL": 66.61800000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7B/3kr3/1P6/2Pn4/4q3/7p/5K2/8 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-112",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26831,
+    "avgCPL": 34.85999999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5k2/p7/4B3/8/2Rr4/8/1nK5/4B3 w - - 18 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-113",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27562,
+    "avgCPL": 39.59349999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4b3/3k4/5R2/n7/1r3P2/8/3K4/8 w - - 24 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-114",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26551,
+    "avgCPL": 39.6475,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "Q7/1P6/3k1b2/1r4p1/6P1/K7/8/2N5 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-115",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26692,
+    "avgCPL": 56.6165,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1R6/3k4/4p3/n3R3/p7/P7/3rb3/1K6 w - - 13 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-116",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27502,
+    "avgCPL": 37.69299999999998,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "N7/6r1/2k5/1RB5/5n2/6N1/8/K7 w - - 45 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-117",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27042,
+    "avgCPL": 43.039500000000004,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k2n/8/3p4/6P1/p7/3p4/p4K2/4B3 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-118",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27139,
+    "avgCPL": 43.26649999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/2P5/P7/B1rb1P1p/P7/6Q1/7n/1K3r2 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-119",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26867,
+    "avgCPL": 62.00500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3Q4/5B2/8/1k2pP2/4P3/8/8/3K4 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-120",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26832,
+    "avgCPL": 48.07600000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/7k/3B4/pK6/5bp1/3R4/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-121",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26867,
+    "avgCPL": 47.54849999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2B5/7k/8/1P1p1bb1/8/2Kp2N1/5B2/1b6 w - - 16 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-122",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27337,
+    "avgCPL": 43.748,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/7B/pP4pN/1NKP4/8/5Rr1/3k4 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-123",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26850,
+    "avgCPL": 56.323499999999996,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/3B3k/1P1K4/8/2P5/8/8/6N1 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-124",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26717,
+    "avgCPL": 35.247,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k3/RB6/P7/5K2/8/4p2P/8/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-125",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26481,
+    "avgCPL": 81.727,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6n1/1r6/6N1/2k3p1/1b1p4/4r3/4q3/7K w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-126",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26995,
+    "avgCPL": 38.697,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1b3N2/8/3pB1Pp/2n1p1kP/8/p2R3K/8/8 w - - 20 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-127",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26942,
+    "avgCPL": 50.605999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6rk/8/1pn2p2/pP3P2/3PR3/p7/8/5K2 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-128",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27784,
+    "avgCPL": 42.576999999999984,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/p7/P5k1/8/3r4/4N3/8/4K3 w - - 19 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-129",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26951,
+    "avgCPL": 59.64350000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/6k1/8/P2Pp3/N3P1K1/3RN3/8/4b2b w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-130",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 82,
+    "durationMs": 10252,
+    "avgCPL": 53.56463414634146,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 32
+    },
+    "finalFEN": "1rb3k1/2r5/p1p5/1p4Pp/1Bp1P2P/3p1N2/3P4/bNq1K2n w - - 3 42",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-131",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26672,
+    "avgCPL": 55.7765,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1rB4k/1P2p3/8/2p1K3/b1r5/1Pn5/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-132",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27191,
+    "avgCPL": 41.934999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4n1N1/7k/1p2b3/p7/7p/5N1P/1N6/B3K3 w - - 14 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-133",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26699,
+    "avgCPL": 46.704,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7k/8/1R6/3N1B2/p1P2P1p/2n4P/6R1/7K w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-134",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 149,
+    "durationMs": 19438,
+    "avgCPL": 61.20538738738737,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 99
+    },
+    "finalFEN": "2Q2k2/7p/3P1P2/R6p/P6P/1B2b3/8/3N1K2 b - - 4 75",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-135",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26388,
+    "avgCPL": 61.59499999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/7P/P7/1P5K/8/8/5kB1 w - - 20 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-136",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26586,
+    "avgCPL": 55.842999999999996,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1b4k1/4K3/p4P2/PN1p3Q/8/4N3/8 w - - 21 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-137",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27214,
+    "avgCPL": 39.18250000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2R5/8/P7/8/5k2/8/3K1B2/8 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-138",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26633,
+    "avgCPL": 47.27349999999998,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1rk5/8/1p5P/1p1b4/1n1p2K1/6p1/8/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-139",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26574,
+    "avgCPL": 41.845,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4B3/6k1/8/7p/1N5p/2P1p3/b3P2K/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-140",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 103,
+    "durationMs": 13143,
+    "avgCPL": 43.37635746606334,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 53
+    },
+    "finalFEN": "2BQ4/8/N3k1P1/4p2r/2p3n1/2B3Pp/3PK2P/5R1R b - - 7 52",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-141",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26727,
+    "avgCPL": 44.30500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/k7/3R1P2/8/P4b2/8/6K1/r3b3 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-142",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27084,
+    "avgCPL": 48.03650000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/6P1/1P4K1/8/p7/2R1p1k1/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-143",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27212,
+    "avgCPL": 54.1255,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1k6/6K1/4n3/3q3R/N3pp2/8/n7/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-144",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 149,
+    "durationMs": 19809,
+    "avgCPL": 40.317954954954956,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 99
+    },
+    "finalFEN": "2r5/1bR5/3k1p2/5P1P/p1K2B2/6NN/8/7B b - - 7 75",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-145",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26838,
+    "avgCPL": 51.72,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2B5/1p3k2/1P3r2/1n1K4/2n5/8/5q2 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-146",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 187,
+    "durationMs": 24932,
+    "avgCPL": 40.80167009837565,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 137
+    },
+    "finalFEN": "1r5k/4N3/4P3/2K3pp/1P2B2P/4n1R1/1B6/8 b - - 8 94",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-147",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 60,
+    "durationMs": 7480,
+    "avgCPL": 35.51499999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 10
+    },
+    "finalFEN": "r1b1k2r/1pp3pn/1b5p/pP2p2P/P7/3p2P1/Q1R1Bq2/1NB2K1R w - - 0 31",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-148",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27027,
+    "avgCPL": 56.15050000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/6k1/3K4/6N1/1B6/3b1ppp/8/8 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-149",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26674,
+    "avgCPL": 70.131,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3kr3/8/7p/4b2P/1P6/6n1/2K1p3/8 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-150",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26891,
+    "avgCPL": 77.42699999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7k/5Rb1/8/8/8/1rp4p/8/5K2 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-151",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27213,
+    "avgCPL": 42.95849999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1b1QBn2/7k/7P/3PP3/8/p6q/8/3K1R2 w - - 12 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-152",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27230,
+    "avgCPL": 44.8485,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k3/8/1N1P1P2/5P1p/bP3K1P/5p2/1Q6/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-153",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26976,
+    "avgCPL": 41.928999999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2k5/5r2/8/4P3/4R3/6p1/8/6K1 w - - 12 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-154",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27359,
+    "avgCPL": 45.37949999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/8/8/p1K3kp/8/7b/4R3 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-155",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26748,
+    "avgCPL": 52.168499999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/4r3/5k2/p4N1p/P3n3/1K2b3/8/8 w - - 18 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-156",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27104,
+    "avgCPL": 43.6335,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1K6/8/8/P4p2/1P4k1/R7/5P2/7N w - - 19 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-157",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 161,
+    "durationMs": 21366,
+    "avgCPL": 77.29407407407408,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 111
+    },
+    "finalFEN": "2rk4/4R3/5P1p/P2R1P2/6P1/7P/K4NQ1/8 b - - 0 81",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-158",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27472,
+    "avgCPL": 47.077,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/K4k2/7p/4pq1P/1n6/2N2B2/8/5q2 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-159",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 26604,
+    "avgCPL": 51.12349999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k3/8/8/p7/P1p2K2/7p/7P/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-160",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 26922,
+    "avgCPL": 56.46899999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1k4P1/8/nP6/8/2p5/p7/2K5 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-161",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27634,
+    "avgCPL": 40.1035,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/7B/8/Ppkr4/5BP1/5K2/8/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-162",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 26781,
+    "avgCPL": 78.1735,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1k6/8/pP6/PQ1KN3/2R5/3r4/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-163",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27068,
+    "avgCPL": 41.81700000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1r6/5k2/8/7p/4p2P/K3P3/2p5/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-164",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 27013,
+    "avgCPL": 43.1045,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1R6/4Pk2/p7/8/P6p/5p2/2K5 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-165",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27204,
+    "avgCPL": 47.9535,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/3B4/8/p3N3/r3K3/8/8/2r5 w - - 11 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-166",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27043,
+    "avgCPL": 48.99599999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/3r4/8/p7/P5p1/8/b7/3k1K2 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-167",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27245,
+    "avgCPL": 32.24049999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/2k5/p7/8/p2K4/P7/3b4 w - - 22 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-168",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27543,
+    "avgCPL": 39.090999999999994,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3k4/8/7R/2K2p2/5p2/1r6/8/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-169",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27701,
+    "avgCPL": 45.34649999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3r4/8/3q4/4kpPR/p5n1/b2B1K2/8/2N2R2 w - - 7 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-170",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27133,
+    "avgCPL": 61.64750000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2b2n2/3p4/R7/p3k2p/3p2pP/8/3K4/4r3 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-171",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27260,
+    "avgCPL": 45.6185,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "kr6/8/8/3K4/7R/p7/P5p1/4b3 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-172",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 27414,
+    "avgCPL": 55.467999999999996,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "R6n/7b/8/6rP/1k6/5p1P/8/K7 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-173",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27057,
+    "avgCPL": 34.510999999999996,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2b5/p1P5/1B1nB2k/8/4NK1P/3r4/8 w - - 4 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-174",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 27253,
+    "avgCPL": 60.391,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "B7/8/1k3P2/1p6/5r2/2K5/2P5/4N3 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-175",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29176,
+    "avgCPL": 37.242000000000004,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/2B5/k7/8/2N1P1p1/6P1/5nK1/8 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-176",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29095,
+    "avgCPL": 47.622,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/3K4/2P4k/P4Pp1/6P1/8/1b6/5B2 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-177",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29392,
+    "avgCPL": 54.7325,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/3k1Pp1/6P1/3pP2p/7P/4K2R/8 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-178",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 93,
+    "durationMs": 13090,
+    "avgCPL": 38.74794172062904,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 43
+    },
+    "finalFEN": "4r3/2Qkbnrp/1P2pp2/6p1/2Ppn1b1/1P1P4/1RKBN2N/4RB2 b - - 5 47",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-179",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29098,
+    "avgCPL": 76.9735,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/6k1/1P1P1p2/5P2/2K3P1/3B4/6N1/8 w - - 5 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-180",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 29803,
+    "avgCPL": 54.94500000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "6k1/6P1/3Pp3/1P6/8/7n/8/3K4 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-181",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29721,
+    "avgCPL": 47.78550000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k3/2b5/4r3/p5K1/P6P/1B6/8/1n6 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-182",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29746,
+    "avgCPL": 53.29599999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1Q6/8/7k/2P2p1p/1BB2p1b/p7/1R5n/2K5 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-183",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29704,
+    "avgCPL": 52.064499999999995,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "N3k3/8/R4P2/1R3P1p/B6n/5r2/2K5/8 w - - 15 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-184",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 168,
+    "durationMs": 24651,
+    "avgCPL": 45.38809523809525,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 118
+    },
+    "finalFEN": "8/7p/5N1P/6k1/8/8/3r1q2/4K3 w - - 3 85",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-185",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 28944,
+    "avgCPL": 60.15700000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2k5/8/8/8/3p4/8/p4Kp1/8 w - - 0 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-186",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29633,
+    "avgCPL": 62.04449999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/8/npk5/4p3/R7/5r2/8/4r1K1 w - - 6 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-187",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 30035,
+    "avgCPL": 36.4505,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "r7/4n1k1/7R/8/6Pp/2r1B2P/4KN2/8 w - - 9 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-188",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29618,
+    "avgCPL": 47.0445,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "7B/5R2/8/p4p2/1k5P/1p6/4q3/1K6 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-189",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "draw",
+    "totalMoves": 200,
+    "durationMs": 29459,
+    "avgCPL": 40.0925,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2B5/8/6k1/4P2p/p3b2P/P7/4K3/8 w - - 3 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-190",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 30224,
+    "avgCPL": 39.5575,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "Nk6/5r2/p5N1/b1r5/1pPKR3/1p6/5P2/3b4 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-191",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 30043,
+    "avgCPL": 40.834500000000006,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "2n5/2k5/8/1K6/3r4/q3N3/8/7R w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-192",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29901,
+    "avgCPL": 48.39850000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "5n2/8/p7/k2b4/8/K4p2/1B6/2r5 w - - 8 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-193",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29695,
+    "avgCPL": 56.158,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "4k2N/1P6/5P2/3R4/7P/p7/B1KBn3/8 w - - 7 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-194",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29684,
+    "avgCPL": 50.75150000000002,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/6r1/4P3/6Nk/8/p1pK2p1/8/n7 w - - 2 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-195",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29680,
+    "avgCPL": 44.69100000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1k4n1/8/2P4p/r7/8/4p3/8/5K2 w - - 1 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-196",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29661,
+    "avgCPL": 90.82499999999999,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "k7/8/8/P7/8/1P1K2RB/8/N5R1 w - - 10 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-197",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 73,
+    "durationMs": 10365,
+    "avgCPL": 30.749624624624623,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 23
+    },
+    "finalFEN": "4rb1r/1bR4p/pP5n/P1nkPP2/1B4Pp/2NPQK2/5R2/6N1 b - - 0 37",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-198",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29819,
+    "avgCPL": 40.585500000000025,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "1R6/k7/3P4/p4p2/P1N3pP/2K3P1/8/4n3 w - - 7 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-199",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "black",
+    "totalMoves": 200,
+    "durationMs": 29685,
+    "avgCPL": 73.58250000000001,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "8/1k4q1/2p5/4p3/4P3/7p/K7/8 w - - 13 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  },
+  {
+    "gameId": "paper-game-200",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "winner": "white",
+    "totalMoves": 200,
+    "durationMs": 29686,
+    "avgCPL": 55.9255,
+    "blunders": 0,
+    "gamePhases": {
+      "openingMoves": 15,
+      "midgameMoves": 35,
+      "endgameMoves": 150
+    },
+    "finalFEN": "3k4/1R2b3/6PB/7P/PpKB4/1B6/3P3n/8 w - - 11 101",
+    "reasoningSamples": [
+      "LLM reasoning tracked in datapoints"
+    ]
+  }
+]

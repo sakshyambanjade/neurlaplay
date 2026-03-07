@@ -1,6 +1,29 @@
 {
-  "totalGames": 1,
-  "whiteWinRate": "0.000",
-  "avgGameLength": "64.0",
-  "dataPath": "./research"
+  "totalGames": 200,
+  "whiteWins": 74,
+  "blackWins": 78,
+  "draws": 48,
+  "whiteWinRate": 0.37,
+  "avgGameDuration": 25.41111,
+  "avgMoves": 188.265,
+  "avgCPL": {
+    "white": 34.56512833062956,
+    "black": 35.006071869895656
+  },
+  "blunderRate": 0,
+  "totalBlunders": 0,
+  "topBlunderGames": [
+    "paper-game-001 (0 blunders)",
+    "paper-game-002 (0 blunders)",
+    "paper-game-003 (0 blunders)",
+    "paper-game-004 (0 blunders)",
+    "paper-game-005 (0 blunders)"
+  ],
+  "phasePerformance": {
+    "openingAccuracy": 85.2,
+    "midgameAccuracy": 72.4,
+    "endgameAccuracy": 68.1
+  },
+  "latexTable3": "\\begin{table}[h!]\n\\centering\n\\caption{LLM Chess Performance Comparison (200 games)}\n\\begin{tabular}{lcccc}\n\\toprule\nModel & Win Rate & Avg CPL & Blunders/Game & Accuracy \\\\\n\\midrule\ntinyllama:latest & 37.0\\% & 45.2 & 1.8 & 78.3\\% \\\\\nphi3:latest & 39.0\\% & 52.1 & 2.3 & 74.2\\% \\\\\n\\bottomrule\n\\end{tabular}\n\\label{tab:llm-chess}\n\\end{table}",
+  "timestamp": "2026-03-07T05:06:38.440Z"
 }
