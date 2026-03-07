@@ -110,9 +110,18 @@ function movedSideStillInCheck(chessAfterMove: Chess, side: 'white' | 'black'): 
   if (fenParts.length < 6) {
     return true;
   }
+
+  // When we change side-to-move only for audit purposes, the original en-passant
+  // target square may become illegal for that synthetic position.
   fenParts[1] = side === 'white' ? 'w' : 'b';
-  const sideView = new Chess(fenParts.join(' '));
-  return sideView.inCheck();
+  fenParts[3] = '-';
+
+  try {
+    const sideView = new Chess(fenParts.join(' '));
+    return sideView.inCheck();
+  } catch {
+    return true;
+  }
 }
 
 function updateRuleAuditAfterMove(
