@@ -146,6 +146,19 @@ export class PaperDataCollector {
     const illegalSuggestionCount = this.datapoints.filter((d) => d.illegalSuggestion).length;
     const correctionCount = this.datapoints.filter((d) => d.correctionApplied).length;
     const totalMoves = this.datapoints.length;
+    const fallbackMoves = this.gameSummaries.reduce((sum, game) => sum + game.ruleAudit.fallbackMovesUsed, 0);
+    const invalidModelMoveAttempts = this.gameSummaries.reduce(
+      (sum, game) => sum + game.ruleAudit.invalidModelMoveAttempts,
+      0
+    );
+    const llmAcceptedMoves = Math.max(0, totalMoves - fallbackMoves);
+    const whiteMoveCount = whiteMoves.length;
+    const blackMoveCount = blackMoves.length;
+    const whiteFallbackMoves = whiteMoves.filter((d) => d.correctionApplied).length;
+    const blackFallbackMoves = blackMoves.filter((d) => d.correctionApplied).length;
+    const gamesWithAnyLlmMove = this.gameSummaries.filter((game) => game.ruleAudit.fallbackMovesUsed < game.moveCount).length;
+    const gamesWithOnlyFallback = this.gameSummaries.filter((game) => game.moveCount > 0 && game.ruleAudit.fallbackMovesUsed >= game.moveCount).length;
+    const legalMoveOnlyGames = this.gameSummaries.filter((game) => game.ruleAudit.legalMoveOnly).length;
 
     return {
       totalGames,
@@ -180,6 +193,25 @@ export class PaperDataCollector {
         correctionCount,
         illegalSuggestionRate: totalMoves > 0 ? illegalSuggestionCount / totalMoves : 0,
         correctionRate: totalMoves > 0 ? correctionCount / totalMoves : 0
+      },
+      compliance: {
+        totalMoves,
+        llmAcceptedMoves,
+        fallbackMoves,
+        llmMoveRate: totalMoves > 0 ? llmAcceptedMoves / totalMoves : 0,
+        fallbackRate: totalMoves > 0 ? fallbackMoves / totalMoves : 0,
+        llmMoveRateBySide: {
+          white: whiteMoveCount > 0 ? (whiteMoveCount - whiteFallbackMoves) / whiteMoveCount : 0,
+          black: blackMoveCount > 0 ? (blackMoveCount - blackFallbackMoves) / blackMoveCount : 0
+        },
+        fallbackRateBySide: {
+          white: whiteMoveCount > 0 ? whiteFallbackMoves / whiteMoveCount : 0,
+          black: blackMoveCount > 0 ? blackFallbackMoves / blackMoveCount : 0
+        },
+        invalidModelMoveAttempts,
+        gamesWithAnyLlmMove,
+        gamesWithOnlyFallback,
+        legalMoveOnlyGames
       }
     };
   }
@@ -189,12 +221,12 @@ export class PaperDataCollector {
       '\\begin{table}[h]',
       '\\centering',
       '\\caption{Model Performance Comparison}',
-      '\\begin{tabular}{lccc}',
+      '\\begin{tabular}{lcccc}',
       '\\toprule',
-      'Model & Win Rate & Avg CPL & Blunder Rate \\\\',
+      'Model & Win Rate & Avg CPL & Blunder Rate & LLM Move Rate \\\\',
       '\\midrule',
-      `${stats.whiteModel} & ${stats.whiteWinRate.toFixed(3)} & ${stats.avgCpl.white.toFixed(1)} & ${stats.blunderRate.white.toFixed(3)} \\\\`,
-      `${stats.blackModel} & ${stats.blackWinRate.toFixed(3)} & ${stats.avgCpl.black.toFixed(1)} & ${stats.blunderRate.black.toFixed(3)} \\\\`,
+      `${stats.whiteModel} & ${stats.whiteWinRate.toFixed(3)} & ${stats.avgCpl.white.toFixed(1)} & ${stats.blunderRate.white.toFixed(3)} & ${stats.compliance.llmMoveRateBySide.white.toFixed(3)} \\\\`,
+      `${stats.blackModel} & ${stats.blackWinRate.toFixed(3)} & ${stats.avgCpl.black.toFixed(1)} & ${stats.blunderRate.black.toFixed(3)} & ${stats.compliance.llmMoveRateBySide.black.toFixed(3)} \\\\`,
       '\\bottomrule',
       '\\end{tabular}',
       '\\end{table}'

@@ -1,8 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Chess } from 'chess.js';
-import { chooseMoveWithOllama, chooseMoveWithOllamaDetailed } from './ollama.js';
-import { PaperResults, GameResult as PaperGameResult } from './PaperResults.js';
+import { chooseMoveWithOllama, chooseMoveWithOllamaDetailed, type LegalMoveOption } from './ollama.js';
 import { StockfishAnalyzer } from './StockfishAnalyzer.js';
 import { GameLogger } from './GameLogger.js';
 import type {
@@ -19,8 +18,17 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function pickFallbackMove(legalMoves: string[]): string {
-  return legalMoves[Math.floor(Math.random() * legalMoves.length)]!;
+function pickFallbackMove(legalMoves: LegalMoveOption[]): string {
+  const move = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+  return move?.san ?? '';
+}
+
+function getLegalMoveOptions(chess: Chess): LegalMoveOption[] {
+  const verboseMoves = chess.moves({ verbose: true });
+  return verboseMoves.map((move) => ({
+    san: move.san,
+    uci: `${move.from}${move.to}${move.promotion ?? ''}`
+  }));
 }
 
 type PaperRunHooks = {
@@ -160,7 +168,6 @@ export class SequentialGameRunner {
     postMessage: (command: string) => void;
     onmessage?: (event: unknown) => void;
   }) = null;
-  private paperResults: PaperResults | null = null;
   private stockfishAnalyzer: StockfishAnalyzer | null = null;
   private stockfishEvalDepth = 10;
   private gameLogger: GameLogger | null = null;
@@ -238,8 +245,8 @@ export class SequentialGameRunner {
         break;
       }
 
-      const legalMoves = chess.moves();
-      if (legalMoves.length === 0) {
+      const legalMoveOptions = getLegalMoveOptions(chess);
+      if (legalMoveOptions.length === 0) {
         break;
       }
 
@@ -253,23 +260,23 @@ export class SequentialGameRunner {
           this.ollamaBaseUrl,
           model,
           chess.fen(),
-          legalMoves,
+          legalMoveOptions,
           config.settings.moveTimeoutMs
         )) ?? null;
 
       let chosenMove = candidateMove;
-      if (!chosenMove || !legalMoves.includes(chosenMove)) {
+      if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
-        chosenMove = pickFallbackMove(legalMoves);
+        chosenMove = pickFallbackMove(legalMoveOptions);
       }
 
       const moveResult = chess.move(chosenMove, { strict: true });
       if (!moveResult) {
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
-        const fallbackMove = pickFallbackMove(legalMoves);
+        const fallbackMove = pickFallbackMove(legalMoveOptions);
         const fallbackResult = chess.move(fallbackMove, { strict: true });
         if (!fallbackResult) {
           throw new Error(`Unable to apply legal move for ${gameId}`);
@@ -310,16 +317,12 @@ export class SequentialGameRunner {
     await mkdir(outDir, { recursive: true });
     const outputFile = path.join(outDir, `paper-research-match-${Date.now()}.json`);
     const exportEvery = Math.max(1, config.settings.exportInterval || 1);
-    const blunderThresholdCp = Math.max(1, Math.floor(config.settings.blunderThresholdCp ?? 200));
     this.stockfishEvalDepth = Math.max(1, Math.floor(config.settings.stockfishEvalDepth ?? 10));
 
     if (this.stockfishAnalyzer) {
       this.stockfishAnalyzer.setAnalysisDepth(this.stockfishEvalDepth);
     }
     
-    // Initialize paper results collector
-    this.paperResults = new PaperResults(config.models.white, config.models.black);
-
     console.log(`\n📊 LOGGING ENABLED:`);
     console.log(`   - Run output: ${outputFile}`);
     if (this.gameLogger) {
@@ -329,7 +332,6 @@ export class SequentialGameRunner {
 
     for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
       const gameId = `paper-game-${String(gameIndex + 1).padStart(3, '0')}`;
-      const gameStartTime = Date.now();
       const game = await this.runSinglePaperGame(gameId, gameIndex + 1, config, options, hooks.onDatapoint);
       gameSummaries.push(game);
       
@@ -359,38 +361,6 @@ export class SequentialGameRunner {
         await writeFile(outputFile, JSON.stringify({ summary: partialSummary, games: gameSummaries }, null, 2), 'utf-8');
       }
       
-      // Collect paper results
-      if (this.paperResults) {
-        const winner = game.result === '1-0' ? 'white' : game.result === '0-1' ? 'black' : 'draw';
-        const chessForFen = new Chess();
-        try {
-          chessForFen.loadPgn(game.pgn);
-        } catch {
-          // Keep default starting FEN when PGN cannot be parsed.
-        }
-        const paperGameResult: PaperGameResult = {
-          gameId,
-          whiteModel: config.models.white,
-          blackModel: config.models.black,
-          winner,
-          totalMoves: game.moveCount,
-          durationMs: Date.now() - gameStartTime,
-          avgCPL: (game.averageCplWhite + game.averageCplBlack) / 2,
-          blunders: Math.floor(
-            (game.averageCplWhite >= blunderThresholdCp ? 1 : 0) +
-            (game.averageCplBlack >= blunderThresholdCp ? 1 : 0)
-          ),
-          gamePhases: {
-            openingMoves: Math.min(15, game.moveCount),
-            midgameMoves: Math.max(0, Math.min(35, game.moveCount - 15)),
-            endgameMoves: Math.max(0, game.moveCount - 50)
-          },
-          finalFEN: chessForFen.fen(),
-          reasoningSamples: ['LLM reasoning tracked in datapoints']
-        };
-        this.paperResults.addGameResult(paperGameResult);
-      }
-
       if (gameIndex < config.games - 1) {
         await sleep(config.settings.interGameDelayMs);
       }
@@ -416,12 +386,6 @@ export class SequentialGameRunner {
       console.log(`   Backup log: ${this.gameLogger.getLogPath()}`);
     }
     
-    // Generate paper results summary
-    if (this.paperResults) {
-      const paperSummary = this.paperResults.generateSummary();
-      console.log('🏆 PAPER SUMMARY:', paperSummary);
-    }
-
     return { outputFile, summary, games: gameSummaries };
   }
 
@@ -447,8 +411,8 @@ export class SequentialGameRunner {
         break;
       }
 
-      const legalMoves = chess.moves();
-      if (legalMoves.length === 0) {
+      const legalMoveOptions = getLegalMoveOptions(chess);
+      if (legalMoveOptions.length === 0) {
         break;
       }
 
@@ -462,20 +426,20 @@ export class SequentialGameRunner {
         this.ollamaBaseUrl,
         model,
         fenBefore,
-        legalMoves,
+        legalMoveOptions,
         config.settings.moveTimeoutMs
       );
 
       let chosenMove = detail.move;
       let illegalSuggestion = false;
       let correctionApplied = false;
-      if (!chosenMove || !legalMoves.includes(chosenMove)) {
+      if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         ruleAudit.legalMoveOnly = false;
         illegalSuggestion = true;
         correctionApplied = true;
-        chosenMove = pickFallbackMove(legalMoves);
+        chosenMove = pickFallbackMove(legalMoveOptions);
       }
 
       const moveResult = chess.move(chosenMove, { strict: true });
@@ -484,7 +448,7 @@ export class SequentialGameRunner {
         ruleAudit.legalMoveOnly = false;
         illegalSuggestion = true;
         correctionApplied = true;
-        const fallbackMove = pickFallbackMove(legalMoves);
+        const fallbackMove = pickFallbackMove(legalMoveOptions);
         const fallbackResult = chess.move(fallbackMove, { strict: true });
         if (!fallbackResult) {
           throw new Error(`Unable to apply legal move for ${gameId}`);
@@ -518,7 +482,7 @@ export class SequentialGameRunner {
         fenBefore,
         fenAfter,
         move: chosenMove,
-        legalMoves,
+        legalMoves: legalMoveOptions.map((m) => m.san),
         reasoning: options.trackReasoning ? detail.reasoning : '',
         confidence: options.trackConfidence ? detail.confidence : 0.5,
         cpl: clampedCpl,

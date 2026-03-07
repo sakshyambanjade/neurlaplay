@@ -113,6 +113,25 @@ export type PaperStatsSummary = {
     illegalSuggestionRate: number;
     correctionRate: number;
   };
+  compliance: {
+    totalMoves: number;
+    llmAcceptedMoves: number;
+    fallbackMoves: number;
+    llmMoveRate: number;
+    fallbackRate: number;
+    llmMoveRateBySide: {
+      white: number;
+      black: number;
+    };
+    fallbackRateBySide: {
+      white: number;
+      black: number;
+    };
+    invalidModelMoveAttempts: number;
+    gamesWithAnyLlmMove: number;
+    gamesWithOnlyFallback: number;
+    legalMoveOnlyGames: number;
+  };
 };
 
 export type PaperArtifacts = {

@@ -4,6 +4,11 @@ type OllamaResponse = {
   };
 };
 
+export type LegalMoveOption = {
+  san: string;
+  uci: string;
+};
+
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -34,20 +39,71 @@ function sanitizeReasoning(text: string): string {
   return trimmed.slice(0, 500);
 }
 
-function pickMoveFromText(text: string, legalMoves: string[]): string | null {
+function normalizeSan(move: string): string {
+  return move
+    .trim()
+    .replace(/[+#?!]+$/g, '')
+    .replace(/0-0-0/g, 'O-O-O')
+    .replace(/0-0/g, 'O-O');
+}
+
+function normalizeUci(move: string): string {
+  return move
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-h1-8qrbn]/g, '');
+}
+
+function tokenizeCandidates(text: string): string[] {
+  const picks: string[] = [];
+
+  const moveLine = text.match(/move\s*[:=]\s*([^\n\r]+)/i);
+  if (moveLine?.[1]) {
+    picks.push(moveLine[1].trim().split(/\s+/)[0] ?? '');
+  }
+
+  const firstToken = text.trim().split(/\s+/)[0] ?? '';
+  if (firstToken) {
+    picks.push(firstToken);
+  }
+
+  const allTokens = text.match(/[A-Za-z0-9=+#-]+/g) ?? [];
+  picks.push(...allTokens);
+  return picks.filter(Boolean);
+}
+
+function pickMoveFromText(text: string, legalMoves: LegalMoveOption[]): string | null {
   const compact = text.trim();
   if (!compact) {
     return null;
   }
 
-  const firstToken = compact.split(/\s+/)[0] ?? '';
-  if (legalMoves.includes(firstToken)) {
-    return firstToken;
+  const byUci = new Map<string, string>();
+  const bySan = new Map<string, string>();
+  for (const move of legalMoves) {
+    byUci.set(normalizeUci(move.uci), move.san);
+    bySan.set(normalizeSan(move.san), move.san);
   }
 
+  const candidates = tokenizeCandidates(compact);
+  for (const token of candidates) {
+    const asUci = byUci.get(normalizeUci(token));
+    if (asUci) {
+      return asUci;
+    }
+    const asSan = bySan.get(normalizeSan(token));
+    if (asSan) {
+      return asSan;
+    }
+  }
+
+  // Last chance: search full text for an exact legal token boundary.
   for (const move of legalMoves) {
-    if (new RegExp(`\\b${escapeRegExp(move)}\\b`).test(compact)) {
-      return move;
+    if (new RegExp(`\\b${escapeRegExp(move.uci)}\\b`, 'i').test(compact)) {
+      return move.san;
+    }
+    if (new RegExp(`\\b${escapeRegExp(move.san)}\\b`, 'i').test(compact)) {
+      return move.san;
     }
   }
 
@@ -58,20 +114,21 @@ export async function chooseMoveWithOllamaDetailed(
   baseUrl: string,
   model: string,
   fen: string,
-  legalMoves: string[],
+  legalMoves: LegalMoveOption[],
   timeoutMs: number
 ): Promise<OllamaMoveResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   const prompt = [
-    'You are a chess engine helper.',
+    'You are a chess move selector.',
     `FEN: ${fen}`,
-    `Choose one legal move from this list: ${legalMoves.join(', ')}`,
-    'Respond in two lines:',
-    'MOVE: <move>',
+    `Legal SAN moves: ${legalMoves.map((m) => m.san).join(', ')}`,
+    `Legal UCI moves: ${legalMoves.map((m) => m.uci).join(', ')}`,
+    'Return EXACTLY this format:',
+    'MOVE: <one legal UCI move from the list>',
     'CONFIDENCE: <0..1>',
-    'Then one short sentence explaining why.'
+    'REASON: <one short sentence>'
   ].join('\n');
 
   try {
@@ -119,7 +176,7 @@ export async function chooseMoveWithOllama(
   baseUrl: string,
   model: string,
   fen: string,
-  legalMoves: string[],
+  legalMoves: LegalMoveOption[],
   timeoutMs: number
 ): Promise<string | null> {
   const result = await chooseMoveWithOllamaDetailed(baseUrl, model, fen, legalMoves, timeoutMs);

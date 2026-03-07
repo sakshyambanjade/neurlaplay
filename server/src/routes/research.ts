@@ -173,13 +173,41 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
 
       const stats = artifacts.statsSummary;
       const paperOutput = {
+        generatedAt: new Date().toISOString(),
+        framing: {
+          headline: 'Zero-shot LLM chess move compliance',
+          summary:
+            'This run measures legal move compliance and fallback dependence before interpreting playing strength metrics.'
+        },
         totalGames: stats.totalGames,
-        whiteWinRate: stats.whiteWinRate.toFixed(3),
-        avgGameLength:
-          runResult.games.length > 0
-            ? (runResult.games.reduce((sum, game) => sum + game.moveCount, 0) / runResult.games.length).toFixed(1)
-            : '0.0',
-        dataPath: './research'
+        models: {
+          white: whiteModel,
+          black: blackModel
+        },
+        outcomes: {
+          whiteWins: stats.whiteWins,
+          blackWins: stats.blackWins,
+          draws: stats.draws,
+          whiteWinRate: stats.whiteWinRate,
+          blackWinRate: stats.blackWinRate,
+          drawRate: stats.drawRate,
+          confidenceInterval95: stats.confidenceInterval95,
+          pValueWhiteVsBlack: stats.pValueWhiteVsBlack
+        },
+        quality: {
+          avgCpl: stats.avgCpl,
+          blunderRate: stats.blunderRate,
+          phasePerformance: stats.phasePerformance,
+          cplSourceOfTruth: 'paper-stats.json.stats.avgCpl.overall'
+        },
+        compliance: stats.compliance,
+        reliability: stats.reliability,
+        dataPath: './research',
+        sourceOfTruth: {
+          stats: './research/paper-stats.json',
+          datapoints: './research/paper-datapoints.json',
+          games: './research/all-games.pgn'
+        }
       };
 
       fs.writeFileSync(path.resolve(process.cwd(), '../research/paper-results.json'), JSON.stringify(paperOutput, null, 2));
