@@ -2,8 +2,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { GamePaperSummary, GamePhase, PaperArtifacts, PaperDatapoint, PaperStatsSummary } from './types.js';
 
-const BLUNDER_THRESHOLD_CPL = 200;
-
 function average(values: number[]): number {
   if (values.length === 0) {
     return 0;
@@ -35,11 +33,26 @@ function clamp01(value: number): number {
 export class PaperDataCollector {
   private readonly datapoints: PaperDatapoint[] = [];
   private readonly gameSummaries: GamePaperSummary[] = [];
+  private readonly blunderThresholdCpl: number;
+  private readonly stockfishEvalDepth: number;
+  private readonly stockfishEngine: string;
+  private readonly runManifestRef: string;
 
   constructor(
     private readonly whiteModel: string,
-    private readonly blackModel: string
-  ) {}
+    private readonly blackModel: string,
+    opts: {
+      blunderThresholdCpl?: number;
+      stockfishEvalDepth?: number;
+      stockfishEngine?: string;
+      runManifestRef?: string;
+    } = {}
+  ) {
+    this.blunderThresholdCpl = Math.max(1, Math.floor(opts.blunderThresholdCpl ?? 200));
+    this.stockfishEvalDepth = Math.max(1, Math.floor(opts.stockfishEvalDepth ?? 10));
+    this.stockfishEngine = opts.stockfishEngine?.trim() || 'stockfish-17.1-lite';
+    this.runManifestRef = opts.runManifestRef?.trim() || 'run_manifest.json';
+  }
 
   addDatapoint(point: PaperDatapoint): void {
     this.datapoints.push(point);
@@ -120,9 +133,9 @@ export class PaperDataCollector {
     const avgCplBlack = average(blackMoves.map((d) => d.cpl));
     const avgCplOverall = average(this.datapoints.map((d) => d.cpl));
 
-    const blundersWhite = whiteMoves.filter((d) => d.cpl >= BLUNDER_THRESHOLD_CPL).length;
-    const blundersBlack = blackMoves.filter((d) => d.cpl >= BLUNDER_THRESHOLD_CPL).length;
-    const blundersAll = this.datapoints.filter((d) => d.cpl >= BLUNDER_THRESHOLD_CPL).length;
+    const blundersWhite = whiteMoves.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
+    const blundersBlack = blackMoves.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
+    const blundersAll = this.datapoints.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
 
     const phasePerformance = {
       opening: average(this.datapoints.filter((d) => d.gamePhase === 'opening').map((d) => d.cpl)),
@@ -210,6 +223,12 @@ export class PaperDataCollector {
       JSON.stringify(
         {
           generatedAt: new Date().toISOString(),
+          eval_settings: {
+            engine: this.stockfishEngine,
+            depth: this.stockfishEvalDepth,
+            blunder_threshold_cp: this.blunderThresholdCpl,
+            run_manifest_ref: this.runManifestRef
+          },
           stats,
           games: this.gameSummaries
         },

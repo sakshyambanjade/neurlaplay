@@ -7,6 +7,13 @@ export class StockfishAnalyzer {
   private initialized = false;
   private outputBuffer: string = '';
   private messageHandlers: ((line: string) => void)[] = [];
+  private analysisDepth = 10;
+
+  setAnalysisDepth(depth: number): void {
+    if (Number.isFinite(depth) && depth > 0) {
+      this.analysisDepth = Math.floor(depth);
+    }
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -118,7 +125,7 @@ export class StockfishAnalyzer {
 
       // Start analysis
       this.sendCommand(`position fen ${fenBefore}`);
-      this.sendCommand('go depth 10');
+      this.sendCommand(`go depth ${this.analysisDepth}`);
     });
   }
 

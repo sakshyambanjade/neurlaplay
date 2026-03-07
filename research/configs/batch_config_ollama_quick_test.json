@@ -11,6 +11,8 @@
     "gameTimeoutMs": 300000,
     "moveDelayMs": 50,
     "interGameDelayMs": 200,
-    "exportInterval": 5
+    "exportInterval": 5,
+    "stockfishEvalDepth": 10,
+    "blunderThresholdCp": 200
   }
 }

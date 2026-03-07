@@ -71,7 +71,12 @@ async function main() {
 
   const baseUrl = process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
   const runner = new SequentialGameRunner(baseUrl);
-  const collector = new PaperDataCollector(whiteModel, blackModel);
+  const collector = new PaperDataCollector(whiteModel, blackModel, {
+    blunderThresholdCpl: config.settings.blunderThresholdCp,
+    stockfishEvalDepth: config.settings.stockfishEvalDepth,
+    stockfishEngine: 'stockfish-17.1-lite',
+    runManifestRef: 'run_manifest.json'
+  });
 
   console.log(`PAPER MODE: ${games} games ${whiteModel} vs ${blackModel}`);
 

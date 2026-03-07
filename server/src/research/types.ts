@@ -12,6 +12,8 @@ export type BatchConfig = {
     moveDelayMs: number;
     interGameDelayMs: number;
     exportInterval: number;
+    stockfishEvalDepth?: number;
+    blunderThresholdCp?: number;
   };
 };
 

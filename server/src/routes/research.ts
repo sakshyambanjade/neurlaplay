@@ -111,7 +111,12 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
       };
 
       const paperOutputDir = path.resolve(process.cwd(), '../research');
-      const collector = new PaperDataCollector(whiteModel, blackModel);
+      const collector = new PaperDataCollector(whiteModel, blackModel, {
+        blunderThresholdCpl: config.settings.blunderThresholdCp,
+        stockfishEvalDepth: config.settings.stockfishEvalDepth,
+        stockfishEngine: 'stockfish-17.1-lite',
+        runManifestRef: 'run_manifest.json'
+      });
 
       broadcast('batch-status', {
         status: 'running',
@@ -239,7 +244,12 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
       };
 
       const paperOutputDir = path.resolve(process.cwd(), '../research');
-      const collector = new PaperDataCollector(whiteModel, blackModel);
+      const collector = new PaperDataCollector(whiteModel, blackModel, {
+        blunderThresholdCpl: config.settings.blunderThresholdCp,
+        stockfishEvalDepth: config.settings.stockfishEvalDepth,
+        stockfishEngine: 'stockfish-17.1-lite',
+        runManifestRef: 'run_manifest.json'
+      });
 
       // Send immediate response
       res.json({ success: true, message: 'Live batch started!', totalGames });

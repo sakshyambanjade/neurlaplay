@@ -161,6 +161,7 @@ export class SequentialGameRunner {
   }) = null;
   private paperResults: PaperResults | null = null;
   private stockfishAnalyzer: StockfishAnalyzer | null = null;
+  private stockfishEvalDepth = 10;
 
   constructor(private readonly ollamaBaseUrl: string) {
     this.stockfishAnalyzer = new StockfishAnalyzer();
@@ -306,6 +307,12 @@ export class SequentialGameRunner {
     await mkdir(outDir, { recursive: true });
     const outputFile = path.join(outDir, `paper-research-match-${Date.now()}.json`);
     const exportEvery = Math.max(1, config.settings.exportInterval || 1);
+    const blunderThresholdCp = Math.max(1, Math.floor(config.settings.blunderThresholdCp ?? 200));
+    this.stockfishEvalDepth = Math.max(1, Math.floor(config.settings.stockfishEvalDepth ?? 10));
+
+    if (this.stockfishAnalyzer) {
+      this.stockfishAnalyzer.setAnalysisDepth(this.stockfishEvalDepth);
+    }
     
     // Initialize paper results collector
     this.paperResults = new PaperResults(config.models.white, config.models.black);
@@ -348,7 +355,10 @@ export class SequentialGameRunner {
           totalMoves: game.moveCount,
           durationMs: Date.now() - gameStartTime,
           avgCPL: (game.averageCplWhite + game.averageCplBlack) / 2,
-          blunders: Math.floor((game.averageCplWhite > 200 ? 1 : 0) + (game.averageCplBlack > 200 ? 1 : 0)),
+          blunders: Math.floor(
+            (game.averageCplWhite >= blunderThresholdCp ? 1 : 0) +
+            (game.averageCplBlack >= blunderThresholdCp ? 1 : 0)
+          ),
           gamePhases: {
             openingMoves: Math.min(15, game.moveCount),
             midgameMoves: Math.max(0, Math.min(35, game.moveCount - 15)),
@@ -467,6 +477,8 @@ export class SequentialGameRunner {
       }
 
       const materialBalance = estimateMaterialBalance(chess);
+      const blunderThresholdCp = Math.max(1, Math.floor(config.settings.blunderThresholdCp ?? 200));
+
       const datapoint: PaperDatapoint = {
         gameId,
         gameIndex,
@@ -483,7 +495,7 @@ export class SequentialGameRunner {
         cpl: clampedCpl,
         gamePhase: inferGamePhase(moveNumber),
         materialBalance,
-        isCritical: clampedCpl >= 200,
+        isCritical: clampedCpl >= blunderThresholdCp,
         winProbability: estimateWinProbability(materialBalance),
         illegalSuggestion,
         correctionApplied
@@ -521,6 +533,7 @@ export class SequentialGameRunner {
     if (this.stockfishAnalyzer) {
       try {
         await this.stockfishAnalyzer.initialize();
+        this.stockfishAnalyzer.setAnalysisDepth(this.stockfishEvalDepth);
         const cpl = await this.stockfishAnalyzer.computeCPL(fenBefore, move);
         return cpl;
       } catch (error) {
@@ -651,7 +664,7 @@ export class SequentialGameRunner {
 
       engine.postMessage('uci');
       engine.postMessage(`position fen ${fen}`);
-      engine.postMessage('go depth 10');
+      engine.postMessage(`go depth ${this.stockfishEvalDepth}`);
     });
   }
 }

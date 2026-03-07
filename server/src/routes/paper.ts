@@ -103,7 +103,9 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
             gameTimeoutMs: 600000, // 10 min per game
             moveDelayMs: 100, // Reduced from 500ms to 100ms
             interGameDelayMs: 200, // Reduced from 1000ms to 200ms
-            exportInterval: 25 // Export less frequently
+            exportInterval: 25, // Export less frequently
+            stockfishEvalDepth: cfg.stockfishEvalDepth,
+            blunderThresholdCp: cfg.blunderThresholdCp
           }
         };
 
