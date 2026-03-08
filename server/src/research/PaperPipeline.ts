@@ -82,7 +82,16 @@ function updateStatus(status: RunStatus, step: string, progress: number, total: 
 function runPython(script: string, args: string[], runId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     log(runId, `Running: python ${script} ${args.join(" ")}`);
-    const proc = spawn("python", [script, ...args]);
+    const workDir = path.resolve(process.cwd(), "..");
+    
+    // Try to use venv Python if it exists
+    const venvPythonWindows = path.join(workDir, ".venv", "Scripts", "python.exe");
+    const pythonExe = fs.existsSync(venvPythonWindows) ? venvPythonWindows : "python";
+    
+    const proc = spawn(pythonExe, [script, ...args], {
+      cwd: workDir,
+      shell: true
+    });
     proc.stdout.on("data", d => log(runId, d.toString().trim()));
     proc.stderr.on("data", d => log(runId, `[stderr] ${d.toString().trim()}`));
     proc.on("close", code => {
@@ -139,13 +148,20 @@ async function mergePGNs(runId: string): Promise<string> {
     .map(f => path.join(runDir, f));
 
   const masterPath = path.join(runDir, "all-games.pgn");
-  const out = fs.createWriteStream(masterPath);
 
-  for (const pgn of pgns) {
-    const content = fs.readFileSync(pgn, "utf8");
-    out.write(content + "\n");
-  }
-  out.end();
+  // Wait for write stream to finish before copying
+  await new Promise<void>((resolve, reject) => {
+    const out = fs.createWriteStream(masterPath);
+    
+    for (const pgn of pgns) {
+      const content = fs.readFileSync(pgn, "utf8");
+      out.write(content + "\n");
+    }
+    
+    out.end();
+    out.on('finish', () => resolve());
+    out.on('error', reject);
+  });
 
   // Also write to canonical research/all-games-v2.pgn
   const canonical = "research/all-games-v2.pgn";
@@ -212,24 +228,25 @@ export async function startPaperRun(
     updateStatus(status, "Merging PGNs", gamesCompleted, status.total);
     const masterPgn = await mergePGNs(runId);
 
-    // 4. Python tension pipeline
-    const positionsCSV = path.join(runDir, "positions.csv");
-    const perPlyCSV    = path.join(runDir, "tension_per_ply.csv");
-    const perGameCSV   = path.join(runDir, "tension_per_game.csv");
+    // 4. Python tension pipeline - convert paths to absolute
+    const positionsCSV = path.resolve(runDir, "positions.csv");
+    const perPlyCSV    = path.resolve(runDir, "tension_per_ply.csv");
+    const perGameCSV   = path.resolve(runDir, "tension_per_game.csv");
+    const masterPgnAbsolute = path.resolve(masterPgn);
 
     updateStatus(status, "Parsing positions", gamesCompleted, status.total);
-    await runPython("research/tension/pgn_to_positions.py", [masterPgn, positionsCSV], runId);
+    await runPython("research/tension/pgn_to_positions.py", [masterPgnAbsolute, positionsCSV], runId);
 
     updateStatus(status, "Computing tension", gamesCompleted, status.total);
     await runPython("research/tension/compute_tension_dataset.py", [positionsCSV, perPlyCSV, perGameCSV], runId);
 
     // 5. Human baseline tension (if downloaded)
-    const humanPgn = "research/baselines/humans/lichess_1400_1600_rapid.pgn";
+    const humanPgn = path.resolve("research/baselines/humans/lichess_1400_1600_rapid.pgn");
     if (fs.existsSync(humanPgn)) {
       updateStatus(status, "Processing human baseline", gamesCompleted, status.total);
-      const humanPos  = path.join(runDir, "human_positions.csv");
-      const humanPly  = path.join(runDir, "human_tension_per_ply.csv");
-      const humanGame = path.join(runDir, "human_tension_per_game.csv");
+      const humanPos  = path.resolve(runDir, "human_positions.csv");
+      const humanPly  = path.resolve(runDir, "human_tension_per_ply.csv");
+      const humanGame = path.resolve(runDir, "human_tension_per_game.csv");
       await runPython("research/tension/pgn_to_positions.py",     [humanPgn, humanPos], runId);
       await runPython("research/tension/compute_tension_dataset.py", [humanPos, humanPly, humanGame], runId);
       log(runId, "✅ Human baseline tension computed");
@@ -239,7 +256,7 @@ export async function startPaperRun(
 
     // 6. Validate metrics
     updateStatus(status, "Validating metrics", gamesCompleted, status.total);
-    await runPython("research/validate_metrics.py", [runDir], runId);
+    await runPython("research/validate_metrics.py", [path.resolve(runDir)], runId);
 
     // 7. Generate figures
     updateStatus(status, "Generating figures", gamesCompleted, status.total);
