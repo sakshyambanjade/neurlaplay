@@ -5,17 +5,14 @@ import { Chessboard } from "react-chessboard";
 const API = "http://localhost:3001";
 
 const PRESET_MATRIX = [
-  { white: "tinyllama:latest", black: "tinyllama:latest", games: 333, label: "tinyllama vs tinyllama" },
-  { white: "phi3:latest",      black: "phi3:latest",      games: 333, label: "phi3 vs phi3" },
-  { white: "tinyllama:latest", black: "phi3:latest",      games: 333, label: "tinyllama vs phi3 (A)" },
-  { white: "phi3:latest",      black: "tinyllama:latest", games: 333, label: "phi3 vs tinyllama (B)" },
-  { white: "llama3.1:8b",      black: "phi3:latest",      games: 334, label: "llama3.1 vs phi3" },
-  { white: "llama3.1:8b",      black: "tinyllama:latest", games: 334, label: "llama3.1 vs tinyllama" },
+  { white: "tinyllama:latest", black: "phi3:latest",      games: 100, label: "tinyllama vs phi3" },
+  { white: "mistral:7b",       black: "tinyllama:latest", games: 50,  label: "mistral control vs tinyllama" },
+  { white: "mistral:7b",       black: "phi3:latest",      games: 50,  label: "mistral control vs phi3" },
 ];
 
 const DEFAULT_CONFIG = {
   matchups: PRESET_MATRIX,
-  paperAngle: "option_a_tension",
+  paperAngle: "option_b_capability",
   seed: 42,
   temperature: 0.0,
   topP: 0.9,
@@ -229,7 +226,7 @@ export default function PaperRun() {
   return (
     <div style={{ padding: 32, maxWidth: 1600, margin: "0 auto", fontFamily: "monospace", background: "#0a0a0a", minHeight: "100vh", color: "#fff" }}>
       <h1 style={{ fontSize: 36, marginBottom: 32, textAlign: "center" }}>
-        ♟️ Live Chess Research - 2000 Game Run
+        ♟️ Live Chess Research Run
       </h1>
 
       <div style={{ display: "grid", gridTemplateColumns: "600px 1fr", gap: 32, marginBottom: 32 }}>
@@ -371,7 +368,7 @@ export default function PaperRun() {
                 boxShadow: "0 6px 20px rgba(102, 126, 234, 0.5)",
                 transition: "all 0.3s"
               }}>
-              {runId && !status?.done ? "🎮 Games Running..." : "🚀 Start 2000 Game Run"}
+              {runId && !status?.done ? "🎮 Games Running..." : `🚀 Start ${totalGames} Game Run`}
             </button>
 
             <button
