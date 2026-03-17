@@ -1,0 +1,24 @@
+{
+  "paperAngle": "frontier_baseline",
+  "matchups": [
+    {
+      "white": "llama3.1:8b",
+      "black": "tinyllama:latest",
+      "games": 20,
+      "label": "llama3.1-8b vs tinyllama"
+    },
+    {
+      "white": "qwen2.5:7b",
+      "black": "tinyllama:latest",
+      "games": 20,
+      "label": "qwen2.5-7b vs tinyllama"
+    }
+  ],
+  "seed": 42,
+  "temperature": 0.0,
+  "topP": 0.9,
+  "maxTokens": 128,
+  "contextPolicy": "full_pgn_history",
+  "stockfishEvalDepth": 8,
+  "blunderThresholdCp": 200
+}

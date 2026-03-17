@@ -6,11 +6,15 @@ Figures 4-8: New strategic analysis figures
 """
 
 import json
+import sys
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from collections import defaultdict
 from pathlib import Path
+
+sys.path.insert(0, 'research/tension')
+from tension_graph import compute_tension
 
 # Publication style
 plt.style.use('seaborn-v0_8-paper')
@@ -33,41 +37,90 @@ def load_games_from_jsonl(jsonl_path):
     return games
 
 def load_datapoints(json_path):
-    """Load position-level datapoints with CPL and other metrics."""
+    """Load position-level datapoints with move-level metrics."""
     with open(json_path, 'r') as f:
         return json.load(f)
+
+def load_tension_data(tension_path='research/tension_computed.json'):
+    """Load precomputed spectral tension (λ_max) values."""
+    with open(tension_path, 'r') as f:
+        return json.load(f)
+
+def attach_tension_to_datapoints(datapoints, tension_data):
+    """
+    Align λ_max values onto datapoints.
+    Supports either list-aligned data or fen-keyed dict/list entries.
+    """
+    def extract(entry):
+        if isinstance(entry, dict):
+            if 'T' in entry:
+                return entry['T']
+            if 'tension' in entry:
+                return entry['tension']
+            if 'lambda' in entry:
+                return entry['lambda']
+        return entry
+
+    # If data is a list with same length, align by index.
+    if isinstance(tension_data, list) and len(tension_data) == len(datapoints):
+        for dp, td in zip(datapoints, tension_data):
+            dp['tension'] = extract(td)
+        return
+
+    # If dict keyed by FEN.
+    if isinstance(tension_data, dict):
+        for dp in datapoints:
+            fen_key = dp.get('fenAfter') or dp.get('fenBefore')
+            if fen_key and fen_key in tension_data:
+                dp['tension'] = extract(tension_data[fen_key])
+        return
+
+    # If list of dicts with fen keys.
+    if isinstance(tension_data, list) and tension_data and isinstance(tension_data[0], dict):
+        lookup = {}
+        for entry in tension_data:
+            fen_key = entry.get('fen') or entry.get('fenAfter') or entry.get('fenBefore')
+            if fen_key:
+                lookup[fen_key] = extract(entry)
+        if lookup:
+            for dp in datapoints:
+                fen_key = dp.get('fenAfter') or dp.get('fenBefore')
+                if fen_key in lookup:
+                    dp['tension'] = lookup[fen_key]
+            return
+
+    raise ValueError("Unable to align tension data with datapoints; check tension_computed.json format.")
 
 def figure4_tension_distribution(datapoints, output_path):
     """
     Figure 4: Strategic Tension Score Distribution
-    Using CPL (centipawn loss) as proxy for strategic complexity
+    Uses spectral tension (λ_max) computed from tension_graph.
     """
-    # Extract CPL values (tension proxy)
-    cpls = [dp['cpl'] for dp in datapoints if dp.get('cpl') is not None]
+    tensions = [dp['tension'] for dp in datapoints if dp.get('tension') is not None]
     
     # Cap extreme outliers for better visualization
-    cpls_capped = [min(cpl, 1000) for cpl in cpls]
+    tensions_capped = [min(t, 1000) for t in tensions]
     
     fig, ax = plt.subplots(figsize=(12, 7))
     
     # Create histogram with KDE overlay
-    n, bins, patches = ax.hist(cpls_capped, bins=50, density=True, 
+    n, bins, patches = ax.hist(tensions_capped, bins=50, density=True, 
                                 alpha=0.7, color='#3498db', edgecolor='black', linewidth=0.5)
     
     # Add KDE curve
     from scipy.stats import gaussian_kde
-    kde = gaussian_kde(cpls_capped)
-    x_range = np.linspace(min(cpls_capped), max(cpls_capped), 200)
+    kde = gaussian_kde(tensions_capped)
+    x_range = np.linspace(min(tensions_capped), max(tensions_capped), 200)
     ax.plot(x_range, kde(x_range), 'r-', linewidth=2, label='KDE')
     
-    ax.set_xlabel('Strategic Tension Score (CPL)', fontweight='bold')
+    ax.set_xlabel('Strategic Tension Score (λ_max)', fontweight='bold')
     ax.set_ylabel('Density', fontweight='bold')
     ax.set_title('Strategic Tension Score Distribution Across All Positions', fontweight='bold', pad=20)
     ax.legend()
     ax.grid(alpha=0.3, linestyle='--')
     
     # Add statistics box
-    stats_text = f'Mean: {np.mean(cpls_capped):.1f}\\nMedian: {np.median(cpls_capped):.1f}\\nStd: {np.std(cpls_capped):.1f}'
+    stats_text = f'Mean: {np.mean(tensions_capped):.1f}\\nMedian: {np.median(tensions_capped):.1f}\\nStd: {np.std(tensions_capped):.1f}'
     ax.text(0.95, 0.95, stats_text, transform=ax.transAxes,
             fontsize=10, verticalalignment='top', horizontalalignment='right',
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
@@ -85,16 +138,16 @@ def figure5_accuracy_vs_tension(datapoints, output_path):
     # Group by model and tension bins
     model_data = defaultdict(lambda: defaultdict(lambda: {'valid': 0, 'total': 0}))
     
-    # Define tension bins (CPL ranges)
+    # Define tension bins (λ_max ranges)
     bins = [0, 50, 100, 200, 400, 800, 10000]
     bin_labels = ['0-50', '50-100', '100-200', '200-400', '400-800', '800+']
     
     for dp in datapoints:
         model = dp.get('model', '').split(':')[0]
-        cpl = dp.get('cpl', 0)
+        tension = dp.get('tension', 0)
         
         # Determine bin
-        bin_idx = np.digitize([cpl], bins)[0] - 1
+        bin_idx = np.digitize([tension], bins)[0] - 1
         if bin_idx >= len(bin_labels):
             bin_idx = len(bin_labels) - 1
         
@@ -128,7 +181,7 @@ def figure5_accuracy_vs_tension(datapoints, output_path):
                 linewidth=2, markersize=8, label=model.capitalize(),
                 color=colors.get(model, '#000000'))
     
-    ax.set_xlabel('Strategic Tension Score (CPL bins)', fontweight='bold')
+    ax.set_xlabel('Strategic Tension Score (λ_max bins)', fontweight='bold')
     ax.set_ylabel('Valid Move Generation Rate (%)', fontweight='bold')
     ax.set_title('Model Accuracy vs. Strategic Tension Score', fontweight='bold', pad=20)
     ax.legend(title='Model', frameon=True, shadow=True)
@@ -150,9 +203,9 @@ def figure6_tension_by_phase(datapoints, output_path):
     
     for dp in datapoints:
         phase = dp.get('gamePhase', 'unknown')
-        cpl = dp.get('cpl')
-        if cpl is not None:
-            phase_cpls[phase].append(min(cpl, 1000))  # Cap outliers
+        tension = dp.get('tension')
+        if tension is not None:
+            phase_cpls[phase].append(min(tension, 1000))  # Cap outliers
     
     phases = ['opening', 'middlegame', 'endgame']
     means = [np.mean(phase_cpls[p]) if phase_cpls[p] else 0 for p in phases]
@@ -164,7 +217,7 @@ def figure6_tension_by_phase(datapoints, output_path):
     bars = ax.bar(phases, means, yerr=stds, capsize=10, 
                    color=colors, edgecolor='black', linewidth=1.5, alpha=0.8)
     
-    ax.set_ylabel('Mean Strategic Tension Score (CPL)', fontweight='bold')
+    ax.set_ylabel('Mean Strategic Tension Score (λ_max)', fontweight='bold')
     ax.set_title('Strategic Tension Across Game Phases', fontweight='bold', pad=20)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     
@@ -332,9 +385,20 @@ def main():
         datapoints = load_datapoints(datapoints_path)
         print(f"   ✓ Loaded {len(datapoints)} position datapoints")
     
-    if not games or not datapoints:
+    tension_data = []
+    tension_path = Path('research/tension_computed.json')
+    if tension_path.exists():
+        tension_data = load_tension_data(tension_path)
+        print(f"   ✓ Loaded {len(tension_data)} tension datapoints from {tension_path}")
+    else:
+        print("❌ Missing tension data file: research/tension_computed.json")
+
+    if not games or not datapoints or not tension_data:
         print("❌ Missing required data files!")
         return
+
+    attach_tension_to_datapoints(datapoints, tension_data)
+    print("   ✓ Attached spectral tension (λ_max) to datapoints")
     
     # Create output directory
     output_dir = Path('plots')

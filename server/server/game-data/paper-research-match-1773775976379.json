@@ -1,0 +1,400 @@
+{
+  "summary": {
+    "completedGames": 10,
+    "totalGames": 50,
+    "totalDurationMs": 3056414,
+    "startedAt": "2026-03-17T19:32:56.350Z",
+    "lastCheckpointAt": "2026-03-17T20:23:52.764Z",
+    "whiteModel": "tinyllama:latest",
+    "blackModel": "phi3:latest",
+    "status": "in_progress"
+  },
+  "games": [
+    {
+      "gameId": "paper-game-001",
+      "gameIndex": 1,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1-0",
+      "termination": "timeout_white_ahead",
+      "moveCount": 50,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e3 b6 2. f4 Bb7 3. Qh5 e5 4. Ba6 Ke7 5. e4 Qe8 6. Nf3 c6 7. Nxe5 Qd8 8. f5 Ke8 9. Qxh7 Qh4+ 10. g3 d5 11. d3 Qxg3+ 12. Kf1 Bxa6 13. Qh5 Bd6 14. Qh4 Bb7 15. Nd2 Bb4 16. Nd7 dxe4 17. Qxg3 Rh6 18. Nxe4 c5 19. Qg1 a6 20. d4 Ke7 21. Nd6 b5 22. Qg3 Nf6 23. Rb1 Ba3 24. Bg5 Bg2+ 25. Ke1 Rh5 *",
+      "startedAt": "2026-03-17T19:32:56.381Z",
+      "endedAt": "2026-03-17T19:37:57.514Z",
+      "averageCplWhite": 703.72,
+      "averageCplBlack": 717.6,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 46,
+        "invalidModelMoveAttempts": 46,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 27,
+          "unparseable": 9,
+          "wrong_format": 9,
+          "pseudo_legal_or_illegal": 1
+        },
+        "bindingAttemptCount": 46,
+        "bindingBoundCountTotal": 11,
+        "bindingComponentHits": {
+          "piece": 10,
+          "origin": 0,
+          "destination": 1,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-002",
+      "gameIndex": 2,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1/2-1/2",
+      "termination": "timeout_draw",
+      "moveCount": 54,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e4 g6 2. c4 d5 3. b4 f6 4. cxd5 e6 5. Bb2 f5 6. Be2 b5 7. Nh3 Bd6 8. Kf1 Qd7 9. Bg7 Qxg7 10. Bg4 Be7 11. d4 Bh4 12. Qe1 Ke7 13. a3 Na6 14. Ra2 Bf6 15. Kg1 Nxb4 16. Qxb4+ Ke8 17. Qb3 Qf7 18. Qf3 Qd7 19. Bh5 Kf7 20. Qe2 c6 21. Qe3 a6 22. Kf1 Ne7 23. Qc1 Ng8 24. f4 Ke7 25. e5 Nh6 26. Qe1 Ke8 27. Qc1 Be7 *",
+      "startedAt": "2026-03-17T19:37:57.958Z",
+      "endedAt": "2026-03-17T19:43:03.269Z",
+      "averageCplWhite": 359.6666666666667,
+      "averageCplBlack": 489.48148148148147,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 51,
+        "invalidModelMoveAttempts": 51,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 27,
+          "unparseable": 12,
+          "wrong_format": 11,
+          "pseudo_legal_or_illegal": 1
+        },
+        "bindingAttemptCount": 51,
+        "bindingBoundCountTotal": 17,
+        "bindingComponentHits": {
+          "piece": 16,
+          "origin": 0,
+          "destination": 1,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-003",
+      "gameIndex": 3,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1-0",
+      "termination": "timeout_white_ahead",
+      "moveCount": 54,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e4 Na6 2. a3 Rb8 3. Be2 f5 4. g3 h5 5. e5 Ra8 6. Bc4 Nb4 7. Qxh5+ Rxh5 8. b3 b5 9. Kf1 g6 10. Ke1 c6 11. e6 Qa5 12. f3 Bg7 13. Kf2 Bc3 14. d4 Bb7 15. Kg2 Rg5 16. Nxc3 Rb8 17. Bxb5 Ba8 18. Na4 Kd8 19. f4 Qxb5 20. Kf2 Kc7 21. d5 Rh5 22. Bd2 Rh4 23. Rd1 cxd5 24. Bxb4 Qe2+ 25. Nxe2 Rb5 26. Kg2 g5 27. Bc5 Rh3 *",
+      "startedAt": "2026-03-17T19:43:03.527Z",
+      "endedAt": "2026-03-17T19:48:12.187Z",
+      "averageCplWhite": 661.1111111111111,
+      "averageCplBlack": 754.2962962962963,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 51,
+        "invalidModelMoveAttempts": 51,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 27,
+          "unparseable": 15,
+          "wrong_format": 7,
+          "pseudo_legal_or_illegal": 2
+        },
+        "bindingAttemptCount": 51,
+        "bindingBoundCountTotal": 22,
+        "bindingComponentHits": {
+          "piece": 20,
+          "origin": 0,
+          "destination": 2,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-004",
+      "gameIndex": 4,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1-0",
+      "termination": "timeout_white_ahead",
+      "moveCount": 54,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e4 f6 2. Nc3 d5 3. Bd3 e5 4. Nb5 Bg4 5. Qxg4 c5 6. Nc3 Ne7 7. Qf4 Ng8 8. Qg5 f5 9. exf5 Qc8 10. Nh3 e4 11. Bxe4 Qc7 12. a3 Be7 13. Qf4 Qc6 14. d3 b5 15. g4 Bd8 16. Rb1 Ba5 17. Qd2 a6 18. Qg5 Qg6 19. f3 Bb4 20. Qd2 a5 21. Na2 Qd6 22. Kf2 Qe6 23. g5 dxe4 24. Re1 Qf7 25. Nc3 h5 26. gxh6 g5 27. h7 Qc4 *",
+      "startedAt": "2026-03-17T19:48:12.941Z",
+      "endedAt": "2026-03-17T19:53:22.589Z",
+      "averageCplWhite": 862.074074074074,
+      "averageCplBlack": 647.4814814814815,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 1,
+        "promotions": 0,
+        "fallbackMovesUsed": 52,
+        "invalidModelMoveAttempts": 52,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 27,
+          "unparseable": 8,
+          "wrong_format": 16,
+          "pseudo_legal_or_illegal": 1
+        },
+        "bindingAttemptCount": 52,
+        "bindingBoundCountTotal": 17,
+        "bindingComponentHits": {
+          "piece": 16,
+          "origin": 0,
+          "destination": 1,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-005",
+      "gameIndex": 5,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1-0",
+      "termination": "timeout_white_ahead",
+      "moveCount": 44,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e4 a5 2. d4 Nc6 3. Nf3 Nf6 4. Ng1 a4 5. Nh3 Ra5 6. Bc4 Nxe4 7. Kf1 d6 8. f3 Bd7 9. Ke1 b5 10. Nf4 Qb8 11. Be3 e6 12. Be2 h5 13. Qd2 Qd8 14. fxe4 Qa8 15. Bf2 Na7 16. Qe3 b4 17. Bg3 Nb5 18. h3 Qb7 19. Nd5 h4 20. Kf2 Rh7 21. Nxb4 Qa7 22. Bxb5 c5 *",
+      "startedAt": "2026-03-17T19:53:22.925Z",
+      "endedAt": "2026-03-17T19:58:24.690Z",
+      "averageCplWhite": 345.1363636363636,
+      "averageCplBlack": 425.95454545454544,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 43,
+        "invalidModelMoveAttempts": 43,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 27,
+          "unparseable": 6,
+          "wrong_format": 6,
+          "pseudo_legal_or_illegal": 4
+        },
+        "bindingAttemptCount": 43,
+        "bindingBoundCountTotal": 13,
+        "bindingComponentHits": {
+          "piece": 9,
+          "origin": 0,
+          "destination": 4,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-006",
+      "gameIndex": 6,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "0-1",
+      "termination": "timeout_black_ahead",
+      "moveCount": 31,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. Nh3 g5 2. Na3 a5 3. e3 b5 4. Qh5 Nf6 5. Qf3 Ra6 6. Be2 e6 7. c4 Nh5 8. Qd5 Qe7 9. Bxh5 exd5 10. Kd1 c6 11. Rf1 Qd8 12. Ke1 b4 13. Rg1 d4 14. Bf3 Qe7 15. g4 Bg7 16. Nc2 *",
+      "startedAt": "2026-03-17T19:58:24.944Z",
+      "endedAt": "2026-03-17T20:03:29.341Z",
+      "averageCplWhite": 616.625,
+      "averageCplBlack": 639.7333333333333,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 31,
+        "invalidModelMoveAttempts": 31,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 30,
+          "wrong_format": 1
+        },
+        "bindingAttemptCount": 31,
+        "bindingBoundCountTotal": 1,
+        "bindingComponentHits": {
+          "piece": 1,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-007",
+      "gameIndex": 7,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1-0",
+      "termination": "timeout_white_ahead",
+      "moveCount": 30,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. h4 Na6 2. c4 Nc5 3. e3 a5 4. Qg4 d6 5. b4 d5 6. Qe2 Bg4 7. Qd1 Bf3 8. Bd3 Bh5 9. Bxh7 f6 10. Na3 e5 11. Be4 a4 12. Qc2 Ra5 13. bxa5 b6 14. Bxd5 Rh7 15. Qb1 Rh6 *",
+      "startedAt": "2026-03-17T20:03:29.640Z",
+      "endedAt": "2026-03-17T20:08:32.863Z",
+      "averageCplWhite": 489.8666666666667,
+      "averageCplBlack": 571.7333333333333,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 30,
+        "invalidModelMoveAttempts": 30,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 30
+        },
+        "bindingAttemptCount": 30,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-008",
+      "gameIndex": 8,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1/2-1/2",
+      "termination": "timeout_draw",
+      "moveCount": 30,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. Nh3 Nc6 2. Ng5 Ne5 3. Rg1 Nc4 4. h3 Nh6 5. e3 Rg8 6. Nxh7 f6 7. h4 a6 8. Qe2 Nb6 9. Qg4 a5 10. Bb5 Nf5 11. Nc3 Nd6 12. Nxf6+ gxf6 13. Qe4 Nf5 14. Qd4 c5 15. Kf1 Qc7 *",
+      "startedAt": "2026-03-17T20:08:33.305Z",
+      "endedAt": "2026-03-17T20:13:37.943Z",
+      "averageCplWhite": 382.26666666666665,
+      "averageCplBlack": 494.2,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 30,
+        "invalidModelMoveAttempts": 30,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 30
+        },
+        "bindingAttemptCount": 30,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-009",
+      "gameIndex": 9,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1/2-1/2",
+      "termination": "timeout_draw",
+      "moveCount": 30,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. e4 Nf6 2. c4 a5 3. e5 Ra6 4. Be2 Ng4 5. Bf3 c6 6. Nc3 f5 7. c5 Ne3 8. Nd5 Rg8 9. Nb6 g5 10. Bd5 h6 11. e6 a4 12. Be4 Ra8 13. h3 Qxb6 14. Qxa4 Nc2+ 15. Kf1 Qd8 *",
+      "startedAt": "2026-03-17T20:13:38.312Z",
+      "endedAt": "2026-03-17T20:18:44.043Z",
+      "averageCplWhite": 503.4,
+      "averageCplBlack": 563.6666666666666,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 30,
+        "invalidModelMoveAttempts": 30,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 30
+        },
+        "bindingAttemptCount": 30,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-010",
+      "gameIndex": 10,
+      "whiteModel": "tinyllama:latest",
+      "blackModel": "phi3:latest",
+      "result": "1/2-1/2",
+      "termination": "timeout_draw",
+      "moveCount": 30,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. c4 Nh6 2. b4 f6 3. c5 a6 4. f4 e5 5. h3 b6 6. Nc3 Nc6 7. Rh2 Nf5 8. Na4 Na7 9. e3 Bxc5 10. Nf3 Bd6 11. g4 Rf8 12. Bg2 Ng3 13. Qb3 c5 14. Nh4 exf4 15. d3 Rb8 *",
+      "startedAt": "2026-03-17T20:18:44.546Z",
+      "endedAt": "2026-03-17T20:23:52.352Z",
+      "averageCplWhite": 236.8,
+      "averageCplBlack": 248.8,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": false,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 30,
+        "invalidModelMoveAttempts": 30,
+        "invalidMoveFailureModes": {
+          "timeout_or_abort": 30
+        },
+        "bindingAttemptCount": 30,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    }
+  ]
+}
