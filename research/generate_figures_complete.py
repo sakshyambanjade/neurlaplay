@@ -13,7 +13,12 @@ import numpy as np
 from collections import defaultdict
 from pathlib import Path
 
-sys.path.insert(0, 'research/tension')
+# Resolve paths relative to repository root (one level above this file)
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
+
+# Ensure tension code is importable regardless of cwd
+sys.path.insert(0, str(BASE_DIR / 'tension'))
 from tension_graph import compute_tension
 
 # Publication style
@@ -41,8 +46,9 @@ def load_datapoints(json_path):
     with open(json_path, 'r') as f:
         return json.load(f)
 
-def load_tension_data(tension_path='research/tension_computed.json'):
+def load_tension_data(tension_path=None):
     """Load precomputed spectral tension (λ_max) values."""
+    tension_path = tension_path or (ROOT_DIR / 'research' / 'tension_computed.json')
     with open(tension_path, 'r') as f:
         return json.load(f)
 
@@ -202,12 +208,15 @@ def figure6_tension_by_phase(datapoints, output_path):
     phase_cpls = defaultdict(list)
     
     for dp in datapoints:
-        phase = dp.get('gamePhase', 'unknown')
+        phase = (dp.get('gamePhase', 'unknown') or 'unknown').lower()
+        # Normalize variants
+        if phase == 'middlegame':
+            phase = 'midgame'
         tension = dp.get('tension')
         if tension is not None:
             phase_cpls[phase].append(min(tension, 1000))  # Cap outliers
     
-    phases = ['opening', 'middlegame', 'endgame']
+    phases = ['opening', 'midgame', 'endgame']
     means = [np.mean(phase_cpls[p]) if phase_cpls[p] else 0 for p in phases]
     stds = [np.std(phase_cpls[p]) if phase_cpls[p] else 0 for p in phases]
     
@@ -372,8 +381,8 @@ def main():
     
     # Load data
     print("📂 Loading data...")
-    jsonl_path = Path('logs/games-2026-03-08T05-38-03.jsonl')
-    datapoints_path = Path('archive/20260307-235227/paper-datapoints.json')
+    jsonl_path = ROOT_DIR / 'logs' / 'games-2026-03-08T05-38-03.jsonl'
+    datapoints_path = ROOT_DIR / 'archive' / '20260307-235227' / 'paper-datapoints.json'
     
     games = []
     if jsonl_path.exists():
