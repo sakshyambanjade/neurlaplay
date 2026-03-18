@@ -1,0 +1,815 @@
+{
+  "runId": "frontier-run-2026-03-17T21-42-35-995Z",
+  "matchups": [
+    {
+      "label": "llama3.1-8b_vs_tinyllama",
+      "whiteModel": "llama3.1:8b",
+      "blackModel": "tinyllama:latest",
+      "games": 20,
+      "runOutputFile": "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\llama3.1-8b_vs_tinyllama\\raw\\paper-research-match-1773783756000.json",
+      "artifacts": {
+        "stats": {
+          "totalGames": 20,
+          "whiteModel": "llama3.1:8b",
+          "blackModel": "tinyllama:latest",
+          "whiteWins": 1,
+          "blackWins": 3,
+          "draws": 16,
+          "whiteWinRate": 0.05,
+          "blackWinRate": 0.15,
+          "drawRate": 0.8,
+          "avgCpl": {
+            "white": 299.945,
+            "black": 320.13,
+            "overall": 310.0375
+          },
+          "blunderRate": {
+            "white": 0.465,
+            "black": 0.445,
+            "overall": 0.455
+          },
+          "phasePerformance": {
+            "opening": 189.465,
+            "midgame": 430.61,
+            "endgame": 0
+          },
+          "confidenceInterval95": {
+            "whiteWinRate": [
+              0,
+              0.14551858457912786
+            ],
+            "blackWinRate": [
+              0,
+              0.30649345034217884
+            ],
+            "drawRate": [
+              0.6246922705640165,
+              0.9753077294359835
+            ]
+          },
+          "pValueWhiteVsBlack": 0.9,
+          "reliability": {
+            "illegalSuggestionCount": 400,
+            "correctionCount": 400,
+            "illegalSuggestionRate": 1,
+            "correctionRate": 1,
+            "illegalFailureModes": {
+              "timeout_or_abort": 400
+            }
+          },
+          "compliance": {
+            "totalMoves": 400,
+            "llmAcceptedMoves": 0,
+            "fallbackMoves": 400,
+            "llmMoveRate": 0,
+            "fallbackRate": 1,
+            "llmMoveRateBySide": {
+              "white": 0,
+              "black": 0
+            },
+            "fallbackRateBySide": {
+              "white": 1,
+              "black": 1
+            },
+            "invalidModelMoveAttempts": 400,
+            "invalidMoveFailureModes": {
+              "timeout_or_abort": 400
+            },
+            "gamesWithAnyLlmMove": 0,
+            "gamesWithOnlyFallback": 20,
+            "legalMoveOnlyGames": 0
+          },
+          "binding": {
+            "illegalAttempts": 400,
+            "meanBoundCount": 0,
+            "meanBoundCountPerGame": 0,
+            "meanBoundCountByPhase": {
+              "opening": 0,
+              "midgame": 0,
+              "endgame": 0
+            },
+            "meanBoundCountByModel": {
+              "llama3.1:8b": 0,
+              "tinyllama:latest": 0
+            },
+            "bindingCurveByMove": [
+              {
+                "moveNumber": 1,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 2,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 3,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 4,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 5,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 6,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 7,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 8,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 9,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 10,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 11,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 12,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 13,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 14,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 15,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 16,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 17,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 18,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 19,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 20,
+                "meanBoundCount": 0,
+                "samples": 20
+              }
+            ],
+            "componentPresenceRate": {
+              "piece": 0,
+              "origin": 0,
+              "destination": 0,
+              "legalConstraint": 0
+            }
+          }
+        },
+        "files": {
+          "latexTable3": "\\begin{table}[h]\n\\centering\n\\caption{Model Performance Comparison}\n\\begin{tabular}{lcccc}\n\\toprule\nModel & Win Rate & Avg CPL & Blunder Rate & LLM Move Rate \\\\\n\\midrule\nllama3.1:8b & 0.050 & 299.9 & 0.465 & 0.000 \\\\\ntinyllama:latest & 0.150 & 320.1 & 0.445 & 0.000 \\\\\n\\bottomrule\n\\end{tabular}\n\\end{table}",
+          "statsSummary": {
+            "totalGames": 20,
+            "whiteModel": "llama3.1:8b",
+            "blackModel": "tinyllama:latest",
+            "whiteWins": 1,
+            "blackWins": 3,
+            "draws": 16,
+            "whiteWinRate": 0.05,
+            "blackWinRate": 0.15,
+            "drawRate": 0.8,
+            "avgCpl": {
+              "white": 299.945,
+              "black": 320.13,
+              "overall": 310.0375
+            },
+            "blunderRate": {
+              "white": 0.465,
+              "black": 0.445,
+              "overall": 0.455
+            },
+            "phasePerformance": {
+              "opening": 189.465,
+              "midgame": 430.61,
+              "endgame": 0
+            },
+            "confidenceInterval95": {
+              "whiteWinRate": [
+                0,
+                0.14551858457912786
+              ],
+              "blackWinRate": [
+                0,
+                0.30649345034217884
+              ],
+              "drawRate": [
+                0.6246922705640165,
+                0.9753077294359835
+              ]
+            },
+            "pValueWhiteVsBlack": 0.9,
+            "reliability": {
+              "illegalSuggestionCount": 400,
+              "correctionCount": 400,
+              "illegalSuggestionRate": 1,
+              "correctionRate": 1,
+              "illegalFailureModes": {
+                "timeout_or_abort": 400
+              }
+            },
+            "compliance": {
+              "totalMoves": 400,
+              "llmAcceptedMoves": 0,
+              "fallbackMoves": 400,
+              "llmMoveRate": 0,
+              "fallbackRate": 1,
+              "llmMoveRateBySide": {
+                "white": 0,
+                "black": 0
+              },
+              "fallbackRateBySide": {
+                "white": 1,
+                "black": 1
+              },
+              "invalidModelMoveAttempts": 400,
+              "invalidMoveFailureModes": {
+                "timeout_or_abort": 400
+              },
+              "gamesWithAnyLlmMove": 0,
+              "gamesWithOnlyFallback": 20,
+              "legalMoveOnlyGames": 0
+            },
+            "binding": {
+              "illegalAttempts": 400,
+              "meanBoundCount": 0,
+              "meanBoundCountPerGame": 0,
+              "meanBoundCountByPhase": {
+                "opening": 0,
+                "midgame": 0,
+                "endgame": 0
+              },
+              "meanBoundCountByModel": {
+                "llama3.1:8b": 0,
+                "tinyllama:latest": 0
+              },
+              "bindingCurveByMove": [
+                {
+                  "moveNumber": 1,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 2,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 3,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 4,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 5,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 6,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 7,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 8,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 9,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 10,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 11,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 12,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 13,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 14,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 15,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 16,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 17,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 18,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 19,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 20,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                }
+              ],
+              "componentPresenceRate": {
+                "piece": 0,
+                "origin": 0,
+                "destination": 0,
+                "legalConstraint": 0
+              }
+            }
+          },
+          "pgnFile": "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\llama3.1-8b_vs_tinyllama\\all-games.pgn",
+          "visualizations": [
+            "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\llama3.1-8b_vs_tinyllama\\plots"
+          ],
+          "datapointsFile": "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\llama3.1-8b_vs_tinyllama\\paper-datapoints.json"
+        }
+      }
+    },
+    {
+      "label": "qwen2.5-7b_vs_tinyllama",
+      "whiteModel": "qwen2.5:7b",
+      "blackModel": "tinyllama:latest",
+      "games": 20,
+      "runOutputFile": "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\qwen2.5-7b_vs_tinyllama\\raw\\paper-research-match-1773783969451.json",
+      "artifacts": {
+        "stats": {
+          "totalGames": 20,
+          "whiteModel": "qwen2.5:7b",
+          "blackModel": "tinyllama:latest",
+          "whiteWins": 2,
+          "blackWins": 1,
+          "draws": 17,
+          "whiteWinRate": 0.1,
+          "blackWinRate": 0.05,
+          "drawRate": 0.85,
+          "avgCpl": {
+            "white": 295.85,
+            "black": 354.95,
+            "overall": 325.4
+          },
+          "blunderRate": {
+            "white": 0.445,
+            "black": 0.485,
+            "overall": 0.465
+          },
+          "phasePerformance": {
+            "opening": 159.025,
+            "midgame": 491.775,
+            "endgame": 0
+          },
+          "confidenceInterval95": {
+            "whiteWinRate": [
+              0,
+              0.23148079707698765
+            ],
+            "blackWinRate": [
+              0,
+              0.14551858457912786
+            ],
+            "drawRate": [
+              0.6935065496578211,
+              1
+            ]
+          },
+          "pValueWhiteVsBlack": 0.95,
+          "reliability": {
+            "illegalSuggestionCount": 400,
+            "correctionCount": 400,
+            "illegalSuggestionRate": 1,
+            "correctionRate": 1,
+            "illegalFailureModes": {
+              "timeout_or_abort": 400
+            }
+          },
+          "compliance": {
+            "totalMoves": 400,
+            "llmAcceptedMoves": 0,
+            "fallbackMoves": 400,
+            "llmMoveRate": 0,
+            "fallbackRate": 1,
+            "llmMoveRateBySide": {
+              "white": 0,
+              "black": 0
+            },
+            "fallbackRateBySide": {
+              "white": 1,
+              "black": 1
+            },
+            "invalidModelMoveAttempts": 400,
+            "invalidMoveFailureModes": {
+              "timeout_or_abort": 400
+            },
+            "gamesWithAnyLlmMove": 0,
+            "gamesWithOnlyFallback": 20,
+            "legalMoveOnlyGames": 0
+          },
+          "binding": {
+            "illegalAttempts": 400,
+            "meanBoundCount": 0,
+            "meanBoundCountPerGame": 0,
+            "meanBoundCountByPhase": {
+              "opening": 0,
+              "midgame": 0,
+              "endgame": 0
+            },
+            "meanBoundCountByModel": {
+              "qwen2.5:7b": 0,
+              "tinyllama:latest": 0
+            },
+            "bindingCurveByMove": [
+              {
+                "moveNumber": 1,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 2,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 3,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 4,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 5,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 6,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 7,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 8,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 9,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 10,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 11,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 12,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 13,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 14,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 15,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 16,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 17,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 18,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 19,
+                "meanBoundCount": 0,
+                "samples": 20
+              },
+              {
+                "moveNumber": 20,
+                "meanBoundCount": 0,
+                "samples": 20
+              }
+            ],
+            "componentPresenceRate": {
+              "piece": 0,
+              "origin": 0,
+              "destination": 0,
+              "legalConstraint": 0
+            }
+          }
+        },
+        "files": {
+          "latexTable3": "\\begin{table}[h]\n\\centering\n\\caption{Model Performance Comparison}\n\\begin{tabular}{lcccc}\n\\toprule\nModel & Win Rate & Avg CPL & Blunder Rate & LLM Move Rate \\\\\n\\midrule\nqwen2.5:7b & 0.100 & 295.9 & 0.445 & 0.000 \\\\\ntinyllama:latest & 0.050 & 354.9 & 0.485 & 0.000 \\\\\n\\bottomrule\n\\end{tabular}\n\\end{table}",
+          "statsSummary": {
+            "totalGames": 20,
+            "whiteModel": "qwen2.5:7b",
+            "blackModel": "tinyllama:latest",
+            "whiteWins": 2,
+            "blackWins": 1,
+            "draws": 17,
+            "whiteWinRate": 0.1,
+            "blackWinRate": 0.05,
+            "drawRate": 0.85,
+            "avgCpl": {
+              "white": 295.85,
+              "black": 354.95,
+              "overall": 325.4
+            },
+            "blunderRate": {
+              "white": 0.445,
+              "black": 0.485,
+              "overall": 0.465
+            },
+            "phasePerformance": {
+              "opening": 159.025,
+              "midgame": 491.775,
+              "endgame": 0
+            },
+            "confidenceInterval95": {
+              "whiteWinRate": [
+                0,
+                0.23148079707698765
+              ],
+              "blackWinRate": [
+                0,
+                0.14551858457912786
+              ],
+              "drawRate": [
+                0.6935065496578211,
+                1
+              ]
+            },
+            "pValueWhiteVsBlack": 0.95,
+            "reliability": {
+              "illegalSuggestionCount": 400,
+              "correctionCount": 400,
+              "illegalSuggestionRate": 1,
+              "correctionRate": 1,
+              "illegalFailureModes": {
+                "timeout_or_abort": 400
+              }
+            },
+            "compliance": {
+              "totalMoves": 400,
+              "llmAcceptedMoves": 0,
+              "fallbackMoves": 400,
+              "llmMoveRate": 0,
+              "fallbackRate": 1,
+              "llmMoveRateBySide": {
+                "white": 0,
+                "black": 0
+              },
+              "fallbackRateBySide": {
+                "white": 1,
+                "black": 1
+              },
+              "invalidModelMoveAttempts": 400,
+              "invalidMoveFailureModes": {
+                "timeout_or_abort": 400
+              },
+              "gamesWithAnyLlmMove": 0,
+              "gamesWithOnlyFallback": 20,
+              "legalMoveOnlyGames": 0
+            },
+            "binding": {
+              "illegalAttempts": 400,
+              "meanBoundCount": 0,
+              "meanBoundCountPerGame": 0,
+              "meanBoundCountByPhase": {
+                "opening": 0,
+                "midgame": 0,
+                "endgame": 0
+              },
+              "meanBoundCountByModel": {
+                "qwen2.5:7b": 0,
+                "tinyllama:latest": 0
+              },
+              "bindingCurveByMove": [
+                {
+                  "moveNumber": 1,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 2,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 3,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 4,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 5,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 6,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 7,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 8,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 9,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 10,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 11,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 12,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 13,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 14,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 15,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 16,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 17,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 18,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 19,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                },
+                {
+                  "moveNumber": 20,
+                  "meanBoundCount": 0,
+                  "samples": 20
+                }
+              ],
+              "componentPresenceRate": {
+                "piece": 0,
+                "origin": 0,
+                "destination": 0,
+                "legalConstraint": 0
+              }
+            }
+          },
+          "pgnFile": "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\qwen2.5-7b_vs_tinyllama\\all-games.pgn",
+          "visualizations": [
+            "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\qwen2.5-7b_vs_tinyllama\\plots"
+          ],
+          "datapointsFile": "E:\\neurlaplay\\research\\archive\\frontier-run-2026-03-17T21-42-35-995Z\\qwen2.5-7b_vs_tinyllama\\paper-datapoints.json"
+        }
+      }
+    }
+  ]
+}

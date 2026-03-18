@@ -21,6 +21,16 @@ type FrontierConfig = {
   blunderThresholdCp?: number;
 };
 
+const FAST_SETTINGS = {
+  maxMoves: 20,
+  moveTimeoutMs: 500,
+  gameTimeoutMs: 15000,
+  moveDelayMs: 0,
+  interGameDelayMs: 0,
+  exportInterval: 1,
+  stockfishEvalDepth: 6
+};
+
 function sanitizeLabel(label: string): string {
   return label.replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
@@ -49,9 +59,11 @@ async function main() {
     const matchupDir = path.join(runRoot, label);
     await mkdir(matchupDir, { recursive: true });
 
+    const maxGames = process.env.FAST_GAMES ? Number(process.env.FAST_GAMES) : undefined;
+
     const config: BatchConfig = {
       ...baseConfig,
-      games: matchup.games,
+      games: maxGames && Number.isFinite(maxGames) ? Math.min(matchup.games, maxGames) : matchup.games,
       outputDir: path.join(matchupDir, 'raw'),
       models: {
         white: matchup.white,
@@ -63,6 +75,14 @@ async function main() {
         blunderThresholdCp: frontier.blunderThresholdCp ?? baseConfig.settings.blunderThresholdCp
       }
     };
+
+    if (process.env.FAST_FRONTIER === '1') {
+      config.settings = {
+        ...config.settings,
+        ...FAST_SETTINGS
+      };
+      console.log(`Fast mode enabled: targeting ~1 min/game with settings`, FAST_SETTINGS);
+    }
 
     const options: PaperCollectionOptions = {
       enabled: true,
@@ -78,9 +98,16 @@ async function main() {
     });
 
     console.log(`Starting ${label}: ${matchup.games} games (${matchup.white} vs ${matchup.black})`);
+    let currentGame = 0;
+    const totalGames = config.games;
+
     const runResult = await runner.runPaperBatch(config, options, {
       onDatapoint: (p) => collector.addDatapoint(p),
-      onGameComplete: (g) => collector.addGameSummary(g)
+      onGameComplete: (g) => {
+        collector.addGameSummary(g);
+        currentGame = g.gameIndex;
+        console.log(`[${label}] game ${currentGame}/${totalGames} done (result=${g.result}, moves=${g.moveCount}, fallback=${g.ruleAudit.fallbackMovesUsed})`);
+      }
     });
 
     const artifacts = await collector.generatePaperArtifacts(matchupDir);
