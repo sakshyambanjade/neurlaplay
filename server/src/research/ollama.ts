@@ -254,19 +254,9 @@ export async function chooseMoveWithOllamaDetailed(
   legalMoves: LegalMoveOption[],
   timeoutMs: number
 ): Promise<OllamaMoveResponse> {
+  const moveList = legalMoves.map((m) => m.san).join(' ');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  const prompt = [
-    'You are a chess move selector.',
-    `FEN: ${fen}`,
-    `Legal SAN moves: ${legalMoves.map((m) => m.san).join(', ')}`,
-    `Legal UCI moves: ${legalMoves.map((m) => m.uci).join(', ')}`,
-    'Return EXACTLY this format:',
-    'MOVE: <one legal UCI move from the list>',
-    'CONFIDENCE: <0..1>',
-    'REASON: <one short sentence>'
-  ].join('\n');
 
   try {
     const response = await fetch(`${baseUrl}/api/chat`, {
@@ -275,16 +265,25 @@ export async function chooseMoveWithOllamaDetailed(
       body: JSON.stringify({
         model,
         stream: false,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          {
+            role: 'system',
+            content: `Output exactly one SAN move. It MUST be one of: ${moveList}. If unsure, output the first: ${legalMoves[0]?.san ?? ''}. No other text.`
+          },
+          {
+            role: 'user',
+            content: `FEN: ${fen}\nAllowed moves: ${moveList}\nMove:`
+          }
+        ],
         options: {
-          num_gpu: 999,        // Force ALL layers to GPU (GTX 1650 4GB can handle TinyLlama/Phi3 fully)
-          num_predict: 40,     // Just move + 1 sentence
-          temperature: 0.0,    // Deterministic = faster
-          top_p: 0.9,
-          top_k: 20,           // Limit sampling space
-          num_ctx: 256,        // Minimal context (we only need current position)
-          num_thread: 12,      // Use all 12 threads (Ryzen 5 4600H)
-          repeat_penalty: 1.0, // No extra computation
+          num_predict: 3,     // enough for O-O-O
+          temperature: 0.0,
+          top_k: 1,           // force highest-prob token
+          top_p: 1.0,
+          num_ctx: 512,
+          num_thread: 12,
+          repeat_penalty: 1.3,
+          stop: ['\n', ' ', '.']
         }
       }),
       signal: controller.signal
@@ -292,7 +291,7 @@ export async function chooseMoveWithOllamaDetailed(
 
     if (!response.ok) {
       return {
-        move: null,
+        move: legalMoves[0]?.san ?? null,
         reasoning: 'Model request failed.',
         confidence: 0.5,
         rawResponse: `HTTP ${response.status}`,
@@ -306,7 +305,7 @@ export async function chooseMoveWithOllamaDetailed(
     const move = pickMoveFromText(raw, legalMoves);
 
     return {
-      move,
+      move: move ?? legalMoves[0]?.san ?? null,
       reasoning: sanitizeReasoning(raw),
       confidence: parseConfidence(raw),
       rawResponse: raw,
@@ -315,7 +314,7 @@ export async function chooseMoveWithOllamaDetailed(
     };
   } catch {
     return {
-      move: null,
+      move: legalMoves[0]?.san ?? null,
       reasoning: 'Model timed out or returned invalid output.',
       confidence: 0.5,
       rawResponse: '',

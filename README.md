@@ -14,8 +14,7 @@
 # 1. Ensure Ollama is running
 ollama serve
 
-# 2. Install dependencies
-npm install
+# 2. Install dependencies (per workspace)
 cd client && npm install
 cd ../server && npm install
 
@@ -24,41 +23,26 @@ cd server
 npm run batch:ollama:quick
 ```
 
+> Runs now fail fast if Ollama is unreachable or returns an illegal move -- no random fallbacks are used.
+
 **See [research/docs/OLLAMA_GUIDE.md](research/docs/OLLAMA_GUIDE.md) for full Ollama integration guide!**
 
-### Option B: Use Cloud API Models
+### Option B: Cloud models (not yet implemented)
 
-### 1. Install Dependencies
-```powershell
-npm install
-cd client && npm install
-cd../server && npm install
-```
-
-### 2. Set API Keys (`.env` in `server/`)
-```
-GROQ_API_KEY=xxxx
-OPENROUTER_API_KEY=xxxx
-GOOGLE_API_KEY=xxxx
-MISTRAL_API_KEY=xxxx
-HUGGINGFACE_API_KEY=xxxx
-TOGETHER_API_KEY=xxxx
-```
-
-Get free keys from:
-- **Groq**: groq.com
-- **OpenRouter**: openrouter.ai
-- **Google**: makersuite.google.com
-- **Mistral**: console.mistral.ai
-- **HuggingFace**: huggingface.co/settings/tokens
-- **Together**: together.ai
-
-### 3. Run
-```powershell
-npm run research
-```
+Cloud providers listed previously are not wired up in code; all runs currently require a local Ollama model.
 
 Open: **http://localhost:5173**
+
+## Preflight & Smoke Test
+
+```powershell
+# Verify Ollama + Stockfish + configs
+cd server
+npm run check:preflight
+
+# 2-game sanity batch (fast, fails on illegal moves/timeouts)
+npm run research:sanity
+```
 
 ---
 

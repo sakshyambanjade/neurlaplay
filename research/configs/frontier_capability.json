@@ -20,5 +20,8 @@
   "maxTokens": 128,
   "contextPolicy": "full_pgn_history",
   "stockfishEvalDepth": 8,
-  "blunderThresholdCp": 200
+  "blunderThresholdCp": 200,
+  "maxMoves": 200,
+  "moveTimeoutMs": 120000,
+  "gameTimeoutMs": 7200000
 }

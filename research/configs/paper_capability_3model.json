@@ -2,22 +2,16 @@
   "paperAngle": "option_b_capability",
   "matchups": [
     {
-      "white": "tinyllama:latest",
-      "black": "phi3:latest",
-      "games": 100,
-      "label": "tinyllama vs phi3"
-    },
-    {
       "white": "mistral:7b",
       "black": "tinyllama:latest",
-      "games": 50,
-      "label": "mistral control vs tinyllama"
+      "games": 1,
+      "label": "mistral_vs_tinyllama"
     },
     {
       "white": "mistral:7b",
       "black": "phi3:latest",
-      "games": 50,
-      "label": "mistral control vs phi3"
+      "games": 1,
+      "label": "mistral_vs_phi3"
     }
   ],
   "seed": 42,
@@ -25,6 +19,14 @@
   "topP": 0.9,
   "maxTokens": 128,
   "contextPolicy": "full_pgn_history",
-  "stockfishEvalDepth": 8,
-  "blunderThresholdCp": 200
+  "settings": {
+    "maxMoves": 200,
+    "moveTimeoutMs": 120000,
+    "gameTimeoutMs": 7200000,
+    "moveDelayMs": 50,
+    "interGameDelayMs": 200,
+    "exportInterval": 5,
+    "stockfishEvalDepth": 8,
+    "blunderThresholdCp": 200
+  }
 }

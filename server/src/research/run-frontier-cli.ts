@@ -19,12 +19,15 @@ type FrontierConfig = {
   contextPolicy?: string;
   stockfishEvalDepth?: number;
   blunderThresholdCp?: number;
+  maxMoves?: number;
+  moveTimeoutMs?: number;
+  gameTimeoutMs?: number;
 };
 
 const FAST_SETTINGS = {
   maxMoves: 20,
-  moveTimeoutMs: 500,
-  gameTimeoutMs: 15000,
+  moveTimeoutMs: 120000, // give frontier models real time to respond (was 500ms)
+  gameTimeoutMs: 180000,
   moveDelayMs: 0,
   interGameDelayMs: 0,
   exportInterval: 1,
@@ -72,7 +75,10 @@ async function main() {
       settings: {
         ...baseConfig.settings,
         stockfishEvalDepth: frontier.stockfishEvalDepth ?? baseConfig.settings.stockfishEvalDepth,
-        blunderThresholdCp: frontier.blunderThresholdCp ?? baseConfig.settings.blunderThresholdCp
+        blunderThresholdCp: frontier.blunderThresholdCp ?? baseConfig.settings.blunderThresholdCp,
+        maxMoves: frontier.maxMoves ?? baseConfig.settings.maxMoves,
+        moveTimeoutMs: frontier.moveTimeoutMs ?? baseConfig.settings.moveTimeoutMs,
+        gameTimeoutMs: frontier.gameTimeoutMs ?? baseConfig.settings.gameTimeoutMs
       }
     };
 
@@ -81,7 +87,9 @@ async function main() {
         ...config.settings,
         ...FAST_SETTINGS
       };
-      console.log(`Fast mode enabled: targeting ~1 min/game with settings`, FAST_SETTINGS);
+      console.warn(
+        `FAST_FRONTIER=1 overriding timeouts/maxMoves; using settings: ${JSON.stringify(FAST_SETTINGS)}`
+      );
     }
 
     const options: PaperCollectionOptions = {

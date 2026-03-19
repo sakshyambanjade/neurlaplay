@@ -125,6 +125,13 @@ function writeManifest(runId: string, config: PaperRunConfig, gitCommit: string)
     paperAngle: config.paperAngle,
     stockfishEvalDepth: config.stockfishEvalDepth,
     blunderThresholdCp: config.blunderThresholdCp,
+    uciOptions: {
+      Threads: "default",
+      Hash: "default",
+      MultiPV: "default",
+      UCI_AnalyseMode: "default",
+      SyzygyPath: "none"
+    },
     totalMatchups: config.matchups.length,
     totalGames: config.matchups.reduce((s, m) => s + m.games, 0),
   };

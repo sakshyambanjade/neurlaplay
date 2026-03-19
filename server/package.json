@@ -11,7 +11,9 @@
     "research:50games": "npm run research:paper -- --games=50",
     "research:100games": "npm run research:paper -- --games=100",
     "research:audit": "tsx src/research/rule-audit-cli.ts",
-    "research:audit:latest": "tsx src/research/rule-audit-cli.ts --latest"
+    "research:audit:latest": "tsx src/research/rule-audit-cli.ts --latest",
+    "check:preflight": "tsx src/tools/preflight.ts",
+    "research:sanity": "tsx src/research/sequential-cli.ts --config ../research/configs/sanity_smoketest.json"
   },
   "dependencies": {
     "chess.js": "^1.1.0",

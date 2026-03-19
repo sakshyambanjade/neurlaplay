@@ -46,7 +46,7 @@ def pgn_to_positions(pgn_path, output_path):
 
     df = pd.DataFrame(rows)
     df.to_csv(output_path, index=False)
-    print(f"✅ {len(df)} positions from {game_id} games → {output_path}")
+    print(f"[OK] {len(df)} positions from {game_id} games -> {output_path}")
     return df
 
 if __name__ == "__main__":

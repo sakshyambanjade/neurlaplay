@@ -17,6 +17,7 @@ export type BatchConfig = {
   };
 };
 
+// NOTE: Python analysis scripts expect these exact strings; keep in sync.
 export type GamePhase = 'opening' | 'midgame' | 'endgame';
 
 export type PaperCollectionOptions = {
@@ -50,6 +51,8 @@ export type PaperDatapoint = {
   side: 'white' | 'black';
   model: string;
   timestamp: number;
+  thinkTimeMs?: number;
+  moveTimeMs?: number;
   fenBefore: string;
   fenAfter: string;
   move: string;
@@ -129,6 +132,9 @@ export type PaperStatsSummary = {
     opening: number;
     midgame: number;
     endgame: number;
+  };
+  effectSizes: {
+    winRateGap: number;
   };
   confidenceInterval95: {
     whiteWinRate: [number, number];

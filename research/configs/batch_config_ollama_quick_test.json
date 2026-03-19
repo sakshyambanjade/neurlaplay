@@ -6,13 +6,13 @@
     "black": "phi3:latest"
   },
   "settings": {
-    "maxMoves": 80,
-    "moveTimeoutMs": 10000,
-    "gameTimeoutMs": 300000,
+    "maxMoves": 200,
+    "moveTimeoutMs": 120000,
+    "gameTimeoutMs": 7200000,
     "moveDelayMs": 50,
     "interGameDelayMs": 200,
     "exportInterval": 5,
-    "stockfishEvalDepth": 10,
+    "stockfishEvalDepth": 8,
     "blunderThresholdCp": 200
   }
 }

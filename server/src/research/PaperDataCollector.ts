@@ -38,6 +38,22 @@ function clamp01(value: number): number {
   return value;
 }
 
+function erf(x: number): number {
+  // Numerical approximation (Abramowitz and Stegun 7.1.26)
+  const sign = x < 0 ? -1 : 1;
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+  const t = 1 / (1 + p * Math.abs(x));
+  const y =
+    1 -
+    (((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x));
+  return sign * y;
+}
+
 function buildIllegalFailureModeCounts(
   datapoints: PaperDatapoint[]
 ): Partial<Record<IllegalMoveFailureMode, number>> {
@@ -162,6 +178,17 @@ export class PaperDataCollector {
     const whiteWinRate = totalGames > 0 ? whiteWins / totalGames : 0;
     const blackWinRate = totalGames > 0 ? blackWins / totalGames : 0;
     const drawRate = totalGames > 0 ? draws / totalGames : 0;
+    const effectSizes = {
+      winRateGap: whiteWinRate - blackWinRate
+    };
+    const decisiveGames = whiteWins + blackWins;
+    const winDiff = whiteWins - blackWins;
+    const zScore =
+      decisiveGames > 0 ? winDiff / Math.sqrt(decisiveGames * 0.25) : 0;
+    const pValueWhiteVsBlack = Math.min(
+      1,
+      Math.max(0, 2 * (1 - 0.5 * (1 + erf(Math.abs(zScore) / Math.SQRT2))))
+    );
 
     const whiteMoves = this.datapoints.filter((d) => d.side === 'white');
     const blackMoves = this.datapoints.filter((d) => d.side === 'black');
@@ -284,8 +311,9 @@ export class PaperDataCollector {
         blackWinRate: proportionConfidenceInterval95(blackWins, totalGames),
         drawRate: proportionConfidenceInterval95(draws, totalGames)
       },
-      // Approximate two-sided p-value proxy from absolute win-rate gap.
-      pValueWhiteVsBlack: clamp01(1 - Math.abs(whiteWinRate - blackWinRate)),
+      effectSizes,
+      // Two-sided normal-approx p-value for win-rate gap (decisive games only).
+      pValueWhiteVsBlack,
       reliability: {
         illegalSuggestionCount,
         correctionCount,
@@ -353,11 +381,17 @@ export class PaperDataCollector {
   async generatePaperArtifacts(outputDir: string): Promise<PaperArtifacts> {
     await mkdir(outputDir, { recursive: true });
     const stats = this.computeResearchStats();
+    const totalGames = this.gameSummaries.length;
+    const blunderThreshold = this.blunderThresholdCpl;
+    const totalBlunders = this.datapoints.filter((d) => d.cpl >= blunderThreshold).length;
 
     const table3Path = path.join(outputDir, 'paper-latex-table3.tex');
     const statsPath = path.join(outputDir, 'paper-stats.json');
     const pgnPath = path.join(outputDir, 'all-games.pgn');
     const datapointsPath = path.join(outputDir, 'paper-datapoints.json');
+    const paperResultsPath = path.join(outputDir, 'paper-results.json');
+    const rawGamesPath = path.join(outputDir, 'raw-games.json');
+    const ruleAuditPath = path.join(outputDir, 'rule-audit-summary.json');
     const plotsDir = path.join(outputDir, 'plots');
 
     await mkdir(plotsDir, { recursive: true });
@@ -397,6 +431,46 @@ export class PaperDataCollector {
     );
     await writeFile(pgnPath, this.exportPGN(), 'utf-8');
     await writeFile(datapointsPath, JSON.stringify(this.datapoints, null, 2), 'utf-8');
+    await writeFile(
+      paperResultsPath,
+      JSON.stringify(
+        {
+          totalGames,
+          whiteModel: this.whiteModel,
+          blackModel: this.blackModel,
+          whiteWins: stats.whiteWins,
+          blackWins: stats.blackWins,
+          draws: stats.draws,
+          totalBlunders,
+          avgCPL: {
+            white: stats.avgCpl.white,
+            black: stats.avgCpl.black
+          },
+          latexTable3: this.generateTable3(stats)
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
+    await writeFile(rawGamesPath, JSON.stringify(this.gameSummaries, null, 2), 'utf-8');
+    await writeFile(
+      ruleAuditPath,
+      JSON.stringify(
+        {
+          gamesWithRuleAudit: totalGames,
+          totalFallbackMoves: this.gameSummaries.reduce((sum, g) => sum + g.ruleAudit.fallbackMovesUsed, 0),
+          totalInvalidModelMoveAttempts: this.gameSummaries.reduce(
+            (sum, g) => sum + g.ruleAudit.invalidModelMoveAttempts,
+            0
+          ),
+          legalMoveOnlyGames: this.gameSummaries.filter((g) => g.ruleAudit.legalMoveOnly).length
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
 
     return {
       latexTable3: this.generateTable3(stats),

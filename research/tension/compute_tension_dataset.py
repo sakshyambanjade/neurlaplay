@@ -28,7 +28,7 @@ def compute_all(positions_csv, per_ply_out, per_game_out):
 
     df_t = pd.DataFrame(results)
     df_t.to_csv(per_ply_out, index=False)
-    print(f"✅ Per-ply tension → {per_ply_out}")
+    print(f"[OK] Per-ply tension -> {per_ply_out}")
 
     # Per-game aggregation
     g = df_t.groupby("game_id").agg(
@@ -41,11 +41,11 @@ def compute_all(positions_csv, per_ply_out, per_game_out):
         result=("result", "first"),
         total_plies=("ply", "count"),
         opening_T=("T", lambda x: x[df_t.loc[x.index,"phase"]=="opening"].mean()),
-        midgame_T=("T", lambda x: x[df_t.loc[x.index,"phase"]=="middlegame"].mean()),
+        midgame_T=("T", lambda x: x[df_t.loc[x.index,"phase"]=="midgame"].mean()),
         endgame_T=("T", lambda x: x[df_t.loc[x.index,"phase"]=="endgame"].mean()),
     ).reset_index()
     g.to_csv(per_game_out, index=False)
-    print(f"✅ Per-game tension → {per_game_out}")
+    print(f"[OK] Per-game tension -> {per_game_out}")
     return df_t, g
 
 if __name__ == "__main__":
