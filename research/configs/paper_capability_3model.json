@@ -4,13 +4,13 @@
     {
       "white": "mistral:7b",
       "black": "tinyllama:latest",
-      "games": 1,
+      "games": 50,
       "label": "mistral_vs_tinyllama"
     },
     {
       "white": "mistral:7b",
       "black": "phi3:latest",
-      "games": 1,
+      "games": 50,
       "label": "mistral_vs_phi3"
     }
   ],
