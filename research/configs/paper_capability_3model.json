@@ -2,31 +2,27 @@
   "paperAngle": "option_b_capability",
   "matchups": [
     {
-      "white": "mistral:7b",
-      "black": "tinyllama:latest",
-      "games": 50,
-      "label": "mistral_vs_tinyllama"
-    },
-    {
-      "white": "mistral:7b",
-      "black": "phi3:latest",
-      "games": 50,
-      "label": "mistral_vs_phi3"
+      "white": "groq:llama-3.1-8b-instant",
+      "black": "groq:llama-3.1-8b-instant",
+      "games": 100,
+      "label": "llama31_8b_mirror"
     }
   ],
   "seed": 42,
-  "temperature": 0.0,
+  "temperature": 0.3,
   "topP": 0.9,
   "maxTokens": 128,
   "contextPolicy": "full_pgn_history",
   "settings": {
     "maxMoves": 200,
-    "moveTimeoutMs": 120000,
-    "gameTimeoutMs": 7200000,
-    "moveDelayMs": 50,
-    "interGameDelayMs": 200,
-    "exportInterval": 5,
+    "moveTimeoutMs": 10000,
+    "gameTimeoutMs": 3600000,
+    "moveDelayMs": 500,
+    "interGameDelayMs": 500,
+    "exportInterval": 1,
     "stockfishEvalDepth": 8,
-    "blunderThresholdCp": 200
+    "blunderThresholdCp": 200,
+    "seed": 42,
+    "openingRandomMoves": 4
   }
 }

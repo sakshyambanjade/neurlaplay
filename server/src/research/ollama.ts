@@ -268,7 +268,7 @@ export async function chooseMoveWithOllamaDetailed(
         messages: [
           {
             role: 'system',
-            content: `Output exactly one SAN move. It MUST be one of: ${moveList}. If unsure, output the first: ${legalMoves[0]?.san ?? ''}. No other text.`
+            content: `Output exactly one SAN move from this list: ${moveList}. No other text.`
           },
           {
             role: 'user',
@@ -276,14 +276,14 @@ export async function chooseMoveWithOllamaDetailed(
           }
         ],
         options: {
-          num_predict: 3,     // enough for O-O-O
+          num_predict: 4,     // force very short output
           temperature: 0.0,
-          top_k: 1,           // force highest-prob token
-          top_p: 1.0,
+          top_k: 10,          // small shortlist, but not locked to a single token
+          top_p: 0.9,
           num_ctx: 512,
           num_thread: 12,
           repeat_penalty: 1.3,
-          stop: ['\n', ' ', '.']
+          stop: [' ', '\n', '.', ',']
         }
       }),
       signal: controller.signal
@@ -291,7 +291,7 @@ export async function chooseMoveWithOllamaDetailed(
 
     if (!response.ok) {
       return {
-        move: legalMoves[0]?.san ?? null,
+        move: null,
         reasoning: 'Model request failed.',
         confidence: 0.5,
         rawResponse: `HTTP ${response.status}`,
@@ -305,7 +305,7 @@ export async function chooseMoveWithOllamaDetailed(
     const move = pickMoveFromText(raw, legalMoves);
 
     return {
-      move: move ?? legalMoves[0]?.san ?? null,
+      move: move,
       reasoning: sanitizeReasoning(raw),
       confidence: parseConfidence(raw),
       rawResponse: raw,
@@ -314,8 +314,85 @@ export async function chooseMoveWithOllamaDetailed(
     };
   } catch {
     return {
-      move: legalMoves[0]?.san ?? null,
+      move: null,
       reasoning: 'Model timed out or returned invalid output.',
+      confidence: 0.5,
+      rawResponse: '',
+      failureMode: 'timeout_or_abort',
+      bindingProfile: EMPTY_BINDING_PROFILE
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function chooseMoveWithGroq(
+  apiKey: string,
+  model: string,
+  fen: string,
+  legalMoves: LegalMoveOption[],
+  timeoutMs: number
+): Promise<OllamaMoveResponse> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const moveList = legalMoves.map((m) => m.san).join(' ');
+  const nonce = Math.random().toString(36).slice(2, 8); // break deterministic tie, keeps moves varied
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: `Output exactly one SAN move from this list: ${moveList}. No other text.`
+          },
+          {
+            role: 'user',
+            content: `FEN: ${fen}\nAllowed moves: ${moveList}\nMove:\nContext nonce: ${nonce}`
+          }
+        ],
+        max_tokens: 6,
+        temperature: 0.1,
+        top_p: 0.95,
+        stop: [' ', '\n', '.', ',']
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      return {
+        move: null,
+        reasoning: `Groq request failed: ${err.slice(0, 100)}`,
+        confidence: 0.5,
+        rawResponse: err,
+        failureMode: 'request_failed',
+        bindingProfile: EMPTY_BINDING_PROFILE
+      };
+    }
+
+    const data = (await response.json()) as any;
+    const raw = (data.choices?.[0]?.message?.content ?? '').trim();
+    const move = pickMoveFromText(raw, legalMoves);
+
+    return {
+      move,
+      reasoning: sanitizeReasoning(raw),
+      confidence: parseConfidence(raw),
+      rawResponse: raw,
+      failureMode: move ? null : classifyIllegalMoveFailure(raw),
+      bindingProfile: buildBindingProfile(raw, fen, legalMoves)
+    };
+  } catch {
+    return {
+      move: null,
+      reasoning: 'Groq request timed out.',
       confidence: 0.5,
       rawResponse: '',
       failureMode: 'timeout_or_abort',

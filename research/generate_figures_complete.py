@@ -382,7 +382,7 @@ def main():
     # Load data
     print("📂 Loading data...")
     jsonl_path = ROOT_DIR / 'logs' / 'games-2026-03-08T05-38-03.jsonl'
-    datapoints_path = ROOT_DIR / 'archive' / '20260307-235227' / 'paper-datapoints.json'
+    datapoints_path = BASE_DIR / 'archive' / '20260307-235227' / 'paper-datapoints.json'
     
     games = []
     if jsonl_path.exists():
@@ -395,7 +395,7 @@ def main():
         print(f"   ✓ Loaded {len(datapoints)} position datapoints")
     
     tension_data = []
-    tension_path = Path('research/tension_computed.json')
+    tension_path = BASE_DIR / 'tension_computed.json'
     if tension_path.exists():
         tension_data = load_tension_data(tension_path)
         print(f"   ✓ Loaded {len(tension_data)} tension datapoints from {tension_path}")

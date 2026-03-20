@@ -14,6 +14,8 @@ export type BatchConfig = {
     exportInterval: number;
     stockfishEvalDepth?: number;
     blunderThresholdCp?: number;
+    seed?: number;
+    openingRandomMoves?: number;
   };
 };
 

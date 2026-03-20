@@ -3,15 +3,16 @@ import type { Server as SocketIOServer } from 'socket.io';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { 
-  startPaperRun, 
-  getRunStatus, 
+import {
+  startPaperRun,
+  getRunStatus,
   getArtifacts,
   jobEmitter,
   type PaperRunConfig,
-  type MatchupConfig 
+  type MatchupConfig
 } from '../research/PaperPipeline.js';
 import { SequentialGameRunner } from '../research/SequentialGameRunner.js';
+import { PaperDataCollector } from '../research/PaperDataCollector.js';
 import type { BatchConfig, PaperCollectionOptions } from '../research/types.js';
 
 type ProgressMap = Record<string, number>;
@@ -81,16 +82,40 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
 
   router.post('/run', async (req, res) => {
     try {
-      const body = req.body as Partial<PaperRunConfig>;
-      const config: PaperRunConfig = {
-        ...body,
-        paperAngle: body.paperAngle ?? 'option_a_tension'
-      } as PaperRunConfig;
+      // Force fast Groq defaults regardless of UI payload to avoid slow mistral/ollama runs.
+      const groqMatchups: MatchupConfig[] = [
+        {
+          white: 'groq:llama-3.1-8b-instant',
+          black: 'groq:llama-3.1-8b-instant',
+          games: 100,
+          label: 'llama31_8b_mirror'
+        }
+      ];
 
-      if (config.paperAngle !== 'option_a_tension' && config.paperAngle !== 'option_b_capability') {
-        res.status(400).json({ error: 'paperAngle must be option_a_tension or option_b_capability' });
-        return;
-      }
+      const defaultSettings = {
+        maxMoves: 200,
+        moveTimeoutMs: 10000,
+        gameTimeoutMs: 3600000,
+        moveDelayMs: 500,
+        interGameDelayMs: 500,
+        exportInterval: 1,
+        stockfishEvalDepth: 8,
+        blunderThresholdCp: 200,
+        seed: 42,
+        openingRandomMoves: 4
+      };
+
+      const config: PaperRunConfig = {
+        paperAngle: 'option_b_capability',
+        matchups: groqMatchups,
+        seed: 42,
+        temperature: 0,
+        topP: 0.9,
+        maxTokens: 128,
+        contextPolicy: 'full_pgn_history',
+        stockfishEvalDepth: defaultSettings.stockfishEvalDepth,
+        blunderThresholdCp: defaultSettings.blunderThresholdCp
+      };
 
       const runId = `paper-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
       const runStartedAtMs = Date.now();
@@ -99,7 +124,7 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
       
       // Game batch function that integrates with SequentialGameRunner
       const runBatchFn = async (matchup: MatchupConfig, runDir: string, cfg: PaperRunConfig): Promise<string> => {
-        // Convert matchup to BatchConfig format
+        // Convert matchup to BatchConfig format (force fast Groq defaults)
         const batchConfig: BatchConfig = {
           games: matchup.games,
           models: {
@@ -108,12 +133,12 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
           },
           outputDir: path.join(runDir, 'raw'),
           settings: {
-            maxMoves: 120, // 120 moves max - most games end by move 80
-            moveTimeoutMs: 5000, // 5s - Ryzen 5 4600H can do TinyLlama in 1-2s
-            gameTimeoutMs: 180000, // 3 min per game
-            moveDelayMs: 0, // ZERO delays - full throttle!
-            interGameDelayMs: 0, // No waiting between games
-            exportInterval: 1, // Save EVERY game immediately (crash-safe)
+            maxMoves: defaultSettings.maxMoves,
+            moveTimeoutMs: defaultSettings.moveTimeoutMs,
+            gameTimeoutMs: defaultSettings.gameTimeoutMs,
+            moveDelayMs: defaultSettings.moveDelayMs,
+            interGameDelayMs: defaultSettings.interGameDelayMs,
+            exportInterval: defaultSettings.exportInterval,
             stockfishEvalDepth: cfg.stockfishEvalDepth,
             blunderThresholdCp: cfg.blunderThresholdCp
           }
@@ -140,8 +165,15 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
         let currentGameNum = 0;
         let illegalSuggestions = 0;
         let correctionsApplied = 0;
+        const collector = new PaperDataCollector(matchup.white, matchup.black, {
+          blunderThresholdCpl: cfg.blunderThresholdCp,
+          stockfishEvalDepth: cfg.stockfishEvalDepth,
+          stockfishEngine: 'stockfish-17.1-lite',
+          runManifestRef: 'run_manifest.json'
+        });
         const result = await gameRunner.runPaperBatch(batchConfig, collectionOptions, {
           onGameComplete: (summary) => {
+            collector.addGameSummary(summary);
             currentGameNum++;
             completedGamesInRun++;
 
@@ -186,6 +218,7 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
             }, 100);
           },
           onDatapoint: (data) => {
+            collector.addDatapoint(data as any);
             if (data.illegalSuggestion) {
               illegalSuggestions += 1;
             }
@@ -217,12 +250,9 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
           }
         });
 
-        // Extract PGNs and write to file
-        const pgnPath = path.join(runDir, `${matchup.label.replace(/\s+/g, '_')}.pgn`);
-        const pgnContent = result.games.map(g => g.pgn).join('\n\n');
-        fs.writeFileSync(pgnPath, pgnContent);
-        
-        return pgnPath;
+        // Generate full paper artifacts (pgn, stats, datapoints, raw-games, latex table, rule audit)
+        const artifacts = await collector.generatePaperArtifacts(runDir);
+        return artifacts.pgnFile;
       };
 
       // Start the pipeline (non-blocking)

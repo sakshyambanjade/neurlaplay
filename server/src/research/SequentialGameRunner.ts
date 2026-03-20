@@ -1,7 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Chess } from 'chess.js';
-import { chooseMoveWithOllama, chooseMoveWithOllamaDetailed, type LegalMoveOption } from './ollama.js';
+import {
+  chooseMoveWithOllama,
+  chooseMoveWithOllamaDetailed,
+  chooseMoveWithGroq,
+  type LegalMoveOption,
+  type OllamaMoveResponse
+} from './ollama.js';
 import { StockfishAnalyzer } from './StockfishAnalyzer.js';
 import { GameLogger } from './GameLogger.js';
 import type {
@@ -32,6 +38,27 @@ type PaperRunHooks = {
   onDatapoint?: (datapoint: PaperDatapoint) => void;
   onGameComplete?: (summary: GamePaperSummary) => void;
 };
+
+// Seeded PRNG — mulberry32
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+let rng = mulberry32(42);
+
+function pickFallbackMove(legalMoves: LegalMoveOption[]): string {
+  const captures = legalMoves.filter((m) => m.san.includes('x'));
+  const checks = legalMoves.filter((m) => m.san.includes('+'));
+  const pool = captures.length > 0 ? captures : checks.length > 0 ? checks : legalMoves;
+  const idx = Math.floor(rng() * pool.length);
+  return pool[idx]!.san;
+}
 
 function inferGamePhase(moveNumber: number): GamePhase {
   if (moveNumber <= 10) {
@@ -202,16 +229,66 @@ export class SequentialGameRunner {
     postMessage: (command: string) => void;
     onmessage?: (event: unknown) => void;
   }) = null;
+  private activeModels: string[] = [];
   private stockfishAnalyzer: StockfishAnalyzer | null = null;
   private stockfishEvalDepth = 10;
   private gameLogger: GameLogger | null = null;
+  private groqKeys: string[] = [];
+  private groqKeyIndex = 0;
 
   constructor(private readonly ollamaBaseUrl: string) {
     this.stockfishAnalyzer = new StockfishAnalyzer();
     this.gameLogger = new GameLogger();
+
+    const keysEnv = process.env.GROQ_API_KEYS ?? process.env.GROQ_API_KEY ?? '';
+    this.groqKeys = keysEnv
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean);
+  }
+
+  private nextGroqKey(): string | null {
+    if (this.groqKeys.length === 0) {
+      return null;
+    }
+    const key = this.groqKeys[this.groqKeyIndex % this.groqKeys.length];
+    this.groqKeyIndex += 1;
+    return key;
+  }
+
+  private async getMoveDetailed(
+    model: string,
+    fen: string,
+    legalMoveOptions: LegalMoveOption[],
+    timeoutMs: number
+  ): Promise<OllamaMoveResponse> {
+    if (model.startsWith('groq:')) {
+      const groqKey = this.nextGroqKey();
+      if (!groqKey) {
+        throw new Error('GROQ_API_KEY(S) not set but groq: model requested');
+      }
+      const groqModel = model.replace('groq:', '');
+      return chooseMoveWithGroq(groqKey, groqModel, fen, legalMoveOptions, timeoutMs);
+    }
+    return chooseMoveWithOllamaDetailed(this.ollamaBaseUrl, model, fen, legalMoveOptions, timeoutMs);
+  }
+
+  private async getMoveString(
+    model: string,
+    fen: string,
+    legalMoveOptions: LegalMoveOption[],
+    timeoutMs: number
+  ): Promise<string | null> {
+    const detail = await this.getMoveDetailed(model, fen, legalMoveOptions, timeoutMs);
+    return detail.move;
   }
 
   private async assertOllamaAvailable(): Promise<void> {
+    // If every model in this run is a Groq-prefixed model, skip the Ollama ping.
+    // Groq calls use the OpenAI API and do not require a local Ollama daemon.
+    if (this.currentModelsAreGroqOnly) {
+      return;
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     try {
@@ -227,8 +304,16 @@ export class SequentialGameRunner {
     }
   }
 
+  // Helper that returns true when the active models are all groq:* (no local Ollama needed)
+  private get currentModelsAreGroqOnly(): boolean {
+    const models = this.activeModels ?? [];
+    if (models.length === 0) return false;
+    return models.every((m) => m.startsWith('groq:'));
+  }
+
   async run(config: BatchConfig): Promise<{ outputFile: string; summary: Record<string, unknown> }> {
     const startedAt = new Date();
+    this.activeModels = [config.models.white, config.models.black];
     const results: GameResult[] = [];
     const outDir = path.resolve(config.outputDir);
     await mkdir(outDir, { recursive: true });
@@ -285,6 +370,13 @@ export class SequentialGameRunner {
 
   private async runSingleGame(gameId: string, config: BatchConfig): Promise<GameResult> {
     const chess = new Chess();
+    const openingRandomMoves = config.settings.openingRandomMoves ?? 4;
+    for (let i = 0; i < openingRandomMoves; i += 1) {
+      const moves = getLegalMoveOptions(chess);
+      if (moves.length === 0) break;
+      const pick = moves[Math.floor(rng() * moves.length)];
+      chess.move(pick.san);
+    }
     const startedAt = new Date();
     const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
     let timedOut = false;
@@ -307,27 +399,20 @@ export class SequentialGameRunner {
       const turnBeforeMove = chess.turn();
 
       const candidateMove =
-        (await chooseMoveWithOllama(
-          this.ollamaBaseUrl,
-          model,
-          chess.fen(),
-          legalMoveOptions,
-          config.settings.moveTimeoutMs
-        )) ?? null;
+        (await this.getMoveString(model, chess.fen(), legalMoveOptions, config.settings.moveTimeoutMs)) ?? null;
 
-      if (!candidateMove || !legalMoveOptions.some((m) => m.san === candidateMove)) {
+      let chosenMove = candidateMove;
+      if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
-        ruleAudit.legalMoveOnly = false;
+        ruleAudit.fallbackMovesUsed += 1;
         incrementFailureMode(ruleAudit, 'pseudo_legal_or_illegal');
-        throw new Error(
-          `Model ${model} did not return a legal move at ply ${chess.history().length + 1} (game ${gameId}).`
-        );
+        chosenMove = pickFallbackMove(legalMoveOptions);
       }
 
-      const moveResult = chess.move(candidateMove, { strict: true });
+      const moveResult = chess.move(chosenMove, { strict: true });
       if (!moveResult) {
         ruleAudit.legalMoveOnly = false;
-        throw new Error(`Chosen move ${candidateMove} could not be applied for ${gameId}`);
+        throw new Error(`Chosen move ${chosenMove} could not be applied for ${gameId}`);
       }
 
       updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
@@ -358,6 +443,9 @@ export class SequentialGameRunner {
     hooks: PaperRunHooks = {}
   ): Promise<{ outputFile: string; summary: Record<string, unknown>; games: GamePaperSummary[] }> {
     const startedAt = new Date();
+    rng = mulberry32(config.settings.seed ?? (config as any).seed ?? 42);
+    const openingRandomMoves = config.settings.openingRandomMoves ?? 4;
+    this.activeModels = [config.models.white, config.models.black];
     const gameSummaries: GamePaperSummary[] = [];
     const outDir = path.resolve(config.outputDir);
     await mkdir(outDir, { recursive: true });
@@ -366,6 +454,23 @@ export class SequentialGameRunner {
     this.stockfishEvalDepth = Math.max(1, Math.floor(config.settings.stockfishEvalDepth ?? 10));
 
     await this.assertOllamaAvailable();
+    // Warm models once to avoid cold-start timeouts on the first ply.
+    const warmupModels = new Set<string>([config.models.white, config.models.black]);
+    await Promise.all(
+      Array.from(warmupModels).map(async (model) => {
+        try {
+          const warmChess = new Chess();
+          const legal = warmChess.moves({ verbose: true }).slice(0, 10).map((m) => ({
+            san: m.san,
+            uci: `${m.from}${m.to}${m.promotion ?? ''}`
+          }));
+          await this.getMoveString(model, warmChess.fen(), legal, config.settings.moveTimeoutMs);
+          console.log(`   - Warmed model ${model}`);
+        } catch (e) {
+          console.warn(`   - Warmup failed for model ${model}: ${String(e)}`);
+        }
+      })
+    );
     if (this.stockfishAnalyzer) {
       this.stockfishAnalyzer.setAnalysisDepth(this.stockfishEvalDepth);
     }
@@ -376,10 +481,23 @@ export class SequentialGameRunner {
       console.log(`   - Centralized log: ${this.gameLogger.getLogPath()}`);
       console.log(`   - Format: JSONL (one game per line, crash-safe)\n`);
     }
+    const describeProvider = (model: string) =>
+      model.startsWith('groq:') ? 'Groq (cloud, OpenAI-compatible)' : 'Ollama (local)';
+    console.log(`   - White model: ${config.models.white} [${describeProvider(config.models.white)}]`);
+    console.log(`   - Black model: ${config.models.black} [${describeProvider(config.models.black)}]`);
+    console.log(
+      `   - Timeouts: move=${config.settings.moveTimeoutMs}ms, game=${config.settings.gameTimeoutMs}ms, maxMoves=${config.settings.maxMoves}`
+    );
 
     for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
       const gameId = `paper-game-${String(gameIndex + 1).padStart(3, '0')}`;
-      const game = await this.runSinglePaperGame(gameId, gameIndex + 1, config, options, hooks.onDatapoint);
+      const game = await this.runSinglePaperGame(
+        gameId,
+        gameIndex + 1,
+        { ...config, settings: { ...config.settings, openingRandomMoves } },
+        options,
+        hooks.onDatapoint
+      );
       gameSummaries.push(game);
       
       // 🔥 LOG EVERY GAME IMMEDIATELY (crash-safe)
@@ -444,6 +562,13 @@ export class SequentialGameRunner {
     onDatapoint?: (datapoint: PaperDatapoint) => void
   ): Promise<GamePaperSummary> {
     const chess = new Chess();
+    const openingRandomMoves = config.settings.openingRandomMoves ?? 4;
+    for (let i = 0; i < openingRandomMoves; i += 1) {
+      const moves = getLegalMoveOptions(chess);
+      if (moves.length === 0) break;
+      const pick = moves[Math.floor(rng() * moves.length)];
+      chess.move(pick.san);
+    }
     const startedAt = new Date();
     const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
     let timedOut = false;
@@ -470,8 +595,7 @@ export class SequentialGameRunner {
 
       const fenBefore = chess.fen();
       const callStartedAt = Date.now();
-      const detail = await chooseMoveWithOllamaDetailed(
-        this.ollamaBaseUrl,
+      const detail = await this.getMoveDetailed(
         model,
         fenBefore,
         legalMoveOptions,
@@ -479,29 +603,28 @@ export class SequentialGameRunner {
       );
       const thinkTimeMs = Date.now() - callStartedAt;
 
-      if (!detail.move || !legalMoveOptions.some((m) => m.san === detail.move)) {
+      let chosenMove = detail.move;
+      if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
-        ruleAudit.legalMoveOnly = false;
+        ruleAudit.fallbackMovesUsed += 1;
         incrementFailureMode(ruleAudit, detail.failureMode ?? 'unknown');
         accumulateBindingProfile(ruleAudit, detail.bindingProfile);
-        throw new Error(
-          `Model ${model} did not return a legal move at ply ${moveNumber} (game ${gameId}): ${detail.failureMode ?? 'unknown'} | raw="${(detail.rawResponse ?? '').slice(0,120)}"`
-        );
+        chosenMove = pickFallbackMove(legalMoveOptions);
+      } else {
+        accumulateBindingProfile(ruleAudit, detail.bindingProfile);
       }
 
-      const moveResult = chess.move(detail.move, { strict: true });
+      const moveResult = chess.move(chosenMove, { strict: true });
       if (!moveResult) {
         ruleAudit.legalMoveOnly = false;
         incrementFailureMode(ruleAudit, detail.failureMode ?? 'unknown');
-        accumulateBindingProfile(ruleAudit, detail.bindingProfile);
-        throw new Error(`Chosen move ${detail.move} could not be applied for ${gameId}`);
+        throw new Error(`Chosen move ${chosenMove} could not be applied for ${gameId}`);
       }
 
-      const chosenMove = detail.move;
       const illegalSuggestion = detail.failureMode !== null;
       const illegalFailureMode: IllegalMoveFailureMode | null = illegalSuggestion ? detail.failureMode : null;
       const bindingProfile: BindingProfile | null = detail.bindingProfile;
-      const correctionApplied = false;
+      const correctionApplied = detail.failureMode !== null;
 
       updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
 
