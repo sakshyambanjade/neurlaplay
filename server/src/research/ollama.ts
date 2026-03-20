@@ -18,6 +18,7 @@ function escapeRegExp(text: string): string {
 
 export type OllamaMoveResponse = {
   move: string | null;
+  selectedIndex: number | null;
   reasoning: string;
   confidence: number;
   rawResponse: string;
@@ -175,7 +176,22 @@ function buildBindingProfile(raw: string, fen: string, legalMoves: LegalMoveOpti
   });
 }
 
+function parseIndexFromText(text: string, upperBound: number): number | null {
+  const compact = text.trim();
+  const match = compact.match(/^\s*(\d+)\s*$/);
+  if (!match) return null;
+  const idx = Number(match[1]);
+  if (!Number.isInteger(idx)) return null;
+  if (idx < 0 || idx >= upperBound) return null;
+  return idx;
+}
+
 function pickMoveFromText(text: string, legalMoves: LegalMoveOption[]): string | null {
+  const idx = parseIndexFromText(text, legalMoves.length);
+  if (idx !== null) {
+    return legalMoves[idx]?.san ?? null;
+  }
+
   const compact = text.trim();
   if (!compact) {
     return null;
@@ -200,7 +216,6 @@ function pickMoveFromText(text: string, legalMoves: LegalMoveOption[]): string |
     }
   }
 
-  // Last chance: search full text for an exact legal token boundary.
   for (const move of legalMoves) {
     if (new RegExp(`\\b${escapeRegExp(move.uci)}\\b`, 'i').test(compact)) {
       return move.san;
@@ -252,9 +267,20 @@ export async function chooseMoveWithOllamaDetailed(
   model: string,
   fen: string,
   legalMoves: LegalMoveOption[],
-  timeoutMs: number
+  timeoutMs: number,
+  strict: boolean = false,
+  mode: 'constrained_index' | 'free_generation' = 'constrained_index'
 ): Promise<OllamaMoveResponse> {
-  const moveList = legalMoves.map((m) => m.san).join(' ');
+  const indexedMoves = legalMoves.map((m, idx) => `${idx}: ${m.san} (${m.uci})`).join('\n');
+  const moveList = legalMoves.map((move) => move.san).join(', ');
+  const userPrompt =
+    mode === 'free_generation'
+      ? strict
+        ? `FEN: ${fen}\nLegal moves: ${moveList}\nRespond ONLY with one legal move from the list above. No explanation.`
+        : `Choose exactly one legal move from the provided list.\nDo NOT invent moves.\nFEN: ${fen}\nLegal moves: ${moveList}\nReply with only the move text.`
+      : strict
+        ? `FEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nRespond ONLY with the integer index (0-${legalMoves.length - 1}).`
+        : `You must choose exactly one move index from the list.\nDo NOT invent moves.\nFEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nReply with only the index (0-${legalMoves.length - 1}).`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -268,22 +294,25 @@ export async function chooseMoveWithOllamaDetailed(
         messages: [
           {
             role: 'system',
-            content: `Output exactly one SAN move from this list: ${moveList}. No other text.`
+            content:
+              mode === 'free_generation'
+                ? 'Choose exactly one legal move from the list. Output only the move.'
+                : 'Choose exactly one legal move index. Output only the integer.'
           },
           {
             role: 'user',
-            content: `FEN: ${fen}\nAllowed moves: ${moveList}\nMove:`
+            content: userPrompt
           }
         ],
         options: {
           num_predict: 4,     // force very short output
           temperature: 0.0,
-          top_k: 10,          // small shortlist, but not locked to a single token
-          top_p: 0.9,
+          top_k: 1,
+          top_p: 1.0,
           num_ctx: 512,
           num_thread: 12,
           repeat_penalty: 1.3,
-          stop: [' ', '\n', '.', ',']
+          stop: ['\n', '.', ',']
         }
       }),
       signal: controller.signal
@@ -292,6 +321,7 @@ export async function chooseMoveWithOllamaDetailed(
     if (!response.ok) {
       return {
         move: null,
+        selectedIndex: null,
         reasoning: 'Model request failed.',
         confidence: 0.5,
         rawResponse: `HTTP ${response.status}`,
@@ -302,10 +332,12 @@ export async function chooseMoveWithOllamaDetailed(
 
     const data = (await response.json()) as OllamaResponse;
     const raw = (data.message?.content ?? '').trim();
-    const move = pickMoveFromText(raw, legalMoves);
+    const idx = parseIndexFromText(raw, legalMoves.length);
+    const move = typeof idx === 'number' ? legalMoves[idx]?.san ?? null : null;
 
     return {
-      move: move,
+      move,
+      selectedIndex: idx ?? null,
       reasoning: sanitizeReasoning(raw),
       confidence: parseConfidence(raw),
       rawResponse: raw,
@@ -315,6 +347,7 @@ export async function chooseMoveWithOllamaDetailed(
   } catch {
     return {
       move: null,
+      selectedIndex: null,
       reasoning: 'Model timed out or returned invalid output.',
       confidence: 0.5,
       rawResponse: '',
@@ -331,13 +364,22 @@ export async function chooseMoveWithGroq(
   model: string,
   fen: string,
   legalMoves: LegalMoveOption[],
-  timeoutMs: number
+  timeoutMs: number,
+  strict: boolean = false,
+  mode: 'constrained_index' | 'free_generation' = 'constrained_index'
 ): Promise<OllamaMoveResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const moveList = legalMoves.map((m) => m.san).join(' ');
-  const nonce = Math.random().toString(36).slice(2, 8); // break deterministic tie, keeps moves varied
-
+  const indexedMoves = legalMoves.map((m, idx) => `${idx}: ${m.san} (${m.uci})`).join('\n');
+  const moveList = legalMoves.map((move) => move.san).join(', ');
+  const userPrompt =
+    mode === 'free_generation'
+      ? strict
+        ? `FEN: ${fen}\nLegal moves: ${moveList}\nRespond ONLY with one legal move from the list above.`
+        : `Choose exactly one legal move from the list.\nFEN: ${fen}\nLegal moves: ${moveList}\nReply with only the move.`
+      : strict
+        ? `FEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nRespond ONLY with the integer index (0-${legalMoves.length - 1}).`
+        : `Choose exactly one move index from the list.\nFEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nReply with only the index (0-${legalMoves.length - 1}).`;
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -350,17 +392,20 @@ export async function chooseMoveWithGroq(
         messages: [
           {
             role: 'system',
-            content: `Output exactly one SAN move from this list: ${moveList}. No other text.`
+            content:
+              mode === 'free_generation'
+                ? 'Choose exactly one legal move from the list. Output only the move.'
+                : 'Choose exactly one legal move index. Output only the integer.'
           },
           {
             role: 'user',
-            content: `FEN: ${fen}\nAllowed moves: ${moveList}\nMove:\nContext nonce: ${nonce}`
+            content: userPrompt
           }
         ],
         max_tokens: 6,
-        temperature: 0.1,
-        top_p: 0.95,
-        stop: [' ', '\n', '.', ',']
+        temperature: 0.0,
+        top_p: 1.0,
+        stop: ['\n', '.', ',']
       }),
       signal: controller.signal
     });
@@ -369,6 +414,7 @@ export async function chooseMoveWithGroq(
       const err = await response.text();
       return {
         move: null,
+        selectedIndex: null,
         reasoning: `Groq request failed: ${err.slice(0, 100)}`,
         confidence: 0.5,
         rawResponse: err,
@@ -379,10 +425,12 @@ export async function chooseMoveWithGroq(
 
     const data = (await response.json()) as any;
     const raw = (data.choices?.[0]?.message?.content ?? '').trim();
-    const move = pickMoveFromText(raw, legalMoves);
+    const idx = parseIndexFromText(raw, legalMoves.length);
+    const move = typeof idx === 'number' ? legalMoves[idx]?.san ?? null : null;
 
     return {
       move,
+      selectedIndex: idx ?? null,
       reasoning: sanitizeReasoning(raw),
       confidence: parseConfidence(raw),
       rawResponse: raw,
@@ -392,6 +440,7 @@ export async function chooseMoveWithGroq(
   } catch {
     return {
       move: null,
+      selectedIndex: null,
       reasoning: 'Groq request timed out.',
       confidence: 0.5,
       rawResponse: '',
@@ -408,8 +457,9 @@ export async function chooseMoveWithOllama(
   model: string,
   fen: string,
   legalMoves: LegalMoveOption[],
-  timeoutMs: number
+  timeoutMs: number,
+  mode: 'constrained_index' | 'free_generation' = 'constrained_index'
 ): Promise<string | null> {
-  const result = await chooseMoveWithOllamaDetailed(baseUrl, model, fen, legalMoves, timeoutMs);
+  const result = await chooseMoveWithOllamaDetailed(baseUrl, model, fen, legalMoves, timeoutMs, false, mode);
   return result.move;
 }

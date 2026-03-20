@@ -10,6 +10,7 @@ import {
 } from './ollama.js';
 import { StockfishAnalyzer } from './StockfishAnalyzer.js';
 import { GameLogger } from './GameLogger.js';
+import { chooseFallbackMove } from './runner/FallbackPolicy.js';
 import type {
   BatchConfig,
   BindingProfile,
@@ -51,14 +52,6 @@ function mulberry32(seed: number) {
 }
 
 let rng = mulberry32(42);
-
-function pickFallbackMove(legalMoves: LegalMoveOption[]): string {
-  const captures = legalMoves.filter((m) => m.san.includes('x'));
-  const checks = legalMoves.filter((m) => m.san.includes('+'));
-  const pool = captures.length > 0 ? captures : checks.length > 0 ? checks : legalMoves;
-  const idx = Math.floor(rng() * pool.length);
-  return pool[idx]!.san;
-}
 
 function inferGamePhase(moveNumber: number): GamePhase {
   if (moveNumber <= 10) {
@@ -105,9 +98,12 @@ type GameOutcome = {
 
 const STARTING_POSITION_PREFIX = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
 
-function createRuleAudit(chess: Chess): RuleAudit {
+function createRuleAudit(chess: Chess, openingRandomMoves: number = 0): RuleAudit {
   return {
-    boardSetupValid: chess.fen().startsWith(STARTING_POSITION_PREFIX),
+    // If we applied random opening moves, the board no longer matches the initial FEN.
+    // Treat setup as valid unless we explicitly started from a broken position.
+    boardSetupValid:
+      openingRandomMoves > 0 ? true : chess.fen().startsWith(STARTING_POSITION_PREFIX),
     kingPresenceValid: hasExactlyOneKingPerSide(chess),
     turnAlternationValid: true,
     legalMoveOnly: true,
@@ -117,6 +113,9 @@ function createRuleAudit(chess: Chess): RuleAudit {
     promotions: 0,
     fallbackMovesUsed: 0,
     invalidModelMoveAttempts: 0,
+    illegalMoveAttempts: 0,
+    retryAttempts: 0,
+    retrySuccesses: 0,
     invalidMoveFailureModes: {},
     bindingAttemptCount: 0,
     bindingBoundCountTotal: 0,
@@ -247,6 +246,10 @@ export class SequentialGameRunner {
       .filter(Boolean);
   }
 
+  setRunDirectory(runDir: string): void {
+    this.gameLogger?.setRunDirectory(runDir);
+  }
+
   private nextGroqKey(): string | null {
     if (this.groqKeys.length === 0) {
       return null;
@@ -260,7 +263,9 @@ export class SequentialGameRunner {
     model: string,
     fen: string,
     legalMoveOptions: LegalMoveOption[],
-    timeoutMs: number
+    timeoutMs: number,
+    strict: boolean = false,
+    mode: 'constrained_index' | 'free_generation' = 'constrained_index'
   ): Promise<OllamaMoveResponse> {
     if (model.startsWith('groq:')) {
       const groqKey = this.nextGroqKey();
@@ -268,18 +273,27 @@ export class SequentialGameRunner {
         throw new Error('GROQ_API_KEY(S) not set but groq: model requested');
       }
       const groqModel = model.replace('groq:', '');
-      return chooseMoveWithGroq(groqKey, groqModel, fen, legalMoveOptions, timeoutMs);
+      return chooseMoveWithGroq(groqKey, groqModel, fen, legalMoveOptions, timeoutMs, strict, mode);
     }
-    return chooseMoveWithOllamaDetailed(this.ollamaBaseUrl, model, fen, legalMoveOptions, timeoutMs);
+    return chooseMoveWithOllamaDetailed(
+      this.ollamaBaseUrl,
+      model,
+      fen,
+      legalMoveOptions,
+      timeoutMs,
+      strict,
+      mode
+    );
   }
 
   private async getMoveString(
     model: string,
     fen: string,
     legalMoveOptions: LegalMoveOption[],
-    timeoutMs: number
+    timeoutMs: number,
+    mode: 'constrained_index' | 'free_generation' = 'constrained_index'
   ): Promise<string | null> {
-    const detail = await this.getMoveDetailed(model, fen, legalMoveOptions, timeoutMs);
+    const detail = await this.getMoveDetailed(model, fen, legalMoveOptions, timeoutMs, false, mode);
     return detail.move;
   }
 
@@ -359,6 +373,13 @@ export class SequentialGameRunner {
     };
 
     await writeFile(outputFile, JSON.stringify({ summary, games: results }, null, 2), 'utf-8');
+    await this.gameLogger?.writeRunSummary({
+      summary,
+      outputFile,
+      whiteModel: config.models.white,
+      blackModel: config.models.black,
+      runType: 'batch'
+    });
 
     console.log('Batch complete.');
     console.log(`Completed games: ${results.length}`);
@@ -380,7 +401,7 @@ export class SequentialGameRunner {
     const startedAt = new Date();
     const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
     let timedOut = false;
-    const ruleAudit = createRuleAudit(chess);
+    const ruleAudit = createRuleAudit(chess, openingRandomMoves);
 
     while (!chess.isGameOver() && chess.history().length < config.settings.maxMoves) {
       if (Date.now() >= deadline) {
@@ -399,14 +420,24 @@ export class SequentialGameRunner {
       const turnBeforeMove = chess.turn();
 
       const candidateMove =
-        (await this.getMoveString(model, chess.fen(), legalMoveOptions, config.settings.moveTimeoutMs)) ?? null;
+        (await this.getMoveString(
+          model,
+          chess.fen(),
+          legalMoveOptions,
+          config.settings.moveTimeoutMs,
+          config.mode === 'free_generation' ? 'free_generation' : 'constrained_index'
+        )) ?? null;
 
       let chosenMove = candidateMove;
       if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         incrementFailureMode(ruleAudit, 'pseudo_legal_or_illegal');
-        chosenMove = pickFallbackMove(legalMoveOptions);
+        chosenMove = chooseFallbackMove({
+          legalMoves: legalMoveOptions,
+          policy: config.settings.fallbackPolicy ?? 'deterministic_first',
+          rngSeed: config.settings.seed
+        }).move;
       }
 
       const moveResult = chess.move(chosenMove, { strict: true });
@@ -550,6 +581,14 @@ export class SequentialGameRunner {
     if (this.gameLogger) {
       console.log(`   Backup log: ${this.gameLogger.getLogPath()}`);
     }
+    await this.gameLogger?.writeRunSummary({
+      summary,
+      outputFile,
+      whiteModel: config.models.white,
+      blackModel: config.models.black,
+      runType: 'paper',
+      totalGames: gameSummaries.length
+    });
     
     return { outputFile, summary, games: gameSummaries };
   }
@@ -572,7 +611,7 @@ export class SequentialGameRunner {
     const startedAt = new Date();
     const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
     let timedOut = false;
-    const ruleAudit = createRuleAudit(chess);
+    const ruleAudit = createRuleAudit(chess, openingRandomMoves);
 
     const whiteCpl: number[] = [];
     const blackCpl: number[] = [];
@@ -595,21 +634,57 @@ export class SequentialGameRunner {
 
       const fenBefore = chess.fen();
       const callStartedAt = Date.now();
-      const detail = await this.getMoveDetailed(
+      const primary = await this.getMoveDetailed(
         model,
         fenBefore,
         legalMoveOptions,
-        config.settings.moveTimeoutMs
+        config.settings.moveTimeoutMs,
+        false,
+        config.mode === 'free_generation' ? 'free_generation' : 'constrained_index'
       );
       const thinkTimeMs = Date.now() - callStartedAt;
 
+      let detail = primary;
+      let retryDetail: OllamaMoveResponse | null = null;
+      let retrySuccess = false;
+      let illegalAttempt = false;
+      const retryBudget = Math.max(0, Math.floor(config.settings.retryCount ?? 1));
+
+      if (!primary.move || !legalMoveOptions.some((m) => m.san === primary.move)) {
+        illegalAttempt = true;
+        ruleAudit.invalidModelMoveAttempts += 1;
+        ruleAudit.illegalMoveAttempts += 1;
+        for (let attempt = 0; attempt < retryBudget; attempt += 1) {
+          ruleAudit.retryAttempts += 1;
+          retryDetail = await this.getMoveDetailed(
+            model,
+            fenBefore,
+            legalMoveOptions,
+            config.settings.moveTimeoutMs,
+            true,
+            config.mode === 'free_generation' ? 'free_generation' : 'constrained_index'
+          );
+          const retryCandidate = retryDetail;
+          if (retryCandidate.move && legalMoveOptions.some((m) => m.san === retryCandidate.move)) {
+            retrySuccess = true;
+            ruleAudit.retrySuccesses += 1;
+            detail = retryCandidate;
+            break;
+          }
+          ruleAudit.invalidModelMoveAttempts += 1;
+        }
+      }
+
       let chosenMove = detail.move;
       if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
-        ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.fallbackMovesUsed += 1;
         incrementFailureMode(ruleAudit, detail.failureMode ?? 'unknown');
         accumulateBindingProfile(ruleAudit, detail.bindingProfile);
-        chosenMove = pickFallbackMove(legalMoveOptions);
+        chosenMove = chooseFallbackMove({
+          legalMoves: legalMoveOptions,
+          policy: config.settings.fallbackPolicy ?? 'deterministic_first',
+          rngSeed: config.settings.seed
+        }).move;
       } else {
         accumulateBindingProfile(ruleAudit, detail.bindingProfile);
       }
@@ -621,17 +696,17 @@ export class SequentialGameRunner {
         throw new Error(`Chosen move ${chosenMove} could not be applied for ${gameId}`);
       }
 
-      const illegalSuggestion = detail.failureMode !== null;
-      const illegalFailureMode: IllegalMoveFailureMode | null = illegalSuggestion ? detail.failureMode : null;
+      const illegalSuggestion = illegalAttempt || detail.failureMode !== null;
+      const illegalFailureMode: IllegalMoveFailureMode | null = illegalSuggestion ? (detail.failureMode ?? 'wrong_format') : null;
       const bindingProfile: BindingProfile | null = detail.bindingProfile;
-      const correctionApplied = detail.failureMode !== null;
+      const correctionApplied = !chosenMove || chosenMove !== detail.move;
 
       updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
 
       const fenAfter = chess.fen();
 
       const cpl = options.enabled ? await this.computeCpl(fenBefore, chosenMove, fenAfter) : 0;
-      const clampedCpl = clampCpl(cpl);
+      const clampedCpl = cpl < 0 ? -1 : clampCpl(cpl);
       if (side === 'white') {
         whiteCpl.push(clampedCpl);
       } else {
@@ -651,6 +726,7 @@ export class SequentialGameRunner {
         fenBefore,
         fenAfter,
         move: chosenMove,
+        selectionIndex: detail.selectedIndex ?? undefined,
         legalMoves: legalMoveOptions.map((m) => m.san),
         reasoning: options.trackReasoning ? detail.reasoning : '',
         confidence: options.trackConfidence ? detail.confidence : 0.5,
@@ -666,6 +742,26 @@ export class SequentialGameRunner {
         thinkTimeMs,
         moveTimeMs: thinkTimeMs
       };
+
+      if (this.gameLogger) {
+        await this.gameLogger.logMove({
+          runType: 'paper',
+          gameId,
+          moveNumber,
+          side,
+          model,
+          fen: fenBefore,
+          legalMoves: legalMoveOptions.map((m, idx) => `${idx}:${m.san}`),
+          rawPrimary: primary.rawResponse,
+          rawRetry: retryDetail?.rawResponse ?? null,
+          selectedIndex: detail.selectedIndex ?? null,
+          chosenMove,
+          valid: legalMoveOptions.some((m) => m.san === chosenMove),
+          retryUsed: retryDetail !== null,
+          retrySuccess,
+          fallbackUsed: chosenMove !== detail.move
+        });
+      }
 
       onDatapoint?.(datapoint);
       await sleep(config.settings.moveDelayMs);

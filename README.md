@@ -1,158 +1,89 @@
-# ♟️ Research Chess Batch
+# Deterministic Chess Decision Benchmark
 
-**Run 50+ automated LLM vs LLM chess games. Export results for research papers.**
+This project evaluates language models as constrained decision systems in chess. The benchmark is designed to separate action hallucination from downstream decision failure.
 
-**NEW**: 🦙 Ollama local model support + 📊 Enhanced chess analytics!
+## Core protocol
 
----
+- `chess.js` is the source of truth for legal moves.
+- Models do not generate arbitrary moves in paper mode.
+- Each turn is presented as an indexed legal-move list.
+- The model must return exactly one integer index.
+- Invalid output is rejected, retried once, then replaced with a deterministic fallback.
+- Every move and every game is append-only logged.
 
-## 🚀 Quick Start (5 minutes)
+## Repo layout
 
-### Option A: Use Local Ollama Models (Recommended)
+```text
+client/                     React dashboard
+server/                     Express + Socket.IO + research pipeline
+paper/configs/              Canonical experiment presets
+paper/docs/                 Methods and reproducibility notes
+paper/scripts/              Figure/table/artifact helpers
+paper/runs/                 Immutable run outputs
+research_legacy/            Legacy assets retained during migration
+```
+
+## Quick start
 
 ```powershell
-# 1. Ensure Ollama is running
-ollama serve
+cd E:\neurlaplay\server
+npm install
 
-# 2. Install dependencies (per workspace)
-cd client && npm install
-cd ../server && npm install
+cd ..\client
+npm install
 
-# 3. Run quick test with your local models
-cd server
-npm run batch:ollama:quick
+cd ..\server
+npm run dev
 ```
 
-> Runs now fail fast if Ollama is unreachable or returns an illegal move -- no random fallbacks are used.
+Frontend: [http://localhost:5173](http://localhost:5173)  
+Backend: [http://localhost:3001](http://localhost:3001)
 
-**See [research/docs/OLLAMA_GUIDE.md](research/docs/OLLAMA_GUIDE.md) for full Ollama integration guide!**
+## Run the benchmark
 
-### Option B: Cloud models (not yet implemented)
-
-Cloud providers listed previously are not wired up in code; all runs currently require a local Ollama model.
-
-Open: **http://localhost:5173**
-
-## Preflight & Smoke Test
+Smoke test:
 
 ```powershell
-# Verify Ollama + Stockfish + configs
-cd server
-npm run check:preflight
-
-# 2-game sanity batch (fast, fails on illegal moves/timeouts)
-npm run research:sanity
+cd E:\neurlaplay\server
+npx tsx src/research/paper-cli.ts --config ..\paper\configs\debug\smoke_test.json
 ```
 
----
+Main constrained run:
 
-## 📊 Usage
-
-1. **Pick Models** → White & Black players (or use config files)
-2. **Set Games** → Default 50
-3. **Start Batch** → Watch live progress
-4. **Export Results** → Table 3 LaTeX or CSV/PGN
-5. **Analyze** → Enhanced chess metrics and visualizations
-
----
-
-## 🆕 Enhanced Research Analytics
-
-### Run Analysis
-```bash
-cd research
-python analyze_research.py ../server/game-data/research-match-TIMESTAMP.json --paper
+```powershell
+cd E:\neurlaplay\server
+npx tsx src/research/paper-cli.ts --config ..\paper\configs\paper\groq_llama8b_constrained.json
 ```
 
-### New Metrics Included:
-- **Game Phase Analysis**: Opening (1-10), Middlegame (11-40), Endgame (41+) performance
-- **Accuracy Breakdown**: 6 quality categories from Excellent to Blunder
-- **Critical Moments**: Automatic detection of game-deciding positions
-- **Time Management**: Thinking time vs move quality correlation
-- **Head-to-Head**: Direct model comparison with detailed stats
+From the UI:
 
-### Generate Visualizations
-```bash
-pip install matplotlib seaborn
-python visualize_research.py ../server/game-data/research-match-TIMESTAMP_paper.json
-```
+- load a canonical preset from the preset selector,
+- start the run,
+- if the server restarts or the run pauses, continue from `Interrupted Runs`.
 
-Generates:
-- Move quality distribution charts
-- Game phase performance comparison
-- CPL timeline throughout games
-- Model-vs-model comparison graphs
+## Output artifacts
 
----
+Each run writes a self-contained directory under `paper/runs/<runId>/` with:
 
-## 📁 Project Structure
+- `accepted-config.json`
+- `run_manifest.json`
+- `status.json`
+- `pipeline.log`
+- `health.json` per matchup
+- `run_summary.json`
+- `stats.json`
+- `figures_data.json`
+- per-matchup `moves.jsonl`
+- per-matchup `games.jsonl`
+- per-matchup `paper-results.json`
+- per-matchup `paper-stats.json`
+- `artifacts_manifest.json`
 
-```
-client/
-└── src/pages/ResearchBatch.tsx      ← Single research page
+Interrupted runs are resumable because the pipeline checkpoints:
 
-server/
-├── src/routes/research.ts           ← Batch endpoints
-├── src/research/
-│   └── SequentialGameRunner.ts      ← Game runner engine
-└── src/game/MatchRoom.ts            ← Chess logic
-```
+- `paper-datapoints.live.jsonl`
+- `paper-games.live.jsonl`
 
----
+## Research claim
 
-## ✅ What's Included
-
-- **🦙 Ollama Local Models** (Run models on your own hardware - FREE!)
-- **6 Cloud LLM Providers** (Groq, OpenRouter, Google, Mistral, HuggingFace, Together)
-- **Batch Runner** (50+ games, live socket updates)
-- **Enhanced Analytics** (Chess-specific metrics, game phase analysis, visualizations)
-- **Results Export** (LaTeX table, CSV, PGN files, paper-ready JSON)
-- **No Database** (filesystem only)
-- **Zero Cost Option** (use Ollama + free tier API keys)
-
----
-
-## 🦙 Ollama Models Available
-
-Your current Ollama installation:
-- **qwen3-coder:30b** (18 GB) - Code-focused, strong reasoning
-- **llama3.1:8b** (4.9 GB) - Latest Llama with improved capabilities
-- **llama3:8b** (4.7 GB) - Original Llama 3
-- **phi3:latest** (2.2 GB) - Microsoft's compact model
-- **tinyllama:latest** (637 MB) - Smallest for testing
-
-Plus cloud models: deepseek-v3.1:671b, gpt-oss:120b, qwen3-coder:480b
-
-**Ready-to-use configs:**
-- `research/configs/batch_config_ollama_quick_test.json` - 4 games (2 min)
-- `research/configs/batch_config_ollama_tournament.json` - 18 games (full comparison)
-
----
-
-## 📝 Table 3 Export
-
-After running 50 games:
-- **Export Table 3 (LaTeX)** → Ready for arXiv
-- **Download All (CSVs/PGNs)** → Full game data
-
----
-
-## 🛠️ Architecture
-
-- **Frontend**: React + Vite + Tailwind
-- **Backend**: Express + Socket.io
-- **Games**: Chess.js (moves) + LLM (strategy)
-- **No Matchmaking**, **No Ratings**, **No Auth** ← Keep it simple.
-
----
-
-## 📌 Next Steps
-
-1. Run first batch (10 games) to test
-2. Run second batch (50 games) for paper
-3. Export LaTeX → Include in paper
-4. Done! 🎉
-
----
-
-**⚠️ Batch is running in background.** Browser refresh is safe. Progress syncs via socket.io.
+Even when action hallucination is removed through constrained index selection, language models still exhibit systematic decision failures that scale with complexity and pressure.

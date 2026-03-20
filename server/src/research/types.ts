@@ -1,4 +1,6 @@
 export type BatchConfig = {
+  mode?: 'free_generation' | 'constrained_index' | 'move_scoring';
+  resumeFromGameIndex?: number;
   games: number;
   outputDir: string;
   models: {
@@ -16,6 +18,8 @@ export type BatchConfig = {
     blunderThresholdCp?: number;
     seed?: number;
     openingRandomMoves?: number;
+    retryCount?: number;
+    fallbackPolicy?: 'deterministic_first' | 'stockfish_best' | 'random_seeded';
   };
 };
 
@@ -52,6 +56,7 @@ export type PaperDatapoint = {
   moveNumber: number;
   side: 'white' | 'black';
   model: string;
+  selectionIndex?: number;
   timestamp: number;
   thinkTimeMs?: number;
   moveTimeMs?: number;
@@ -99,6 +104,9 @@ export type RuleAudit = {
   promotions: number;
   fallbackMovesUsed: number;
   invalidModelMoveAttempts: number;
+  illegalMoveAttempts: number;
+  retryAttempts: number;
+  retrySuccesses: number;
   invalidMoveFailureModes: Partial<Record<IllegalMoveFailureMode, number>>;
   bindingAttemptCount: number;
   bindingBoundCountTotal: number;
@@ -192,6 +200,13 @@ export type PaperStatsSummary = {
       destination: number;
       legalConstraint: number;
     };
+  };
+  extraMetrics?: {
+    illegal_move_attempt_rate: number;
+    retry_success_rate: number;
+    fallback_rate: number;
+    move_selection_entropy: number;
+    repetition_rate: number;
   };
 };
 

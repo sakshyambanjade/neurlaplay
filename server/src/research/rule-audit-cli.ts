@@ -65,8 +65,8 @@ function hasFlag(flag: string): boolean {
 }
 
 async function findLatestMatchFile(serverCwd: string): Promise<string> {
-  const candidates = [
-    path.resolve(serverCwd, '../research/archive'),
+  const runRoots = [
+    path.resolve(serverCwd, '../paper/runs'),
     path.resolve(serverCwd, 'server/game-data'),
     path.resolve(serverCwd, 'game-data')
   ];
@@ -74,63 +74,45 @@ async function findLatestMatchFile(serverCwd: string): Promise<string> {
   let bestPath: string | null = null;
   let bestMtime = -1;
 
-  for (const dir of candidates) {
-    let entries: string[];
+  async function walk(dir: string): Promise<void> {
+    let entries: Array<{ name: string; isDirectory: boolean }>;
     try {
-      entries = await readdir(dir);
+      const dirents = await readdir(dir, { withFileTypes: true });
+      entries = dirents.map((entry) => ({ name: entry.name, isDirectory: entry.isDirectory() }));
     } catch {
-      continue;
+      return;
     }
 
-    // Look for both paper-research-match-*.json and paper-stats.json
-    const files = entries.filter(
-      (entry) =>
-        (entry.startsWith('paper-research-match-') && entry.endsWith('.json')) ||
-        entry === 'paper-stats.json'
-    );
-
-    for (const file of files) {
-      let fullPath = path.join(dir, file);
-      
-      // If it's paper-stats.json in archive, check subdirectories
-      if (file === 'paper-stats.json' && dir.includes('archive')) {
-        // Skip top-level, look in timestamped subdirs
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory) {
+        await walk(fullPath);
         continue;
       }
-      
+
+      if (
+        !(
+          entry.name === 'paper-stats.json' ||
+          (entry.name.startsWith('paper-research-match-') && entry.name.endsWith('.json'))
+        )
+      ) {
+        continue;
+      }
+
       try {
         const info = await stat(fullPath);
-        const mtime = info.mtimeMs;
-        if (mtime > bestMtime) {
-          bestMtime = mtime;
+        if (info.mtimeMs > bestMtime) {
+          bestMtime = info.mtimeMs;
           bestPath = fullPath;
         }
       } catch {
-        // ignore unreadable file
+        // ignore unreadable files
       }
     }
-    
-    // Also check timestamped subdirectories in archive
-    if (dir.includes('archive')) {
-      try {
-        const subdirs = entries.filter(e => /^\d{8}-\d{6}$/.test(e));
-        for (const subdir of subdirs) {
-          const statsPath = path.join(dir, subdir, 'paper-stats.json');
-          try {
-            const info = await stat(statsPath);
-            const mtime = info.mtimeMs;
-            if (mtime > bestMtime) {
-              bestMtime = mtime;
-              bestPath = statsPath;
-            }
-          } catch {
-            // File doesn't exist in this subdir
-          }
-        }
-      } catch {
-        // readdir failed
-      }
-    }
+  }
+
+  for (const root of runRoots) {
+    await walk(root);
   }
 
   if (!bestPath) {
@@ -262,7 +244,7 @@ function toMarkdown(summary: AuditSummary): string {
 
 async function main(): Promise<void> {
   const serverCwd = process.cwd();
-  const outputDir = path.resolve(serverCwd, parseArgValue('--outputDir') ?? '../research');
+  const outputDir = path.resolve(serverCwd, parseArgValue('--outputDir') ?? '../paper/audit');
   const inputArg = parseArgValue('--input');
 
   const sourcePath = inputArg

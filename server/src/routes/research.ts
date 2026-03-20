@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import type { Response } from 'express';
 import type { Server as SocketIOServer } from 'socket.io';
+import { Chess } from 'chess.js';
 import { readFile } from 'node:fs/promises';
-import fs from 'node:fs';
 import path from 'node:path';
-import { PaperDataCollector } from '../research/PaperDataCollector.js';
+import { runConfigToBatchConfig, validateRunConfig } from '../config/schema.js';
 import { SequentialGameRunner } from '../research/SequentialGameRunner.js';
-import type { BatchConfig, PaperCollectionOptions, PaperDatapoint } from '../research/types.js';
+import { chooseMoveWithOllamaDetailed } from '../research/ollama.js';
 
 type StreamClient = {
   id: number;
@@ -35,6 +35,13 @@ function createSseClient(res: Response): StreamClient {
   };
 }
 
+function getLegalMoveOptions(chess: Chess) {
+  return chess.moves({ verbose: true }).map((move) => ({
+    san: move.san,
+    uci: `${move.from}${move.to}${move.promotion ?? ''}`
+  }));
+}
+
 export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
   const router = Router();
   const runner = new SequentialGameRunner(ollamaBaseUrl);
@@ -44,6 +51,7 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
     for (const client of streamClients.values()) {
       client.send(event, payload);
     }
+    io?.to('research').emit(event, payload);
   };
 
   router.get('/stream', (_req, res) => {
@@ -61,289 +69,86 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
     });
   });
 
-  router.post('/quick', async (_req, res) => {
+  router.get('/backend-health', async (_req, res) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
     try {
-      const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
-      const raw = await readFile(configPath, 'utf-8');
-      const config = JSON.parse(raw) as BatchConfig;
-      const result = await runner.run(config);
-      res.json({ ok: true, ...result });
+      const response = await fetch(`${ollamaBaseUrl}/api/tags`, { signal: controller.signal });
+      res.json({
+        ok: response.ok,
+        provider: 'ollama',
+        baseUrl: ollamaBaseUrl,
+        status: response.status
+      });
     } catch (error) {
       res.status(500).json({
         ok: false,
+        provider: 'ollama',
+        baseUrl: ollamaBaseUrl,
         error: error instanceof Error ? error.message : String(error)
       });
+    } finally {
+      clearTimeout(timer);
     }
   });
 
-  router.post('/batch-paper', async (req, res) => {
+  router.post('/smoke', async (_req, res) => {
     try {
-      const body = req.body as {
-        totalGames?: number;
-        whiteModel?: string;
-        blackModel?: string;
-        collect?: string[];
-      };
-
-      const totalGames = Math.max(1, Math.min(200, Number(body.totalGames ?? 50)));
-      const whiteModel = String(body.whiteModel ?? 'tinyllama:latest');
-      const blackModel = String(body.blackModel ?? 'phi3:latest');
-
-      const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
+      const configPath = path.resolve(process.cwd(), '../paper/configs/debug/smoke_test.json');
       const raw = await readFile(configPath, 'utf-8');
-      const baseConfig = JSON.parse(raw) as BatchConfig;
-
-      const config: BatchConfig = {
-        ...baseConfig,
-        games: totalGames,
-        models: {
-          white: whiteModel,
-          black: blackModel
-        },
-        outputDir: baseConfig.outputDir ?? 'server/game-data'
-      };
-
-      const collectSet = new Set((body.collect ?? []).map((value) => value.toLowerCase()));
-      const collectionOptions: PaperCollectionOptions = {
-        enabled: collectSet.size === 0 || collectSet.has('cpl'),
-        trackReasoning: collectSet.size === 0 || collectSet.has('reasoning'),
-        trackConfidence: collectSet.size === 0 || collectSet.has('confidence')
-      };
-
-      const paperOutputDir = path.resolve(process.cwd(), '../research');
-      const collector = new PaperDataCollector(whiteModel, blackModel, {
-        blunderThresholdCpl: config.settings.blunderThresholdCp,
-        stockfishEvalDepth: config.settings.stockfishEvalDepth,
-        stockfishEngine: 'stockfish-17.1-lite',
-        runManifestRef: 'run_manifest.json'
-      });
-
-      broadcast('batch-status', {
-        status: 'running',
-        totalGames,
-        whiteModel,
-        blackModel
-      });
-      io?.to('research').emit('batch-status', {
-        status: 'running',
-        totalGames,
-        whiteModel,
-        blackModel
-      });
-
-      const runResult = await runner.runPaperBatch(config, collectionOptions, {
-        onDatapoint: (point: PaperDatapoint) => {
-          collector.addDatapoint(point);
-          const updatePayload = {
-            gameId: point.gameId,
-            gameIndex: point.gameIndex,
-            moveNumber: point.moveNumber,
-            move: point.move,
-            fen: point.fenAfter,
-            side: point.side,
-            model: point.model,
-            reasoning: point.reasoning,
-            confidence: point.confidence,
-            cpl: point.cpl,
-            gamePhase: point.gamePhase,
-            stats: {
-              ...collector.getLiveStats(),
-              totalGames: point.gameIndex
-            }
-          };
-
-          broadcast('game-update', updatePayload);
-          io?.to('research').emit('game-update', updatePayload);
-        },
-        onGameComplete: (gameSummary) => {
-          collector.addGameSummary(gameSummary);
-          broadcast('game-complete', {
-            gameId: gameSummary.gameId,
-            gameIndex: gameSummary.gameIndex,
-            result: gameSummary.result,
-            moveCount: gameSummary.moveCount,
-            averageCplWhite: gameSummary.averageCplWhite,
-            averageCplBlack: gameSummary.averageCplBlack,
-            stats: collector.getLiveStats()
-          });
-        }
-      });
-
-      const artifacts = await collector.generatePaperArtifacts(paperOutputDir);
-
-      const stats = artifacts.statsSummary;
-      const paperOutput = {
-        generatedAt: new Date().toISOString(),
-        framing: {
-          headline: 'Zero-shot LLM chess move compliance',
-          summary:
-            'This run measures legal move compliance and fallback dependence before interpreting playing strength metrics.'
-        },
-        totalGames: stats.totalGames,
-        models: {
-          white: whiteModel,
-          black: blackModel
-        },
-        outcomes: {
-          whiteWins: stats.whiteWins,
-          blackWins: stats.blackWins,
-          draws: stats.draws,
-          whiteWinRate: stats.whiteWinRate,
-          blackWinRate: stats.blackWinRate,
-          drawRate: stats.drawRate,
-          confidenceInterval95: stats.confidenceInterval95,
-          pValueWhiteVsBlack: stats.pValueWhiteVsBlack
-        },
-        quality: {
-          avgCpl: stats.avgCpl,
-          blunderRate: stats.blunderRate,
-          phasePerformance: stats.phasePerformance,
-          cplSourceOfTruth: 'paper-stats.json.stats.avgCpl.overall'
-        },
-        compliance: stats.compliance,
-        reliability: stats.reliability,
-        dataPath: './research',
-        sourceOfTruth: {
-          stats: './research/paper-stats.json',
-          datapoints: './research/paper-datapoints.json',
-          games: './research/all-games.pgn'
-        }
-      };
-
-      fs.writeFileSync(path.resolve(process.cwd(), '../research/paper-results.json'), JSON.stringify(paperOutput, null, 2));
-
-      broadcast('batch-complete', {
-        status: 'complete',
-        outputFile: runResult.outputFile,
-        artifacts
-      });
-      io?.to('research').emit('batch-complete', paperOutput);
-
-      res.json({ ok: true, outputFile: runResult.outputFile, summary: runResult.summary, artifacts });
+      const config = validateRunConfig(JSON.parse(raw));
+      const matchup = config.matchups[0];
+      if (!matchup) {
+        throw new Error('Smoke config has no matchups.');
+      }
+      const batchConfig = runConfigToBatchConfig(
+        config,
+        matchup,
+        path.resolve(process.cwd(), '../paper/runs/debug-smoke')
+      );
+      const result = await runner.run(batchConfig);
+      broadcast('smoke:complete', result);
+      res.json({ ok: true, ...result });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      broadcast('batch-status', { status: 'failed', error: message });
-      io?.to('research').emit('batch-status', { status: 'failed', error: message });
+      broadcast('smoke:error', { error: message });
       res.status(500).json({ ok: false, error: message });
     }
   });
 
-  router.post('/live-batch', async (req, res) => {
+  router.post('/position', async (req, res) => {
     try {
-      const body = req.body as {
-        totalGames?: number;
-        whiteModel?: string;
-        blackModel?: string;
-        maxMoves?: number;
-      };
+      const fen =
+        typeof req.body?.fen === 'string' && req.body.fen.trim().length > 0
+          ? req.body.fen.trim()
+          : new Chess().fen();
+      const model =
+        typeof req.body?.model === 'string' && req.body.model.trim().length > 0
+          ? req.body.model.trim()
+          : 'tinyllama:latest';
+      const timeoutMs = Math.max(1000, Number(req.body?.timeoutMs ?? 10000));
 
-      const totalGames = Math.max(1, Math.min(200, Number(body.totalGames ?? 200)));
-      const whiteModel = String(body.whiteModel ?? 'tinyllama:latest');
-      const blackModel = String(body.blackModel ?? 'phi3:latest');
-      const maxMoves = Math.max(40, Math.min(600, Number(body.maxMoves ?? 200)));
+      const chess = new Chess(fen);
+      const legalMoves = getLegalMoveOptions(chess);
+      const result = await chooseMoveWithOllamaDetailed(
+        ollamaBaseUrl,
+        model,
+        fen,
+        legalMoves,
+        timeoutMs
+      );
 
-      console.log(`🔴 LIVE MODE: ${totalGames} games ${whiteModel} vs ${blackModel} (maxMoves=${maxMoves})`);
-
-      const configPath = path.resolve(process.cwd(), '../research/configs/batch_config_ollama_quick_test.json');
-      const raw = await readFile(configPath, 'utf-8');
-      const baseConfig = JSON.parse(raw) as BatchConfig;
-
-      const config: BatchConfig = {
-        ...baseConfig,
-        games: totalGames,
-        models: {
-          white: whiteModel,
-          black: blackModel
-        },
-        outputDir: baseConfig.outputDir ?? 'server/game-data',
-        settings: {
-          ...baseConfig.settings,
-          maxMoves,
-          moveDelayMs: 100,
-          interGameDelayMs: 100,
-          moveTimeoutMs: 8000
-        }
-      };
-
-      const collectionOptions: PaperCollectionOptions = {
-        enabled: true,
-        trackReasoning: true,
-        trackConfidence: true
-      };
-
-      const paperOutputDir = path.resolve(process.cwd(), '../research');
-      const collector = new PaperDataCollector(whiteModel, blackModel, {
-        blunderThresholdCpl: config.settings.blunderThresholdCp,
-        stockfishEvalDepth: config.settings.stockfishEvalDepth,
-        stockfishEngine: 'stockfish-17.1-lite',
-        runManifestRef: 'run_manifest.json'
+      res.json({
+        ok: true,
+        fen,
+        legalMoves,
+        result
       });
-
-      // Send immediate response
-      res.json({ success: true, message: 'Live batch started!', totalGames });
-
-      // Start batch in background
-      broadcast('batch-status', {
-        status: 'running',
-        totalGames,
-        whiteModel,
-        blackModel
-      });
-      io?.to('research').emit('batch-status', {
-        status: 'running',
-        totalGames,
-        whiteModel,
-        blackModel
-      });
-
-      const runResult = await runner.runPaperBatch(config, collectionOptions, {
-        onDatapoint: (point: PaperDatapoint) => {
-          collector.addDatapoint(point);
-          
-          // LIVE FEN updates
-          const liveUpdate = {
-            fen: point.fenAfter,
-            stats: {
-              ...collector.getLiveStats(),
-              currentGame: point.gameIndex,
-              totalGames: totalGames
-            }
-          };
-
-          broadcast('game-update', liveUpdate);
-          io?.to('research').emit('game-update', liveUpdate);
-        },
-        onGameComplete: (gameSummary) => {
-          collector.addGameSummary(gameSummary);
-          
-          broadcast('batch-progress', {
-            currentGame: gameSummary.gameIndex,
-            totalGames: totalGames
-          });
-          io?.to('research').emit('batch-progress', {
-            currentGame: gameSummary.gameIndex,
-            totalGames: totalGames
-          });
-        }
-      });
-
-      const artifacts = await collector.generatePaperArtifacts(paperOutputDir);
-      
-      broadcast('batch-complete', {
-        status: 'complete',
-        outputFile: runResult.outputFile,
-        artifacts
-      });
-      io?.to('research').emit('batch-complete', {
-        status: 'complete',
-        artifacts
-      });
-
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('Live batch error:', message);
-      broadcast('batch-status', { status: 'failed', error: message });
-      io?.to('research').emit('batch-status', { status: 'failed', error: message });
+      res.status(400).json({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

@@ -1,19 +1,16 @@
 import { Router } from 'express';
 import type { Server as SocketIOServer } from 'socket.io';
-import * as crypto from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import { validateRunConfig } from '../config/schema.js';
+import { findExperimentPreset, getExperimentRegistry } from '../research/ExperimentRegistry.js';
 import {
   startPaperRun,
   getRunStatus,
   getArtifacts,
   jobEmitter,
-  type PaperRunConfig,
-  type MatchupConfig
+  resumePaperRun
 } from '../research/PaperPipeline.js';
-import { SequentialGameRunner } from '../research/SequentialGameRunner.js';
-import { PaperDataCollector } from '../research/PaperDataCollector.js';
-import type { BatchConfig, PaperCollectionOptions } from '../research/types.js';
 
 type ProgressMap = Record<string, number>;
 
@@ -23,38 +20,67 @@ function matchupKey(white: string, black: string): string {
 
 function collectCompletedGamesByMatchup(): ProgressMap {
   const result: ProgressMap = {};
-  const candidateRunDirs = [
-    path.resolve(process.cwd(), '../research/runs'),
-    path.resolve(process.cwd(), 'research/runs'),
-    path.resolve('research/runs')
-  ];
-
-  const runRoot = candidateRunDirs.find((d) => fs.existsSync(d));
-  if (!runRoot) {
+  const paperRunsRoot = path.resolve(process.cwd(), '../paper/runs');
+  if (!fs.existsSync(paperRunsRoot)) {
     return result;
   }
 
-  const runDirs = fs.readdirSync(runRoot, { withFileTypes: true }).filter((d) => d.isDirectory());
-  for (const runDirEntry of runDirs) {
-    const rawDir = path.join(runRoot, runDirEntry.name, 'raw');
-    if (!fs.existsSync(rawDir)) {
+  for (const runDirEntry of fs.readdirSync(paperRunsRoot, { withFileTypes: true })) {
+    if (!runDirEntry.isDirectory()) {
       continue;
     }
 
-    const rawFiles = fs.readdirSync(rawDir).filter((f) => f.endsWith('.json'));
-    for (const rawFile of rawFiles) {
-      const fullPath = path.join(rawDir, rawFile);
-      try {
-        const parsed = JSON.parse(fs.readFileSync(fullPath, 'utf8')) as {
-          games?: Array<{ whiteModel: string; blackModel: string }>;
-        };
-
-        for (const game of parsed.games ?? []) {
-          const key = matchupKey(game.whiteModel, game.blackModel);
-          result[key] = (result[key] ?? 0) + 1;
+    const runDir = path.join(paperRunsRoot, runDirEntry.name);
+    for (const matchupDirEntry of fs.readdirSync(runDir, { withFileTypes: true })) {
+      if (!matchupDirEntry.isDirectory()) {
+        continue;
+      }
+      const statsPath = path.join(runDir, matchupDirEntry.name, 'paper-stats.json');
+      const liveGamesPath = path.join(runDir, matchupDirEntry.name, 'paper-games.live.jsonl');
+      if (!fs.existsSync(statsPath)) {
+        if (!fs.existsSync(liveGamesPath)) {
+          continue;
         }
+      }
+
+      try {
+        if (fs.existsSync(statsPath)) {
+          const parsed = JSON.parse(fs.readFileSync(statsPath, 'utf8')) as {
+            stats?: {
+              whiteModel: string;
+              blackModel: string;
+              totalGames: number;
+            };
+          };
+          if (!parsed.stats) {
+            continue;
+          }
+
+          const key = matchupKey(parsed.stats.whiteModel, parsed.stats.blackModel);
+          result[key] = Math.max(result[key] ?? 0, parsed.stats.totalGames);
+          continue;
+        }
+
+        const acceptedConfigPath = path.join(runDir, 'accepted-config.json');
+        const acceptedConfig = fs.existsSync(acceptedConfigPath)
+          ? (JSON.parse(fs.readFileSync(acceptedConfigPath, 'utf8')) as {
+              matchups?: Array<{ white: string; black: string; label: string }>;
+            })
+          : null;
+        const matchup = acceptedConfig?.matchups?.find((entry) => entry.label.replace(/[^a-zA-Z0-9._-]+/g, '_') === matchupDirEntry.name);
+        if (!matchup) {
+          continue;
+        }
+
+        const completed = fs
+          .readFileSync(liveGamesPath, 'utf8')
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean).length;
+        const key = matchupKey(matchup.white, matchup.black);
+        result[key] = Math.max(result[key] ?? 0, completed);
       } catch {
-        // Ignore malformed partial files and continue scanning.
+        // Ignore malformed partial files.
       }
     }
   }
@@ -62,11 +88,96 @@ function collectCompletedGamesByMatchup(): ProgressMap {
   return result;
 }
 
+function getIncompleteRuns(): Array<{
+  runId: string;
+  startedAt: string;
+  step: string;
+  progress: number;
+  total: number;
+}> {
+  const paperRunsRoot = path.resolve(process.cwd(), '../paper/runs');
+  if (!fs.existsSync(paperRunsRoot)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(paperRunsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const statusPath = path.join(paperRunsRoot, entry.name, 'status.json');
+      if (!fs.existsSync(statusPath)) {
+        return null;
+      }
+
+      const status = JSON.parse(fs.readFileSync(statusPath, 'utf8')) as {
+        runId: string;
+        startedAt: string;
+        step: string;
+        progress: number;
+        total: number;
+        done: boolean;
+      };
+      if (status.done) {
+        return null;
+      }
+
+      return {
+        runId: status.runId,
+        startedAt: status.startedAt,
+        step: status.step,
+        progress: status.progress,
+        total: status.total
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(b!.startedAt).localeCompare(String(a!.startedAt))) as Array<{
+    runId: string;
+    startedAt: string;
+    step: string;
+    progress: number;
+    total: number;
+  }>;
+}
+
+const DEFAULT_RUN_CONFIG = {
+  paperAngle: 'option_b_capability',
+  mode: 'constrained_index',
+  matchups: [
+    {
+      white: 'groq:llama-3.1-8b-instant',
+      black: 'groq:llama-3.1-8b-instant',
+      games: 20,
+      label: 'llama31_8b_mirror'
+    }
+  ],
+  seed: 42,
+  temperature: 0,
+  topP: 1,
+  maxTokens: 8,
+  contextPolicy: 'fen_only',
+  stockfishEvalDepth: 8,
+  blunderThresholdCp: 200,
+  settings: {
+    maxMoves: 120,
+    moveTimeoutMs: 10000,
+    gameTimeoutMs: 3600000,
+    moveDelayMs: 100,
+    interGameDelayMs: 100,
+    exportInterval: 1,
+    seed: 42,
+    openingRandomMoves: 4,
+    retryCount: 1,
+    fallbackPolicy: 'deterministic_first'
+  },
+  logging: {
+    logEveryMove: true,
+    schemaVersion: 'paper-run-v2'
+  }
+} as const;
+
 export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
   const router = Router();
-  const gameRunner = new SequentialGameRunner(ollamaBaseUrl);
 
-  // Bridge pipeline emitter events into Socket.IO so the UI gets live status/log updates.
   if (io && !(io as any).__paperBridgeRegistered) {
     jobEmitter.on('paper:status', (payload: any) => {
       io.to(payload.runId).emit('paper:status', payload);
@@ -77,190 +188,76 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     jobEmitter.on('paper:done', (payload: any) => {
       io.to(payload.runId).emit('paper:done', payload);
     });
+    jobEmitter.on('paper:eta', (payload: any) => {
+      io.to(payload.runId).emit('paper:eta', payload);
+    });
+    jobEmitter.on('paper:health', (payload: any) => {
+      io.to(payload.runId).emit('paper:health', payload);
+    });
+    jobEmitter.on('paper:accepted_config', (payload: any) => {
+      io.to(payload.runId).emit('paper:accepted_config', payload);
+    });
+    jobEmitter.on('game:start', (payload: any) => {
+      io.to(payload.runId).emit('game:start', payload);
+    });
+    jobEmitter.on('game:move', (payload: any) => {
+      io.to(payload.runId).emit('game:move', payload);
+    });
+    jobEmitter.on('game:complete', (payload: any) => {
+      io.to(payload.runId).emit('game:complete', payload);
+    });
     (io as any).__paperBridgeRegistered = true;
   }
 
+  router.get('/config/default', (_req, res) => {
+    res.json({ config: DEFAULT_RUN_CONFIG });
+  });
+
+  router.get('/presets', (_req, res) => {
+    const presets = getExperimentRegistry().map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      category: preset.category
+    }));
+    res.json({ presets });
+  });
+
+  router.get('/config/preset', (req, res) => {
+    const id = typeof req.query.id === 'string' ? req.query.id : '';
+    const preset = findExperimentPreset(id);
+    if (!preset) {
+      res.status(404).json({ error: 'Preset not found' });
+      return;
+    }
+
+    const raw = fs.readFileSync(preset.path, 'utf8');
+    res.json({
+      preset: {
+        id: preset.id,
+        name: preset.name,
+        category: preset.category
+      },
+      config: JSON.parse(raw)
+    });
+  });
+
   router.post('/run', async (req, res) => {
     try {
-      // Force fast Groq defaults regardless of UI payload to avoid slow mistral/ollama runs.
-      const groqMatchups: MatchupConfig[] = [
-        {
-          white: 'groq:llama-3.1-8b-instant',
-          black: 'groq:llama-3.1-8b-instant',
-          games: 100,
-          label: 'llama31_8b_mirror'
-        }
-      ];
+      const acceptedConfig = validateRunConfig(
+        req.body && Object.keys(req.body).length > 0 ? req.body : DEFAULT_RUN_CONFIG
+      );
 
-      const defaultSettings = {
-        maxMoves: 200,
-        moveTimeoutMs: 10000,
-        gameTimeoutMs: 3600000,
-        moveDelayMs: 500,
-        interGameDelayMs: 500,
-        exportInterval: 1,
-        stockfishEvalDepth: 8,
-        blunderThresholdCp: 200,
-        seed: 42,
-        openingRandomMoves: 4
-      };
+      const { runId, promise } = startPaperRun(acceptedConfig, { ollamaBaseUrl });
+      void promise.catch(() => {
+        // status/log emission already handled inside the pipeline
+      });
 
-      const config: PaperRunConfig = {
-        paperAngle: 'option_b_capability',
-        matchups: groqMatchups,
-        seed: 42,
-        temperature: 0,
-        topP: 0.9,
-        maxTokens: 128,
-        contextPolicy: 'full_pgn_history',
-        stockfishEvalDepth: defaultSettings.stockfishEvalDepth,
-        blunderThresholdCp: defaultSettings.blunderThresholdCp
-      };
-
-      const runId = `paper-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-      const runStartedAtMs = Date.now();
-      const totalGamesInRun = config.matchups.reduce((sum, m) => sum + m.games, 0);
-      let completedGamesInRun = 0;
-      
-      // Game batch function that integrates with SequentialGameRunner
-      const runBatchFn = async (matchup: MatchupConfig, runDir: string, cfg: PaperRunConfig): Promise<string> => {
-        // Convert matchup to BatchConfig format (force fast Groq defaults)
-        const batchConfig: BatchConfig = {
-          games: matchup.games,
-          models: {
-            white: matchup.white,
-            black: matchup.black
-          },
-          outputDir: path.join(runDir, 'raw'),
-          settings: {
-            maxMoves: defaultSettings.maxMoves,
-            moveTimeoutMs: defaultSettings.moveTimeoutMs,
-            gameTimeoutMs: defaultSettings.gameTimeoutMs,
-            moveDelayMs: defaultSettings.moveDelayMs,
-            interGameDelayMs: defaultSettings.interGameDelayMs,
-            exportInterval: defaultSettings.exportInterval,
-            stockfishEvalDepth: cfg.stockfishEvalDepth,
-            blunderThresholdCp: cfg.blunderThresholdCp
-          }
-        };
-
-        const collectionOptions: PaperCollectionOptions = {
-          enabled: true,
-          trackReasoning: true,
-          trackConfidence: true
-        };
-
-        // Emit initial game start
-        io?.to(runId).emit('game:start', {
-          gameInfo: {
-            white: matchup.white,
-            black: matchup.black,
-            moveNumber: 0,
-            gameNum: 1,
-            totalGames: matchup.games
-          }
-        });
-
-        // Run games with live per-move updates.
-        let currentGameNum = 0;
-        let illegalSuggestions = 0;
-        let correctionsApplied = 0;
-        const collector = new PaperDataCollector(matchup.white, matchup.black, {
-          blunderThresholdCpl: cfg.blunderThresholdCp,
-          stockfishEvalDepth: cfg.stockfishEvalDepth,
-          stockfishEngine: 'stockfish-17.1-lite',
-          runManifestRef: 'run_manifest.json'
-        });
-        const result = await gameRunner.runPaperBatch(batchConfig, collectionOptions, {
-          onGameComplete: (summary) => {
-            collector.addGameSummary(summary);
-            currentGameNum++;
-            completedGamesInRun++;
-
-            const elapsedSec = Math.max(1, Math.floor((Date.now() - runStartedAtMs) / 1000));
-            const gamesPerHour = (completedGamesInRun / elapsedSec) * 3600;
-            const remainingGames = Math.max(0, totalGamesInRun - completedGamesInRun);
-            const etaSec = gamesPerHour > 0 ? Math.round((remainingGames / gamesPerHour) * 3600) : null;
-
-            io?.to(runId).emit('paper:eta', {
-              completedGames: completedGamesInRun,
-              totalGames: totalGamesInRun,
-              gamesPerHour,
-              etaSec
-            });
-
-            io?.to(runId).emit('game:complete', {
-              gameInfo: {
-                white: matchup.white,
-                black: matchup.black,
-                gameNum: currentGameNum,
-                totalGames: matchup.games
-              },
-              result: summary.result,
-              termination: summary.termination,
-              moveCount: summary.moveCount
-            });
-
-            setTimeout(() => {
-              io?.to(runId).emit('game:start', {
-                gameInfo: {
-                  white: matchup.white,
-                  black: matchup.black,
-                  moveNumber: 0,
-                  gameNum: currentGameNum + 1,
-                  totalGames: matchup.games
-                },
-                quality: {
-                  illegalSuggestions,
-                  correctionsApplied
-                }
-              });
-            }, 100);
-          },
-          onDatapoint: (data) => {
-            collector.addDatapoint(data as any);
-            if (data.illegalSuggestion) {
-              illegalSuggestions += 1;
-            }
-            if (data.correctionApplied) {
-              correctionsApplied += 1;
-            }
-
-            if (data.fenAfter) {
-              io?.to(runId).emit('game:move', {
-                fen: data.fenAfter,
-                move: data.move,
-                side: data.side,
-                model: data.model,
-                gameInfo: {
-                  white: matchup.white,
-                  black: matchup.black,
-                  moveNumber: data.moveNumber,
-                  gameNum: currentGameNum + 1,
-                  totalGames: matchup.games
-                },
-                quality: {
-                  illegalSuggestion: data.illegalSuggestion,
-                  correctionApplied: data.correctionApplied,
-                  illegalSuggestions,
-                  correctionsApplied
-                }
-              });
-            }
-          }
-        });
-
-        // Generate full paper artifacts (pgn, stats, datapoints, raw-games, latex table, rule audit)
-        const artifacts = await collector.generatePaperArtifacts(runDir);
-        return artifacts.pgnFile;
-      };
-
-      // Start the pipeline (non-blocking)
-      void startPaperRun(runId, config, runBatchFn);
-      
-      res.json({ runId });
+      res.json({
+        runId,
+        acceptedConfig
+      });
     } catch (error) {
-      res.status(500).json({
+      res.status(400).json({
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -268,16 +265,9 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
 
   router.post('/reset', (_req, res) => {
     try {
-      const candidateRunDirs = [
-        path.resolve(process.cwd(), '../research/runs'),
-        path.resolve(process.cwd(), 'research/runs'),
-        path.resolve('research/runs')
-      ];
-
-      for (const dir of candidateRunDirs) {
-        if (fs.existsSync(dir)) {
-          fs.rmSync(dir, { recursive: true, force: true });
-        }
+      const paperRunsDir = path.resolve(process.cwd(), '../paper/runs');
+      if (fs.existsSync(paperRunsDir)) {
+        fs.rmSync(paperRunsDir, { recursive: true, force: true });
       }
 
       res.json({ ok: true });
@@ -298,6 +288,21 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     }
   });
 
+  router.get('/incomplete', (_req, res) => {
+    res.json({
+      runs: getIncompleteRuns()
+    });
+  });
+
+  router.get('/status/:runId', (req, res) => {
+    const status = getRunStatus(req.params.runId);
+    if (!status) {
+      res.status(404).json({ error: 'Run not found' });
+      return;
+    }
+    res.json(status);
+  });
+
   router.get('/run/:runId/status', (req, res) => {
     const status = getRunStatus(req.params.runId);
     if (!status) {
@@ -307,14 +312,29 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     res.json(status);
   });
 
+  router.get('/artifacts/:runId', async (req, res) => {
+    try {
+      res.json(await getArtifacts(req.params.runId));
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   router.get('/run/:runId/artifacts', async (req, res) => {
     try {
-      const artifacts = getArtifacts(req.params.runId);
-      if (!artifacts) {
-        res.status(404).json({ error: 'Run not found' });
-        return;
-      }
-      res.json(artifacts);
+      res.json(await getArtifacts(req.params.runId));
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  router.post('/resume/:runId', async (req, res) => {
+    try {
+      res.json(await resumePaperRun(req.params.runId, { ollamaBaseUrl }));
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error)

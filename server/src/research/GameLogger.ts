@@ -1,4 +1,4 @@
-import { appendFile, mkdir } from 'node:fs/promises';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { GamePaperSummary } from './types.js';
 
@@ -9,8 +9,12 @@ import type { GamePaperSummary } from './types.js';
 export class GameLogger {
   private logFilePath: string;
   private initialized = false;
+  private runDir: string | null = null;
+  private movesLogPath: string | null = null;
+  private gamesLogPath: string | null = null;
+  private runSummaryPath: string | null = null;
 
-  constructor(private readonly baseDir: string = '../research/logs') {
+  constructor(private readonly baseDir: string = '../paper/logs') {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     this.logFilePath = path.resolve(process.cwd(), baseDir, `games-${timestamp}.jsonl`);
   }
@@ -22,7 +26,25 @@ export class GameLogger {
     if (this.initialized) return;
     const dir = path.dirname(this.logFilePath);
     await mkdir(dir, { recursive: true });
+    if (this.runDir) {
+      await mkdir(this.runDir, { recursive: true });
+    }
     this.initialized = true;
+  }
+
+  setRunDirectory(runDir: string): void {
+    this.runDir = path.resolve(runDir);
+    this.movesLogPath = path.join(this.runDir, 'moves.jsonl');
+    this.gamesLogPath = path.join(this.runDir, 'games.jsonl');
+    this.runSummaryPath = path.join(this.runDir, 'run_summary.json');
+  }
+
+  private async appendToRunFile(target: string | null, entry: Record<string, unknown>): Promise<void> {
+    if (!target) {
+      return;
+    }
+    await mkdir(path.dirname(target), { recursive: true });
+    await appendFile(target, JSON.stringify(entry) + '\n', 'utf-8');
   }
 
   /**
@@ -40,6 +62,27 @@ export class GameLogger {
     // JSONL format: one line per game, never loses data even on crash
     const line = JSON.stringify(entry) + '\n';
     await appendFile(this.logFilePath, line, 'utf-8');
+    await this.appendToRunFile(this.gamesLogPath, entry);
+  }
+
+  /**
+   * Log a single move with full context (anti-hallucination trace)
+   */
+  async logMove(entry: Record<string, unknown>): Promise<void> {
+    await this.ensureLogDir();
+    const payload = { timestamp: new Date().toISOString(), ...entry };
+    const line = JSON.stringify(payload) + '\n';
+    await appendFile(this.logFilePath, line, 'utf-8');
+    await this.appendToRunFile(this.movesLogPath, payload);
+  }
+
+  async writeRunSummary(summary: Record<string, unknown>): Promise<void> {
+    await this.ensureLogDir();
+    if (!this.runSummaryPath) {
+      return;
+    }
+    await mkdir(path.dirname(this.runSummaryPath), { recursive: true });
+    await writeFile(this.runSummaryPath, JSON.stringify(summary, null, 2), 'utf-8');
   }
 
   /**

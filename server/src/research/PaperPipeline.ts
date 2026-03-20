@@ -1,311 +1,594 @@
-import { spawn } from "child_process";
-import { EventEmitter } from "events";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
-import * as crypto from "crypto";
+import { EventEmitter } from 'node:events';
+import { appendFile, mkdir, readdir, readFile, writeFile, copyFile } from 'node:fs/promises';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
+import { validateRunConfig, runConfigToBatchConfig } from '../config/schema.js';
+import { createRunManifest, writeRunManifest } from './RunManifest.js';
+import { runPreflightChecks } from './Preflight.js';
+import { resumeRunIfPossible } from './ResumeManager.js';
+import { packageArtifacts } from './ArtifactPackager.js';
+import { GameRunner } from './runner/GameRunner.js';
+import { PaperDataCollector } from './PaperDataCollector.js';
+import { evaluateRunHealth } from './HealthMonitor.js';
+import { aggregateRunStats } from './analysis/AggregateRunStats.js';
+import { computePaperMetrics } from './analysis/ComputePaperMetrics.js';
+import { buildFiguresData } from './analysis/BuildFiguresData.js';
+import type { GamePaperSummary, PaperDatapoint, PaperCollectionOptions } from './types.js';
+import type {
+  MatchupConfig,
+  RunConfig,
+  RunStatus
+} from './types/run.js';
+import type { PaperPipelineResult } from './types/paper.js';
 
-export interface MatchupConfig {
-  white: string;
-  black: string;
-  games: number;
-  label: string;
-}
-
-export interface PaperRunConfig {
-  matchups: MatchupConfig[];
-  paperAngle: "option_a_tension" | "option_b_capability";
-  seed: number;
-  temperature: number;
-  topP: number;
-  maxTokens: number;
-  contextPolicy: "full_pgn_history" | "last_10_moves" | "fen_only";
-  stockfishEvalDepth: number;
-  blunderThresholdCp: number;
-}
-
-export interface RunStatus {
-  runId: string;
-  step: string;
-  progress: number;
-  total: number;
-  done: boolean;
-  error?: string;
-  startedAt: string;
-  finishedAt?: string;
-}
-
-const PROMPT_TEMPLATE = {
-  system: "You are a chess engine. Output only the next move in UCI notation. No explanation.",
-  user: "Game so far:\n{pgn}\nIt is {side} to move. Output ONLY the move in UCI notation (e.g. e2e4)."
-};
+export type PaperRunConfig = RunConfig;
 
 export const jobEmitter = new EventEmitter();
+
 const activeRuns = new Map<string, RunStatus>();
-
-export function getRunStatus(runId: string): RunStatus | null {
-  return activeRuns.get(runId) || loadStatusFromDisk(runId);
-}
-
-function loadStatusFromDisk(runId: string): RunStatus | null {
-  const f = path.join("research/runs", runId, "status.json");
-  if (!fs.existsSync(f)) return null;
-  return JSON.parse(fs.readFileSync(f, "utf8"));
-}
-
-function saveStatus(status: RunStatus) {
-  const dir = path.join("research/runs", status.runId);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "status.json"), JSON.stringify(status, null, 2));
-  activeRuns.set(status.runId, status);
-}
-
-function emit(runId: string, event: string, data: any) {
-  jobEmitter.emit(event, { runId, ...data });
-}
-
-function log(runId: string, msg: string) {
-  const line = `[${new Date().toISOString()}] ${msg}`;
-  emit(runId, "paper:log", { msg: line });
-  const logFile = path.join("research/runs", runId, "pipeline.log");
-  fs.appendFileSync(logFile, line + "\n");
-}
-
-function updateStatus(status: RunStatus, step: string, progress: number, total: number) {
-  status.step = step;
-  status.progress = progress;
-  status.total = total;
-  saveStatus(status);
-  emit(status.runId, "paper:status", status);
-}
-
-function runPython(script: string, args: string[], runId: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    log(runId, `Running: python ${script} ${args.join(" ")}`);
-    const workDir = path.resolve(process.cwd(), "..");
-    
-    // Try to use venv Python if it exists
-    const venvPythonWindows = path.join(workDir, ".venv", "Scripts", "python.exe");
-    const pythonExe = fs.existsSync(venvPythonWindows) ? venvPythonWindows : "python";
-    
-    const proc = spawn(pythonExe, [script, ...args], {
-      cwd: workDir,
-      shell: true
-    });
-    proc.stdout.on("data", d => log(runId, d.toString().trim()));
-    proc.stderr.on("data", d => log(runId, `[stderr] ${d.toString().trim()}`));
-    proc.on("close", code => {
-      if (code === 0) resolve();
-      else reject(new Error(`${script} exited with code ${code}`));
-    });
-  });
-}
-
-function writeManifest(runId: string, config: PaperRunConfig, gitCommit: string) {
-  const manifest = {
-    runId,
-    gitCommit,
-    startedAt: new Date().toISOString(),
-    config,
-    promptTemplate: PROMPT_TEMPLATE,
-    decodingParams: {
-      temperature: config.temperature,
-      topP: config.topP,
-      maxTokens: config.maxTokens,
-    },
-    contextPolicy: config.contextPolicy,
-    hardware: {
-      platform: os.platform(),
-      cpus: os.cpus().length,
-      cpuModel: os.cpus()[0]?.model || "unknown",
-      totalMemoryGB: (os.totalmem() / 1e9).toFixed(1),
-      nodeVersion: process.version,
-    },
-    randomSeed: config.seed,
-    paperAngle: config.paperAngle,
-    stockfishEvalDepth: config.stockfishEvalDepth,
-    blunderThresholdCp: config.blunderThresholdCp,
-    uciOptions: {
-      Threads: "default",
-      Hash: "default",
-      MultiPV: "default",
-      UCI_AnalyseMode: "default",
-      SyzygyPath: "none"
-    },
-    totalMatchups: config.matchups.length,
-    totalGames: config.matchups.reduce((s, m) => s + m.games, 0),
-  };
-  const dir = path.join("research/runs", runId);
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, "run_manifest.json"), JSON.stringify(manifest, null, 2));
-  return manifest;
-}
+const activeRunPromises = new Map<string, Promise<PaperPipelineResult>>();
 
 function getGitCommit(): string {
   try {
-    return require("child_process")
-      .execSync("git rev-parse HEAD").toString().trim();
-  } catch { return "unknown"; }
+    return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return 'unknown';
+  }
 }
 
-async function mergePGNs(runId: string): Promise<string> {
-  const runDir = path.join("research/runs", runId);
-  const pgns = fs.readdirSync(runDir)
-    .filter(f => f.endsWith(".pgn"))
-    .map(f => path.join(runDir, f));
+function sanitizeLabel(label: string): string {
+  return label.replace(/[^a-zA-Z0-9._-]+/g, '_');
+}
 
-  const masterPath = path.join(runDir, "all-games.pgn");
+function getPaperRoot(): string {
+  return path.resolve(process.cwd(), '../paper');
+}
 
-  // Wait for write stream to finish before copying
-  await new Promise<void>((resolve, reject) => {
-    const out = fs.createWriteStream(masterPath);
-    
-    for (const pgn of pgns) {
-      const content = fs.readFileSync(pgn, "utf8");
-      out.write(content + "\n");
+function getRunsRoot(): string {
+  return path.join(getPaperRoot(), 'runs');
+}
+
+function getRunDir(runId: string): string {
+  return path.join(getRunsRoot(), runId);
+}
+
+function getStatusPath(runId: string): string {
+  return path.join(getRunDir(runId), 'status.json');
+}
+
+function emit(runId: string, event: string, data: Record<string, unknown>): void {
+  jobEmitter.emit(event, { runId, ...data });
+}
+
+async function appendPipelineLog(runId: string, line: string): Promise<void> {
+  const runDir = getRunDir(runId);
+  await mkdir(runDir, { recursive: true });
+  const logFile = path.join(runDir, 'pipeline.log');
+  const payload = `[${new Date().toISOString()}] ${line}`;
+  await appendFile(logFile, payload + '\n', 'utf-8');
+  emit(runId, 'paper:log', { msg: payload });
+}
+
+async function saveStatus(status: RunStatus): Promise<void> {
+  const runDir = getRunDir(status.runId);
+  await mkdir(runDir, { recursive: true });
+  await writeFile(getStatusPath(status.runId), JSON.stringify(status, null, 2), 'utf-8');
+  activeRuns.set(status.runId, status);
+  emit(status.runId, 'paper:status', status as unknown as Record<string, unknown>);
+}
+
+export function getRunStatus(runId: string): RunStatus | null {
+  const inMemory = activeRuns.get(runId);
+  if (inMemory) {
+    return inMemory;
+  }
+
+  const statusPath = getStatusPath(runId);
+  if (!fs.existsSync(statusPath)) {
+    return null;
+  }
+
+  return JSON.parse(fs.readFileSync(statusPath, 'utf8')) as RunStatus;
+}
+
+async function listFilesRecursive(root: string, base: string = root): Promise<string[]> {
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+
+  const entries = await readdir(root, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listFilesRecursive(fullPath, base)));
+    } else {
+      files.push(path.relative(base, fullPath));
     }
-    
-    out.end();
-    out.on('finish', () => resolve());
-    out.on('error', reject);
+  }
+  return files.sort();
+}
+
+export async function getArtifacts(runId: string): Promise<{ files: string[]; zipPath: string | null }> {
+  const runDir = getRunDir(runId);
+  if (!fs.existsSync(runDir)) {
+    return { files: [], zipPath: null };
+  }
+
+  const manifestPath = path.join(runDir, 'artifacts_manifest.json');
+  if (fs.existsSync(manifestPath)) {
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf-8')) as {
+      files?: string[];
+      zipPath?: string | null;
+    };
+    return {
+      files: manifest.files ?? [],
+      zipPath: manifest.zipPath ?? null
+    };
+  }
+
+  return {
+    files: await listFilesRecursive(runDir),
+    zipPath: null
+  };
+}
+
+async function mergeMatchupPgns(runDir: string): Promise<string | null> {
+  const dirs = await readdir(runDir, { withFileTypes: true });
+  const pgns: string[] = [];
+  for (const dir of dirs) {
+    if (!dir.isDirectory()) {
+      continue;
+    }
+    const pgnPath = path.join(runDir, dir.name, 'all-games.pgn');
+    if (fs.existsSync(pgnPath)) {
+      pgns.push(pgnPath);
+    }
+  }
+
+  if (pgns.length === 0) {
+    return null;
+  }
+
+  const mergedPath = path.join(runDir, 'all-games.pgn');
+  const chunks: string[] = [];
+  for (const pgn of pgns) {
+    chunks.push((await readFile(pgn, 'utf-8')).trim());
+  }
+  await writeFile(mergedPath, chunks.filter(Boolean).join('\n\n'), 'utf-8');
+  return mergedPath;
+}
+
+async function copySingleMatchupArtifactsToRoot(runDir: string, matchupLabel: string): Promise<void> {
+  const matchupDir = path.join(runDir, matchupLabel);
+  const candidates = [
+    'paper-results.json',
+    'paper-stats.json',
+    'paper-datapoints.json',
+    'raw-games.json',
+    'paper-latex-table3.tex',
+    'rule-audit-summary.json'
+  ];
+
+  for (const filename of candidates) {
+    const source = path.join(matchupDir, filename);
+    const target = path.join(runDir, filename);
+    if (fs.existsSync(source)) {
+      await copyFile(source, target);
+    }
+  }
+}
+
+function buildCollectionOptions(): PaperCollectionOptions {
+  return {
+    enabled: true,
+    trackReasoning: true,
+    trackConfidence: true
+  };
+}
+
+function createInitialStatus(runId: string, config: RunConfig): RunStatus {
+  return {
+    runId,
+    step: 'initializing',
+    progress: 0,
+    total: config.matchups.reduce((sum, matchup) => sum + matchup.games, 0),
+    done: false,
+    startedAt: new Date().toISOString()
+  };
+}
+
+type MatchupRunArtifacts = {
+  label: string;
+  dir: string;
+  outputFile: string;
+  statsPath: string;
+  resultsPath: string;
+  datapointsPath: string;
+  pgnPath: string;
+  completedGames: number;
+};
+
+async function appendJsonl<T>(filePath: string, entry: T): Promise<void> {
+  await appendFile(filePath, JSON.stringify(entry) + '\n', 'utf-8');
+}
+
+async function readJsonl<T>(filePath: string): Promise<T[]> {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const raw = await readFile(filePath, 'utf-8');
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as T);
+}
+
+async function runMatchup(
+  runId: string,
+  runDir: string,
+  config: RunConfig,
+  matchup: MatchupConfig,
+  ollamaBaseUrl: string,
+  totalGames: number,
+  completedGamesSoFar: number,
+  onCompletedGame?: (completedGamesInMatchup: number) => Promise<void> | void
+): Promise<MatchupRunArtifacts> {
+  const matchupLabel = sanitizeLabel(matchup.label);
+  const matchupDir = path.join(runDir, matchupLabel);
+  await mkdir(matchupDir, { recursive: true });
+  const liveDatapointsPath = path.join(matchupDir, 'paper-datapoints.live.jsonl');
+  const liveGamesPath = path.join(matchupDir, 'paper-games.live.jsonl');
+
+  const restoredDatapoints = await readJsonl<PaperDatapoint>(liveDatapointsPath);
+  const restoredGames = await readJsonl<GamePaperSummary>(liveGamesPath);
+
+  const runner = new GameRunner(ollamaBaseUrl);
+  runner.setRunDirectory(matchupDir);
+
+  const batchConfig = runConfigToBatchConfig(config, matchup, matchupDir);
+  batchConfig.resumeFromGameIndex = restoredGames.length;
+  const collector = new PaperDataCollector(matchup.white, matchup.black, {
+    blunderThresholdCpl: config.blunderThresholdCp,
+    stockfishEvalDepth: config.stockfishEvalDepth,
+    stockfishEngine: 'stockfish-17.1-lite',
+    runManifestRef: '../run_manifest.json'
+  });
+  collector.hydrate(restoredDatapoints, restoredGames);
+
+  let currentGameNum = restoredGames.length;
+  let illegalSuggestions = restoredDatapoints.filter((point) => point.illegalSuggestion).length;
+  let correctionsApplied = restoredDatapoints.filter((point) => point.correctionApplied).length;
+  const runStartedAt = Date.now();
+
+  if (restoredGames.length > 0) {
+    await appendPipelineLog(
+      runId,
+      `Resuming ${matchup.label} from game ${restoredGames.length + 1} of ${matchup.games}.`
+    );
+  }
+
+  let outputFile = path.join(matchupDir, 'paper-research-match-resumed.json');
+  if (restoredGames.length < matchup.games) {
+    emit(runId, 'game:start', {
+      gameInfo: {
+        white: matchup.white,
+        black: matchup.black,
+        moveNumber: 0,
+        gameNum: restoredGames.length + 1,
+        totalGames: matchup.games
+      }
+    });
+
+    const result = await runner.runPaperMatchup(batchConfig, buildCollectionOptions(), {
+      onDatapoint: (point: PaperDatapoint) => {
+        collector.addDatapoint(point);
+        void appendJsonl(liveDatapointsPath, point);
+        if (point.illegalSuggestion) {
+          illegalSuggestions += 1;
+        }
+        if (point.correctionApplied) {
+          correctionsApplied += 1;
+        }
+
+        emit(runId, 'game:move', {
+          fen: point.fenAfter,
+          move: point.move,
+          side: point.side,
+          model: point.model,
+          gameInfo: {
+            white: matchup.white,
+            black: matchup.black,
+            moveNumber: point.moveNumber,
+            gameNum: currentGameNum + 1,
+            totalGames: matchup.games
+          },
+          quality: {
+            illegalSuggestion: point.illegalSuggestion,
+            correctionApplied: point.correctionApplied,
+            illegalSuggestions,
+            correctionsApplied
+          }
+        });
+      },
+      onGameComplete: (summary: GamePaperSummary) => {
+        collector.addGameSummary(summary);
+        void appendJsonl(liveGamesPath, summary);
+        currentGameNum += 1;
+        void onCompletedGame?.(currentGameNum);
+
+        const datapointsSnapshot = collector.getDatapointsSnapshot();
+        const gameSnapshot = collector.getGameSummariesSnapshot();
+        const health = evaluateRunHealth({
+          totalMoves: datapointsSnapshot.length,
+          fallbackMoves: gameSnapshot.reduce((sum, game) => sum + game.ruleAudit.fallbackMovesUsed, 0),
+          retryAttempts: gameSnapshot.reduce((sum, game) => sum + (game.ruleAudit.retryAttempts ?? 0), 0),
+          retrySuccesses: gameSnapshot.reduce((sum, game) => sum + (game.ruleAudit.retrySuccesses ?? 0), 0)
+        });
+        const healthPayload = {
+          matchupLabel,
+          totalMoves: datapointsSnapshot.length,
+          completedGames: currentGameNum,
+          ok: health.ok,
+          warnings: health.warnings
+        };
+        void writeFile(path.join(matchupDir, 'health.json'), JSON.stringify(healthPayload, null, 2), 'utf-8');
+        emit(runId, 'paper:health', healthPayload);
+
+        const completedGames = completedGamesSoFar + currentGameNum;
+        const elapsedSec = Math.max(1, Math.floor((Date.now() - runStartedAt) / 1000));
+        const gamesPerHour = (completedGames / elapsedSec) * 3600;
+        const remainingGames = Math.max(0, totalGames - completedGames);
+        const etaSec = gamesPerHour > 0 ? Math.round((remainingGames / gamesPerHour) * 3600) : null;
+
+        emit(runId, 'paper:eta', {
+          completedGames,
+          totalGames,
+          gamesPerHour,
+          etaSec
+        });
+
+        emit(runId, 'game:complete', {
+          gameInfo: {
+            white: matchup.white,
+            black: matchup.black,
+            gameNum: currentGameNum,
+            totalGames: matchup.games
+          },
+          result: summary.result,
+          termination: summary.termination,
+          moveCount: summary.moveCount
+        });
+      }
+    });
+    outputFile = result.outputFile;
+  }
+
+  await collector.generatePaperArtifacts(matchupDir);
+
+  return {
+    label: matchupLabel,
+    dir: matchupDir,
+    outputFile,
+    statsPath: path.join(matchupDir, 'paper-stats.json'),
+    resultsPath: path.join(matchupDir, 'paper-results.json'),
+    datapointsPath: path.join(matchupDir, 'paper-datapoints.json'),
+    pgnPath: path.join(matchupDir, 'all-games.pgn'),
+    completedGames: collector.getGameSummariesSnapshot().length
+  };
+}
+
+export async function runPaperPipeline(
+  rawConfig: unknown,
+  opts: { ollamaBaseUrl: string; runId?: string }
+): Promise<PaperPipelineResult> {
+  const config = validateRunConfig(rawConfig);
+  if (config.mode === 'move_scoring') {
+    throw new Error('move_scoring mode is scaffolded but not implemented yet.');
+  }
+  const runId = opts.runId ?? `paper-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const runDir = getRunDir(runId);
+  await mkdir(runDir, { recursive: true });
+  const resumeState = await resumeRunIfPossible(runDir);
+
+  const status = createInitialStatus(runId, config);
+  await saveStatus(status);
+
+  try {
+    await writeFile(path.join(runDir, 'accepted-config.json'), JSON.stringify(config, null, 2), 'utf-8');
+    emit(runId, 'paper:accepted_config', { config });
+
+    const manifest = createRunManifest(runId, getGitCommit(), config);
+    await writeRunManifest(runDir, manifest);
+    await appendPipelineLog(runId, `Manifest written for ${runId}.`);
+
+    const preflight = await runPreflightChecks(config, { runDir, ollamaBaseUrl: opts.ollamaBaseUrl });
+    await writeFile(path.join(runDir, 'preflight.json'), JSON.stringify(preflight, null, 2), 'utf-8');
+    if (!preflight.ok) {
+      throw new Error(
+        `Preflight failed: ${preflight.checks
+          .filter((check) => !check.ok)
+          .map((check) => `${check.name}=${check.detail}`)
+          .join('; ')}`
+      );
+    }
+
+    const totalGames = status.total;
+    const artifacts: MatchupRunArtifacts[] = [];
+    let completedGames = 0;
+    const completedMatchupLabels = new Set(resumeState.completedMatchups.map((label) => sanitizeLabel(label)));
+
+    for (const matchup of config.matchups) {
+      if (completedMatchupLabels.has(sanitizeLabel(matchup.label))) {
+        completedGames += matchup.games;
+        await appendPipelineLog(runId, `Skipping completed matchup ${matchup.label}.`);
+        continue;
+      }
+
+      status.step = `running:${matchup.label}`;
+      status.progress = completedGames;
+      await saveStatus(status);
+      await appendPipelineLog(
+        runId,
+        `Starting matchup ${matchup.label}: ${matchup.white} vs ${matchup.black} (${matchup.games} games).`
+      );
+
+      const matchupArtifacts = await runMatchup(
+        runId,
+        runDir,
+        config,
+        matchup,
+        opts.ollamaBaseUrl,
+        totalGames,
+        completedGames,
+        async (completedGamesInMatchup) => {
+          status.step = `running:${matchup.label}`;
+          status.progress = completedGames + completedGamesInMatchup;
+          await saveStatus(status);
+        }
+      );
+      artifacts.push(matchupArtifacts);
+      completedGames += matchupArtifacts.completedGames;
+
+      status.step = `completed:${matchup.label}`;
+      status.progress = completedGames;
+      await saveStatus(status);
+    }
+
+    if (artifacts.length === 1) {
+      await copySingleMatchupArtifactsToRoot(runDir, artifacts[0]!.label);
+    }
+
+    await mergeMatchupPgns(runDir);
+    const aggregated = await aggregateRunStats(runDir);
+    const metrics = computePaperMetrics(aggregated);
+    await writeFile(path.join(runDir, 'stats.json'), JSON.stringify(metrics, null, 2), 'utf-8');
+    await buildFiguresData(runDir, aggregated, metrics);
+    await writeFile(
+      path.join(runDir, 'run_summary.json'),
+      JSON.stringify(
+        {
+          runId,
+          createdAt: new Date().toISOString(),
+          acceptedConfigHash: manifest.acceptedConfigHash,
+          totalGames,
+          matchupCount: aggregated.matchupCount,
+          matchups: aggregated.matchups.map((matchup) => ({
+            label: matchup.label,
+            whiteModel: matchup.whiteModel,
+            blackModel: matchup.blackModel,
+            totalGames: matchup.totalGames,
+            fallbackRate: matchup.compliance.fallbackRate,
+            avgCplOverall: matchup.avgCpl.overall
+          })),
+          metrics
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
+
+    const packaged = await packageArtifacts(runDir);
+    await appendPipelineLog(runId, `Packaged ${packaged.files.length} artifacts.`);
+
+    status.step = 'completed';
+    status.progress = totalGames;
+    status.done = true;
+    status.finishedAt = new Date().toISOString();
+    await saveStatus(status);
+    emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
+
+    return {
+      runId,
+      runDir,
+      status,
+      manifest,
+      preflight,
+      artifacts: {
+        files: packaged.files,
+        zipPath: packaged.zipPath
+      }
+    };
+  } catch (error) {
+    status.step = 'failed';
+    status.done = true;
+    status.error = error instanceof Error ? error.message : String(error);
+    status.finishedAt = new Date().toISOString();
+    await saveStatus(status);
+    await appendPipelineLog(runId, `Pipeline failed: ${status.error}`);
+    emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
+    throw error;
+  }
+}
+
+export function startPaperRun(
+  rawConfig: unknown,
+  opts: { ollamaBaseUrl: string; runId?: string }
+): { runId: string; promise: Promise<PaperPipelineResult> } {
+  const config = validateRunConfig(rawConfig);
+  if (config.mode === 'move_scoring') {
+    throw new Error('move_scoring mode is scaffolded but not implemented yet.');
+  }
+  const runId = opts.runId ?? `paper-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const existing = activeRunPromises.get(runId);
+  if (existing) {
+    return { runId, promise: existing };
+  }
+  const promise = runPaperPipeline(config, { ...opts, runId });
+  activeRunPromises.set(runId, promise);
+  void promise.finally(() => {
+    activeRunPromises.delete(runId);
+  });
+  return { runId, promise };
+}
+
+export async function resumePaperRun(
+  runId: string,
+  opts: { ollamaBaseUrl: string }
+): Promise<{
+  runId: string;
+  state: Awaited<ReturnType<typeof resumeRunIfPossible>>;
+  restarted: boolean;
+}> {
+  const runDir = getRunDir(runId);
+  const state = await resumeRunIfPossible(runDir);
+  if (!state.exists || state.done) {
+    return {
+      runId,
+      state,
+      restarted: false
+    };
+  }
+
+  const configPath = path.join(runDir, 'accepted-config.json');
+  if (!fs.existsSync(configPath)) {
+    return {
+      runId,
+      state,
+      restarted: false
+    };
+  }
+
+  const rawConfig = JSON.parse(await readFile(configPath, 'utf-8'));
+  const { promise } = startPaperRun(rawConfig, { ollamaBaseUrl: opts.ollamaBaseUrl, runId });
+  void promise.catch(() => {
+    // status/log propagation already handled in the pipeline
   });
 
-  // Also write to canonical research/all-games-v2.pgn
-  const canonical = "research/all-games-v2.pgn";
-  fs.copyFileSync(masterPath, canonical);
-  log(runId, `Merged ${pgns.length} PGNs → ${canonical}`);
-  return masterPath;
-}
-
-function validatePGNHeaders(pgn: string, runId: string): void {
-  const requiredHeaders = ["White", "Black", "Date", "Result"];
-  const games = pgn.split("\n\n[");
-  let missing = 0;
-  for (const game of games) {
-    for (const h of requiredHeaders) {
-      if (!game.includes(`[${h} `)) missing++;
-    }
-  }
-  if (missing > 0) {
-    log(runId, `⚠️  WARNING: ${missing} missing PGN headers detected. Fix PGN export.`);
-  } else {
-    log(runId, `✅ All PGN headers present`);
-  }
-}
-
-export async function startPaperRun(
-  runId: string,
-  config: PaperRunConfig,
-  runBatchFn: (matchup: MatchupConfig, runDir: string, config: PaperRunConfig) => Promise<string>
-) {
-  const status: RunStatus = {
-    runId, step: "initializing",
-    progress: 0,
-    total: config.matchups.reduce((s, m) => s + m.games, 0),
-    done: false,
-    startedAt: new Date().toISOString(),
+  return {
+    runId,
+    state,
+    restarted: true
   };
-
-  const runDir = path.join("research/runs", runId);
-  fs.mkdirSync(runDir, { recursive: true });
-
-  try {
-    // 1. Write manifest
-    const commit = getGitCommit();
-    writeManifest(runId, config, commit);
-    log(runId, `Manifest written. Commit: ${commit}`);
-
-    // 2. Run all matchups
-    let gamesCompleted = 0;
-    for (let i = 0; i < config.matchups.length; i++) {
-      const m = config.matchups[i];
-      updateStatus(status, `Running: ${m.label}`, gamesCompleted, status.total);
-      log(runId, `▶ Matchup ${i+1}/${config.matchups.length}: ${m.label} (${m.games} games)`);
-
-      const pgn = await runBatchFn(m, runDir, config);
-
-      // Validate PGN headers immediately
-      if (fs.existsSync(pgn)) validatePGNHeaders(fs.readFileSync(pgn, "utf8"), runId);
-
-      gamesCompleted += m.games;
-      updateStatus(status, `Completed: ${m.label}`, gamesCompleted, status.total);
-    }
-
-    // 3. Merge PGNs
-    updateStatus(status, "Merging PGNs", gamesCompleted, status.total);
-    const masterPgn = await mergePGNs(runId);
-
-    // 4. Python tension pipeline - convert paths to absolute
-    const positionsCSV = path.resolve(runDir, "positions.csv");
-    const perPlyCSV    = path.resolve(runDir, "tension_per_ply.csv");
-    const perGameCSV   = path.resolve(runDir, "tension_per_game.csv");
-    const masterPgnAbsolute = path.resolve(masterPgn);
-
-    updateStatus(status, "Parsing positions", gamesCompleted, status.total);
-    await runPython("research/tension/pgn_to_positions.py", [masterPgnAbsolute, positionsCSV], runId);
-
-    updateStatus(status, "Computing tension", gamesCompleted, status.total);
-    await runPython("research/tension/compute_tension_dataset.py", [positionsCSV, perPlyCSV, perGameCSV], runId);
-
-    // 5. Human baseline tension (if downloaded)
-    const humanPgn = path.resolve("research/baselines/humans/lichess_1400_1600_rapid.pgn");
-    if (fs.existsSync(humanPgn)) {
-      updateStatus(status, "Processing human baseline", gamesCompleted, status.total);
-      const humanPos  = path.resolve(runDir, "human_positions.csv");
-      const humanPly  = path.resolve(runDir, "human_tension_per_ply.csv");
-      const humanGame = path.resolve(runDir, "human_tension_per_game.csv");
-      await runPython("research/tension/pgn_to_positions.py",     [humanPgn, humanPos], runId);
-      await runPython("research/tension/compute_tension_dataset.py", [humanPos, humanPly, humanGame], runId);
-      log(runId, "✅ Human baseline tension computed");
-    } else {
-      log(runId, "⚠️  Human baseline PGN not found — run download_human_pgn.py first");
-    }
-
-    // 6. Validate metrics
-    updateStatus(status, "Validating metrics", gamesCompleted, status.total);
-    await runPython("research/validate_metrics.py", [path.resolve(runDir)], runId);
-
-    // 7. Generate figures
-    updateStatus(status, "Generating figures", gamesCompleted, status.total);
-    await runPython("research/plot_paper_v2.py", [runDir], runId);
-
-    // 8. Package artifacts
-    updateStatus(status, "Packaging artifacts", gamesCompleted, status.total);
-    await packageArtifacts(runId, runDir);
-
-    status.done = true;
-    status.finishedAt = new Date().toISOString();
-    saveStatus(status);
-    emit(runId, "paper:done", status);
-    log(runId, "🎉 Pipeline complete!");
-
-  } catch (err: any) {
-    status.error = err.message;
-    status.done = true;
-    status.finishedAt = new Date().toISOString();
-    saveStatus(status);
-    emit(runId, "paper:done", status);
-    log(runId, `❌ Pipeline failed: ${err.message}`);
-  }
 }
 
-async function packageArtifacts(runId: string, runDir: string) {
-  const { execSync } = require("child_process");
-  const zipPath = path.join(runDir, "artifacts.zip");
-  try {
-    execSync(`cd "${runDir}" && zip -r artifacts.zip . --exclude "*.log"`, { stdio: "pipe" });
-  } catch {
-    // zip not available — list files only
-  }
-  const files = fs.readdirSync(runDir);
-  fs.writeFileSync(
-    path.join(runDir, "artifacts_manifest.json"),
-    JSON.stringify({ files, runId, createdAt: new Date().toISOString() }, null, 2)
-  );
-}
-
-export function getArtifacts(runId: string) {
-  const runDir = path.join("research/runs", runId);
-  if (!fs.existsSync(runDir)) return { files: [] };
-  return { files: fs.readdirSync(runDir) };
+export async function waitForRun(runId: string): Promise<PaperPipelineResult | null> {
+  return activeRunPromises.get(runId) ?? null;
 }

@@ -152,28 +152,8 @@ export class StockfishAnalyzer {
   }
 
   private fallbackCPL(fen: string, move: string): number {
-    // Simple heuristic: random with realistic distribution
-    // Most moves are OK (20-60 CPL), some are mistakes (100-300), rare blunders (300-1000)
-    const rand = Math.random();
-    let baseError: number;
-    
-    if (rand < 0.70) {
-      // 70% of moves: decent (20-80 CPL)
-      baseError = Math.random() * 60 + 20;
-    } else if (rand < 0.90) {
-      // 20% of moves: mistakes (80-250 CPL)
-      baseError = Math.random() * 170 + 80;
-    } else {
-      // 10% of moves: blunders (250-800 CPL)
-      baseError = Math.random() * 550 + 250;
-    }
-    
-    // Add penalties for suspicious patterns
-    let penalty = 0;
-    if (move.match(/[a-h]1[a-h]8/)) penalty += 30;
-    if (!move.includes('x') && Math.random() > 0.7) penalty += 20;
-    
-    return Math.min(2000, baseError + penalty);
+    // Signal that CPL could not be computed.
+    return -1;
   }
 
   async shutdown(): Promise<void> {

@@ -1,0 +1,35 @@
+{
+  "paperAngle": "option_b_capability",
+  "mode": "constrained_index",
+  "matchups": [
+    {
+      "white": "groq:llama-3.1-8b-instant",
+      "black": "groq:llama-3.1-8b-instant",
+      "games": 20,
+      "label": "llama31_8b_pilot"
+    }
+  ],
+  "seed": 42,
+  "temperature": 0,
+  "topP": 1,
+  "maxTokens": 8,
+  "contextPolicy": "fen_only",
+  "stockfishEvalDepth": 8,
+  "blunderThresholdCp": 200,
+  "settings": {
+    "maxMoves": 120,
+    "moveTimeoutMs": 10000,
+    "gameTimeoutMs": 1800000,
+    "moveDelayMs": 100,
+    "interGameDelayMs": 100,
+    "exportInterval": 1,
+    "seed": 42,
+    "openingRandomMoves": 4,
+    "retryCount": 1,
+    "fallbackPolicy": "deterministic_first"
+  },
+  "logging": {
+    "logEveryMove": true,
+    "schemaVersion": "paper-run-v2"
+  }
+}

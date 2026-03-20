@@ -75,8 +75,8 @@ async function checkStockfish(): Promise<void> {
 
 function checkConfigs(): void {
   const required = [
-    'research/configs/batch_config_ollama_quick_test.json',
-    'research/configs/sanity_smoketest.json'
+    'paper/configs/debug/smoke_test.json',
+    'paper/configs/paper/groq_llama8b_constrained.json'
   ];
   const missing: string[] = [];
   for (const rel of required) {

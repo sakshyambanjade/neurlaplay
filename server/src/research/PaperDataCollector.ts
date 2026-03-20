@@ -54,6 +54,17 @@ function erf(x: number): number {
   return sign * y;
 }
 
+function entropyFromCounts(counts: Map<string, number>): number {
+  const total = Array.from(counts.values()).reduce((a, b) => a + b, 0);
+  if (total === 0) return 0;
+  let h = 0;
+  for (const v of counts.values()) {
+    const p = v / total;
+    h -= p * Math.log2(p);
+  }
+  return h;
+}
+
 function buildIllegalFailureModeCounts(
   datapoints: PaperDatapoint[]
 ): Partial<Record<IllegalMoveFailureMode, number>> {
@@ -114,6 +125,13 @@ export class PaperDataCollector {
     this.gameSummaries.push(summary);
   }
 
+  hydrate(datapoints: PaperDatapoint[], gameSummaries: GamePaperSummary[]): void {
+    this.datapoints.length = 0;
+    this.gameSummaries.length = 0;
+    this.datapoints.push(...datapoints);
+    this.gameSummaries.push(...gameSummaries);
+  }
+
   getDatapointsSnapshot(): PaperDatapoint[] {
     return [...this.datapoints];
   }
@@ -138,8 +156,8 @@ export class PaperDataCollector {
     const blackWins = this.gameSummaries.filter((game) => game.result === '0-1').length;
     const draws = this.gameSummaries.filter((game) => game.result === '1/2-1/2').length;
 
-    const whiteCpl = this.datapoints.filter((d) => d.side === 'white').map((d) => d.cpl);
-    const blackCpl = this.datapoints.filter((d) => d.side === 'black').map((d) => d.cpl);
+    const whiteCpl = this.datapoints.filter((d) => d.side === 'white' && d.cpl >= 0).map((d) => d.cpl);
+    const blackCpl = this.datapoints.filter((d) => d.side === 'black' && d.cpl >= 0).map((d) => d.cpl);
 
     const phaseCounts: Record<GamePhase, number> = {
       opening: this.datapoints.filter((d) => d.gamePhase === 'opening').length,
@@ -190,16 +208,17 @@ export class PaperDataCollector {
       Math.max(0, 2 * (1 - 0.5 * (1 + erf(Math.abs(zScore) / Math.SQRT2))))
     );
 
-    const whiteMoves = this.datapoints.filter((d) => d.side === 'white');
-    const blackMoves = this.datapoints.filter((d) => d.side === 'black');
+    const whiteMoves = this.datapoints.filter((d) => d.side === 'white' && d.cpl >= 0);
+    const blackMoves = this.datapoints.filter((d) => d.side === 'black' && d.cpl >= 0);
+    const allMoves = this.datapoints.filter((d) => d.cpl >= 0);
 
     const avgCplWhite = average(whiteMoves.map((d) => d.cpl));
     const avgCplBlack = average(blackMoves.map((d) => d.cpl));
-    const avgCplOverall = average(this.datapoints.map((d) => d.cpl));
+    const avgCplOverall = average(allMoves.map((d) => d.cpl));
 
     const blundersWhite = whiteMoves.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
     const blundersBlack = blackMoves.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
-    const blundersAll = this.datapoints.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
+    const blundersAll = allMoves.filter((d) => d.cpl >= this.blunderThresholdCpl).length;
 
     const phasePerformance = {
       opening: average(this.datapoints.filter((d) => d.gamePhase === 'opening').map((d) => d.cpl)),
@@ -213,6 +232,18 @@ export class PaperDataCollector {
     const illegalDatapoints = this.datapoints.filter((d) => d.illegalSuggestion && d.bindingProfile);
     const totalMoves = this.datapoints.length;
     const fallbackMoves = this.gameSummaries.reduce((sum, game) => sum + game.ruleAudit.fallbackMovesUsed, 0);
+    const illegalMoveAttempts = this.gameSummaries.reduce(
+      (sum, game) => sum + (game.ruleAudit.illegalMoveAttempts ?? 0),
+      0
+    );
+    const retryAttempts = this.gameSummaries.reduce(
+      (sum, game) => sum + (game.ruleAudit.retryAttempts ?? 0),
+      0
+    );
+    const retrySuccesses = this.gameSummaries.reduce(
+      (sum, game) => sum + (game.ruleAudit.retrySuccesses ?? 0),
+      0
+    );
     const invalidModelMoveAttempts = this.gameSummaries.reduce(
       (sum, game) => sum + game.ruleAudit.invalidModelMoveAttempts,
       0
@@ -285,6 +316,13 @@ export class PaperDataCollector {
           : 0
     };
 
+    const moveCounts = new Map<string, number>();
+    for (const d of this.datapoints) {
+      moveCounts.set(d.move, (moveCounts.get(d.move) ?? 0) + 1);
+    }
+
+    const repetitionGames = this.gameSummaries.filter((g) => g.termination === 'threefold_repetition').length;
+
     return {
       totalGames,
       whiteModel: this.whiteModel,
@@ -353,6 +391,14 @@ export class PaperDataCollector {
         meanBoundCountByModel,
         bindingCurveByMove,
         componentPresenceRate
+      },
+      extraMetrics: {
+        illegal_move_attempt_rate:
+          totalMoves + illegalMoveAttempts > 0 ? illegalMoveAttempts / (totalMoves + illegalMoveAttempts) : 0,
+        retry_success_rate: retryAttempts > 0 ? retrySuccesses / retryAttempts : 0,
+        fallback_rate: totalMoves > 0 ? fallbackMoves / totalMoves : 0,
+        move_selection_entropy: entropyFromCounts(moveCounts),
+        repetition_rate: totalGames > 0 ? repetitionGames / totalGames : 0
       }
     };
   }
@@ -446,6 +492,7 @@ export class PaperDataCollector {
             white: stats.avgCpl.white,
             black: stats.avgCpl.black
           },
+          extraMetrics: stats.extraMetrics,
           latexTable3: this.generateTable3(stats)
         },
         null,

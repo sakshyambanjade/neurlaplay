@@ -1,56 +1,69 @@
-# Reproducing the Benchmark
+# Reproducibility
 
-## Requirements
+## Environment
+
 - Node.js 20+
-- Python 3.10+
-- Ollama running locally with required models pulled
-- Stockfish 17.1 lite via npm package (`server/node_modules/stockfish`)
+- Python 3.10+ if you want to run the helper scripts in `paper/scripts/`
+- Groq API key for Groq-backed runs
+- Ollama only for local debug/smoke runs
 
-## Environment Setup
-```bash
-cd server
+## Install
+
+```powershell
+cd E:\neurlaplay\server
 npm install
 
-cd ../client
+cd ..\client
 npm install
-
-cd ..
-pip install -r requirements.txt
 ```
 
-## Run the Benchmark
-```bash
-# 1) Prepare config (copy and edit)
-copy research\configs\batch_config_ollama_quick_test.json research\configs\my_run.json
-# Edit settings.stockfishEvalDepth, settings.blunderThresholdCp, model pairings, and games
+## Canonical configs
 
-# 1a) Choose paper angle BEFORE collecting data
-# Option A: tension pipeline (paperAngle = option_a_tension)
-# Option B: capability/fallback study (paperAngle = option_b_capability)
+- `paper/configs/debug/smoke_test.json`
+- `paper/configs/pilot/llama8b_pilot.json`
+- `paper/configs/paper/groq_llama8b_constrained.json`
+- `paper/configs/paper/groq_multi_model_compare.json`
+- `paper/configs/ablation/free_vs_constrained.json`
+- `paper/configs/ablation/fallback_policy_compare.json`
+- `paper/configs/main/groq_llama8b_constrained.json`
+- `paper/configs/ablations/free_vs_constrained.json`
+- `paper/configs/ablations/fallback_policy_compare.json`
 
-# 1b) For a stronger capability study, run the 3-model control template
-# See research\configs\paper_capability_3model.json
+## Run from CLI
 
-# 2) Start backend (from repo root)
-cd server
-npm run dev
-
-# 3) Launch a paper run (new terminal)
-cd server
-npm run research:paper -- --games=5
+```powershell
+cd E:\neurlaplay\server
+npx tsx src/research/paper-cli.ts --config ..\paper\configs\paper\groq_llama8b_constrained.json
 ```
 
-## Verify Artifacts
-After the run, confirm:
-- `research/runs/<run-id>/run_manifest.json` contains your exact config
-- `research/runs/<run-id>/run_manifest.json` contains `paperAngle`
-- `research/paper-stats.json` -> `eval_settings.depth` matches your config
-- `research/paper-stats.json` -> `eval_settings.blunder_threshold_cp` matches your config
-- `research/paper-stats.json` -> `eval_settings.statistics.ci_method` is `"wilson"`
-- `research/paper-stats.json` -> `stats.reliability.illegalFailureModes` is populated
+## Run from the UI
 
-## Re-run Exact Experiment
-To reproduce a previous run exactly:
-- Use the prior `run_manifest.json` values for matchup matrix and settings.
-- Re-run with the same model tags, `stockfishEvalDepth`, and `blunderThresholdCp`.
-- Keep `package-lock.json`, `requirements.txt`, and runtime versions pinned.
+1. Start the backend with `npm run dev` from `server/`.
+2. Start the frontend with `npm run dev` from `client/`.
+3. Open the dashboard and submit the config.
+4. The accepted config returned by the server is the source of truth.
+
+## Resume an interrupted run
+
+From the UI, use `Interrupted Runs -> Resume this run`.
+
+From the API:
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:3001/api/paper/resume/<runId> -Method Post
+```
+
+## What makes a run reproducible
+
+- The exact accepted config is saved to `accepted-config.json`.
+- The immutable manifest is saved to `run_manifest.json`.
+- The accepted config hash is stored in both the manifest and run summary.
+- Every move is append-only logged in `moves.jsonl`.
+- Every completed game is append-only logged in `games.jsonl`.
+- Partial checkpoint files are written as `paper-datapoints.live.jsonl` and `paper-games.live.jsonl`.
+- Resume continues from the next unfinished game, not from the beginning.
+- The final artifact index is saved to `artifacts_manifest.json`.
+
+## After the run
+
+Each run lives in `paper/runs/<runId>/`. Use `paper/scripts/build_figures.py` and `paper/scripts/build_tables.py` against that run directory if you want regenerated figure/table files.
