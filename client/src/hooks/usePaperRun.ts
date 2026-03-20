@@ -61,6 +61,8 @@ type PresetInfo = {
   category: string;
 };
 
+const MAIN_1200_PRESET_ID = 'main/main_1200_full_study.json';
+
 type ArtifactIndex = {
   files: string[];
   zipPath: string | null;
@@ -248,6 +250,17 @@ export function usePaperRun() {
     }
     setSelectedPresetId(id);
     setConfig(data.config);
+  }
+
+  async function startPresetRun(id: string): Promise<void> {
+    const response = await fetch(`${API}/api/paper/config/preset?id=${encodeURIComponent(id)}`);
+    const data = (await response.json()) as { config?: RunConfig; error?: string };
+    if (!response.ok || !data.config) {
+      throw new Error(data.error ?? 'Failed to load preset.');
+    }
+    setSelectedPresetId(id);
+    setConfig(data.config);
+    await startRun(data.config);
   }
 
   async function loadProgress(): Promise<Record<string, number>> {
@@ -492,6 +505,14 @@ export function usePaperRun() {
     await loadIncompleteRuns();
   }
 
+  async function launchMainExperiment(): Promise<void> {
+    if (incompleteRuns.length > 0) {
+      await resumeRun(incompleteRuns[0]!.runId);
+      return;
+    }
+    await startPresetRun(MAIN_1200_PRESET_ID);
+  }
+
   const totalGames = useMemo(
     () => config.matchups.reduce((sum, matchup) => sum + matchup.games, 0),
     [config.matchups]
@@ -574,6 +595,9 @@ export function usePaperRun() {
     continueRemaining,
     resetResearch,
     resumeRun,
+    launchMainExperiment,
+    startPresetRun,
+    main1200PresetId: MAIN_1200_PRESET_ID,
     artifactUrl
   };
 }

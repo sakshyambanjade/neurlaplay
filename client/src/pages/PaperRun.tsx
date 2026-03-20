@@ -8,7 +8,6 @@ export default function PaperRun() {
   const {
     runId,
     status,
-    config,
     acceptedConfig,
     logs,
     artifacts,
@@ -18,21 +17,9 @@ export default function PaperRun() {
     quality,
     eta,
     etaText,
-    completedByMatchup,
     incompleteRuns,
-    presets,
-    selectedPresetId,
     health,
-    updateConfig,
-    updateSettings,
-    updateMatchup,
-    loadProgress,
-    loadPreset,
-    setSelectedPresetId,
-    startRun,
-    continueRemaining,
-    resetResearch,
-    resumeRun,
+    launchMainExperiment,
     artifactUrl
   } = usePaperRun();
 
@@ -62,21 +49,8 @@ export default function PaperRun() {
         />
 
         <RunConfigForm
-          config={config}
           incompleteRuns={incompleteRuns}
-          presets={presets}
-          selectedPresetId={selectedPresetId}
-          onPresetSelect={setSelectedPresetId}
-          onLoadPreset={loadPreset}
-          completedByMatchup={completedByMatchup}
-          onConfigChange={updateConfig}
-          onSettingsChange={updateSettings}
-          onMatchupChange={updateMatchup}
-          onRefreshProgress={loadProgress}
-          onStart={startRun}
-          onContinue={continueRemaining}
-          onReset={resetResearch}
-          onResume={resumeRun}
+          onLaunchMainExperiment={launchMainExperiment}
           runInProgress={Boolean(runId && !status?.done)}
         />
       </div>
