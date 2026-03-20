@@ -13,6 +13,7 @@ export class GameLogger {
   private movesLogPath: string | null = null;
   private gamesLogPath: string | null = null;
   private runSummaryPath: string | null = null;
+  private paperMode = false;
 
   constructor(private readonly baseDir: string = '../paper/logs') {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -24,8 +25,10 @@ export class GameLogger {
    */
   private async ensureLogDir(): Promise<void> {
     if (this.initialized) return;
-    const dir = path.dirname(this.logFilePath);
-    await mkdir(dir, { recursive: true });
+    if (!this.paperMode) {
+      const dir = path.dirname(this.logFilePath);
+      await mkdir(dir, { recursive: true });
+    }
     if (this.runDir) {
       await mkdir(this.runDir, { recursive: true });
     }
@@ -34,6 +37,7 @@ export class GameLogger {
 
   setRunDirectory(runDir: string): void {
     this.runDir = path.resolve(runDir);
+    this.paperMode = true;
     this.movesLogPath = path.join(this.runDir, 'moves.jsonl');
     this.gamesLogPath = path.join(this.runDir, 'games.jsonl');
     this.runSummaryPath = path.join(this.runDir, 'run_summary.json');
@@ -61,7 +65,9 @@ export class GameLogger {
     
     // JSONL format: one line per game, never loses data even on crash
     const line = JSON.stringify(entry) + '\n';
-    await appendFile(this.logFilePath, line, 'utf-8');
+    if (!this.paperMode) {
+      await appendFile(this.logFilePath, line, 'utf-8');
+    }
     await this.appendToRunFile(this.gamesLogPath, entry);
   }
 
@@ -72,7 +78,9 @@ export class GameLogger {
     await this.ensureLogDir();
     const payload = { timestamp: new Date().toISOString(), ...entry };
     const line = JSON.stringify(payload) + '\n';
-    await appendFile(this.logFilePath, line, 'utf-8');
+    if (!this.paperMode) {
+      await appendFile(this.logFilePath, line, 'utf-8');
+    }
     await this.appendToRunFile(this.movesLogPath, payload);
   }
 
@@ -89,6 +97,9 @@ export class GameLogger {
    * Get the current log file path
    */
   getLogPath(): string {
+    if (this.paperMode && this.gamesLogPath) {
+      return this.gamesLogPath;
+    }
     return this.logFilePath;
   }
 }

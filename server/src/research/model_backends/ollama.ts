@@ -27,8 +27,8 @@ export class OllamaBackend implements ModelBackend {
             temperature: input.temperature ?? 0,
             top_k: 1,
             top_p: 1,
-            num_predict: 6,
-            stop: ['\n', '.', ',']
+            num_predict: 2,
+            stop: ['\n']
           }
         }),
         signal: controller.signal
@@ -42,7 +42,10 @@ export class OllamaBackend implements ModelBackend {
           failureMode: 'provider_error',
           latencyMs: Date.now() - startedAt,
           provider: 'ollama',
-          model
+          model,
+          statusCode: response.status,
+          retryAfterMs: null,
+          keyId: null
         };
       }
 
@@ -56,7 +59,10 @@ export class OllamaBackend implements ModelBackend {
         failureMode: parsed.failureMode,
         latencyMs: Date.now() - startedAt,
         provider: 'ollama',
-        model
+        model,
+        statusCode: 200,
+        retryAfterMs: null,
+        keyId: null
       };
     } catch (error) {
       return {
@@ -67,7 +73,9 @@ export class OllamaBackend implements ModelBackend {
           error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'network_error',
         latencyMs: Date.now() - startedAt,
         provider: 'ollama',
-        model
+        model,
+        retryAfterMs: null,
+        keyId: null
       };
     } finally {
       clearTimeout(timer);

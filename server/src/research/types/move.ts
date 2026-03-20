@@ -1,5 +1,10 @@
 import type { ProviderKind } from './provider.js';
 
+export type LegalMoveOption = {
+  san: string;
+  uci: string;
+};
+
 export type SelectionFailureMode =
   | 'none'
   | 'empty'
@@ -8,18 +13,29 @@ export type SelectionFailureMode =
   | 'network_error'
   | 'timeout'
   | 'provider_error'
-  | 'invalid_output';
+  | 'invalid_output'
+  | 'rate_limited';
+
+export type RepetitionRisk = {
+  reversesLastMove: boolean;
+  recreatesPriorFen: boolean;
+  noProgressRisk: boolean;
+  repeatStateCountAfterMove: number;
+};
 
 export type MoveSelectionInput = {
   fen: string;
   legalMovesUci: string[];
-  legalMovesSan?: string[];
   providerModel: string;
   systemPrompt?: string;
   temperature?: number;
   seed?: number;
   timeoutMs?: number;
   strict?: boolean;
+  recentMoves?: string[];
+  repetitionRiskByIndex?: RepetitionRisk[];
+  avoidImmediateRepetition?: boolean;
+  promptVariant?: 'paper' | 'debug' | 'free_generation';
 };
 
 export type ModelSelectionResult = {
@@ -30,6 +46,9 @@ export type ModelSelectionResult = {
   latencyMs: number;
   provider: ProviderKind;
   model: string;
+  statusCode?: number;
+  retryAfterMs?: number | null;
+  keyId?: string | null;
 };
 
 export type MoveTrace = {

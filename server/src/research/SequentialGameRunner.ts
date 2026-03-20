@@ -1,3 +1,6 @@
+// Active compatibility runner for the current paper pipeline.
+// The modular runner files are the long-term architecture, but this file
+// remains the production execution path until the migration is complete.
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Chess } from 'chess.js';
@@ -5,12 +8,13 @@ import {
   chooseMoveWithOllama,
   chooseMoveWithOllamaDetailed,
   chooseMoveWithGroq,
-  type LegalMoveOption,
   type OllamaMoveResponse
 } from './ollama.js';
 import { StockfishAnalyzer } from './StockfishAnalyzer.js';
 import { GameLogger } from './GameLogger.js';
 import { chooseFallbackMove } from './runner/FallbackPolicy.js';
+import { GroqKeyPool } from './model_backends/GroqKeyPool.js';
+import type { LegalMoveOption } from './types/move.js';
 import type {
   BatchConfig,
   BindingProfile,
@@ -33,6 +37,32 @@ function getLegalMoveOptions(chess: Chess): LegalMoveOption[] {
     san: move.san,
     uci: `${move.from}${move.to}${move.promotion ?? ''}`
   }));
+}
+
+function isImmediateReverse(previousMoveUci: string | null, nextMoveUci: string): boolean {
+  if (!previousMoveUci || previousMoveUci.length < 4 || nextMoveUci.length < 4) {
+    return false;
+  }
+  return (
+    previousMoveUci.slice(0, 2) === nextMoveUci.slice(2, 4) &&
+    previousMoveUci.slice(2, 4) === nextMoveUci.slice(0, 2)
+  );
+}
+
+function buildSimulatedFenByMove(chess: Chess, legalMoves: LegalMoveOption[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const move of legalMoves) {
+    try {
+      const clone = new Chess(chess.fen());
+      const applied = clone.move(move.san, { strict: true });
+      if (applied) {
+        map[move.uci] = clone.fen();
+      }
+    } catch {
+      // ignore simulation failures
+    }
+  }
+  return map;
 }
 
 type PaperRunHooks = {
@@ -232,31 +262,16 @@ export class SequentialGameRunner {
   private stockfishAnalyzer: StockfishAnalyzer | null = null;
   private stockfishEvalDepth = 10;
   private gameLogger: GameLogger | null = null;
-  private groqKeys: string[] = [];
-  private groqKeyIndex = 0;
+  private groqKeyPool: GroqKeyPool;
 
   constructor(private readonly ollamaBaseUrl: string) {
     this.stockfishAnalyzer = new StockfishAnalyzer();
     this.gameLogger = new GameLogger();
-
-    const keysEnv = process.env.GROQ_API_KEYS ?? process.env.GROQ_API_KEY ?? '';
-    this.groqKeys = keysEnv
-      .split(',')
-      .map((k) => k.trim())
-      .filter(Boolean);
+    this.groqKeyPool = GroqKeyPool.fromEnvironment();
   }
 
   setRunDirectory(runDir: string): void {
     this.gameLogger?.setRunDirectory(runDir);
-  }
-
-  private nextGroqKey(): string | null {
-    if (this.groqKeys.length === 0) {
-      return null;
-    }
-    const key = this.groqKeys[this.groqKeyIndex % this.groqKeys.length];
-    this.groqKeyIndex += 1;
-    return key;
   }
 
   private async getMoveDetailed(
@@ -265,25 +280,99 @@ export class SequentialGameRunner {
     legalMoveOptions: LegalMoveOption[],
     timeoutMs: number,
     strict: boolean = false,
-    mode: 'constrained_index' | 'free_generation' = 'constrained_index'
-  ): Promise<OllamaMoveResponse> {
-    if (model.startsWith('groq:')) {
-      const groqKey = this.nextGroqKey();
-      if (!groqKey) {
-        throw new Error('GROQ_API_KEY(S) not set but groq: model requested');
-      }
-      const groqModel = model.replace('groq:', '');
-      return chooseMoveWithGroq(groqKey, groqModel, fen, legalMoveOptions, timeoutMs, strict, mode);
+    mode: 'constrained_index' | 'free_generation' = 'constrained_index',
+    context?: {
+      recentMoves?: string[];
+      repetitionRiskByIndex?: boolean[];
+    },
+    providerPolicy?: {
+      providerRetryCount?: number;
+      providerBackoffMs?: number;
+      maxTotalProviderWaitMs?: number;
     }
-    return chooseMoveWithOllamaDetailed(
-      this.ollamaBaseUrl,
-      model,
-      fen,
-      legalMoveOptions,
-      timeoutMs,
-      strict,
-      mode
-    );
+  ): Promise<OllamaMoveResponse> {
+    const maxProviderRetries = Math.max(0, providerPolicy?.providerRetryCount ?? 3);
+    const baseBackoffMs = Math.max(0, providerPolicy?.providerBackoffMs ?? 2000);
+    const maxTotalProviderWaitMs = Math.max(0, providerPolicy?.maxTotalProviderWaitMs ?? 30000);
+
+    let providerRetries = 0;
+    let providerWaitMs = 0;
+    let lastResult: OllamaMoveResponse | null = null;
+
+    while (providerRetries <= maxProviderRetries) {
+      if (model.startsWith('groq:')) {
+        if (!this.groqKeyPool.hasKeys()) {
+          throw new Error('GROQ_API_KEY(S) not set but groq: model requested');
+        }
+        const lease = await this.groqKeyPool.lease();
+        const groqModel = model.replace('groq:', '');
+        const result = await chooseMoveWithGroq(
+          lease.key,
+          groqModel,
+          fen,
+          legalMoveOptions,
+          timeoutMs,
+          strict,
+          mode,
+          {
+            ...context,
+            keyId: lease.keyId
+          }
+        );
+        result.keyId = lease.keyId;
+        result.providerRetries = providerRetries;
+        result.providerWaitMs = providerWaitMs;
+        lastResult = result;
+
+        if (result.failureMode === 'rate_limited') {
+          this.groqKeyPool.releaseRateLimited(lease.keyId, result.retryAfterMs ?? baseBackoffMs);
+        } else if (result.failureMode === 'request_failed' || result.failureMode === 'timeout_or_abort') {
+          this.groqKeyPool.releaseFailure(lease.keyId);
+        } else {
+          this.groqKeyPool.releaseSuccess(lease.keyId);
+        }
+      } else {
+        const result = await chooseMoveWithOllamaDetailed(
+          this.ollamaBaseUrl,
+          model,
+          fen,
+          legalMoveOptions,
+          timeoutMs,
+          strict,
+          mode,
+          context
+        );
+        result.providerRetries = providerRetries;
+        result.providerWaitMs = providerWaitMs;
+        lastResult = result;
+      }
+
+      const shouldRetryProviderFailure =
+        lastResult.failureMode === 'rate_limited' ||
+        lastResult.failureMode === 'request_failed' ||
+        lastResult.failureMode === 'timeout_or_abort';
+
+      if (!shouldRetryProviderFailure || providerRetries >= maxProviderRetries) {
+        break;
+      }
+
+      const waitMs = Math.min(
+        maxTotalProviderWaitMs - providerWaitMs,
+        Math.max(250, lastResult.retryAfterMs ?? baseBackoffMs * (providerRetries + 1))
+      );
+      if (waitMs <= 0) {
+        break;
+      }
+      await sleep(waitMs);
+      providerWaitMs += waitMs;
+      providerRetries += 1;
+    }
+
+    if (!lastResult) {
+      throw new Error(`No move result available for model ${model}`);
+    }
+
+    return lastResult;
   }
 
   private async getMoveString(
@@ -291,9 +380,27 @@ export class SequentialGameRunner {
     fen: string,
     legalMoveOptions: LegalMoveOption[],
     timeoutMs: number,
-    mode: 'constrained_index' | 'free_generation' = 'constrained_index'
+    mode: 'constrained_index' | 'free_generation' = 'constrained_index',
+    context?: {
+      recentMoves?: string[];
+      repetitionRiskByIndex?: boolean[];
+    },
+    providerPolicy?: {
+      providerRetryCount?: number;
+      providerBackoffMs?: number;
+      maxTotalProviderWaitMs?: number;
+    }
   ): Promise<string | null> {
-    const detail = await this.getMoveDetailed(model, fen, legalMoveOptions, timeoutMs, false, mode);
+    const detail = await this.getMoveDetailed(
+      model,
+      fen,
+      legalMoveOptions,
+      timeoutMs,
+      false,
+      mode,
+      context,
+      providerPolicy
+    );
     return detail.move;
   }
 
@@ -334,69 +441,84 @@ export class SequentialGameRunner {
     const outputFile = path.join(outDir, `research-match-${Date.now()}.json`);
     const exportEvery = Math.max(1, config.settings.exportInterval || 1);
 
-    await this.assertOllamaAvailable();
-    console.log('NEUROCHESS SEQUENTIAL BATCH RUNNER');
-    console.log(`Games: ${config.games}`);
-    console.log(`Models: ${config.models.white} vs ${config.models.black}`);
+    try {
+      await this.assertOllamaAvailable();
+      console.log('NEUROCHESS SEQUENTIAL BATCH RUNNER');
+      console.log(`Games: ${config.games}`);
+      console.log(`Models: ${config.models.white} vs ${config.models.black}`);
 
-    for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
-      const gameId = `seq-game-${String(gameIndex + 1).padStart(3, '0')}`;
-      console.log(`Game ${gameIndex + 1}/${config.games}: ${gameId}`);
-      const gameResult = await this.runSingleGame(gameId, config);
-      results.push(gameResult);
+      for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
+        const gameId = `seq-game-${String(gameIndex + 1).padStart(3, '0')}`;
+        console.log(`Game ${gameIndex + 1}/${config.games}: ${gameId}`);
+        const gameResult = await this.runSingleGame(gameId, config);
+        results.push(gameResult);
 
-      if ((gameIndex + 1) % exportEvery === 0 || gameIndex === config.games - 1) {
-        const partialSummary = {
-          completedGames: results.length,
-          totalGames: config.games,
-          totalDurationMs: Date.now() - startedAt.getTime(),
-          startedAt: startedAt.toISOString(),
-          lastCheckpointAt: new Date().toISOString(),
-          status: gameIndex === config.games - 1 ? 'completed' : 'in_progress'
-        };
-        await writeFile(outputFile, JSON.stringify({ summary: partialSummary, games: results }, null, 2), 'utf-8');
+        if ((gameIndex + 1) % exportEvery === 0 || gameIndex === config.games - 1) {
+          const partialSummary = {
+            completedGames: results.length,
+            totalGames: config.games,
+            totalDurationMs: Date.now() - startedAt.getTime(),
+            startedAt: startedAt.toISOString(),
+            lastCheckpointAt: new Date().toISOString(),
+            status: gameIndex === config.games - 1 ? 'completed' : 'in_progress'
+          };
+          await writeFile(outputFile, JSON.stringify({ summary: partialSummary, games: results }, null, 2), 'utf-8');
+        }
+
+        if (gameIndex < config.games - 1) {
+          await sleep(config.settings.interGameDelayMs);
+        }
       }
 
-      if (gameIndex < config.games - 1) {
-        await sleep(config.settings.interGameDelayMs);
-      }
+      const endedAt = new Date();
+      const durationMs = endedAt.getTime() - startedAt.getTime();
+
+      const summary = {
+        completedGames: results.length,
+        totalDurationMs: durationMs,
+        startedAt: startedAt.toISOString(),
+        endedAt: endedAt.toISOString()
+      };
+
+      await writeFile(outputFile, JSON.stringify({ summary, games: results }, null, 2), 'utf-8');
+      await this.gameLogger?.writeRunSummary({
+        summary,
+        outputFile,
+        whiteModel: config.models.white,
+        blackModel: config.models.black,
+        runType: 'batch'
+      });
+
+      console.log('Batch complete.');
+      console.log(`Completed games: ${results.length}`);
+      console.log(`Total duration (ms): ${durationMs}`);
+      console.log(`Output: ${outputFile}`);
+
+      return { outputFile, summary };
+    } finally {
+      await this.stockfishAnalyzer?.shutdown();
     }
-
-    const endedAt = new Date();
-    const durationMs = endedAt.getTime() - startedAt.getTime();
-
-    const summary = {
-      completedGames: results.length,
-      totalDurationMs: durationMs,
-      startedAt: startedAt.toISOString(),
-      endedAt: endedAt.toISOString()
-    };
-
-    await writeFile(outputFile, JSON.stringify({ summary, games: results }, null, 2), 'utf-8');
-    await this.gameLogger?.writeRunSummary({
-      summary,
-      outputFile,
-      whiteModel: config.models.white,
-      blackModel: config.models.black,
-      runType: 'batch'
-    });
-
-    console.log('Batch complete.');
-    console.log(`Completed games: ${results.length}`);
-    console.log(`Total duration (ms): ${durationMs}`);
-    console.log(`Output: ${outputFile}`);
-
-    return { outputFile, summary };
   }
 
   private async runSingleGame(gameId: string, config: BatchConfig): Promise<GameResult> {
     const chess = new Chess();
     const openingRandomMoves = config.settings.openingRandomMoves ?? 4;
+    const seenFens = new Set<string>([chess.fen()]);
+    const recentMoves: string[] = [];
+    let lastMoveUci: string | null = null;
     for (let i = 0; i < openingRandomMoves; i += 1) {
       const moves = getLegalMoveOptions(chess);
       if (moves.length === 0) break;
       const pick = moves[Math.floor(rng() * moves.length)];
-      chess.move(pick.san);
+      const applied = chess.move(pick.san);
+      if (applied) {
+        lastMoveUci = `${applied.from}${applied.to}${applied.promotion ?? ''}`;
+        recentMoves.push(lastMoveUci);
+        if (recentMoves.length > 4) {
+          recentMoves.shift();
+        }
+        seenFens.add(chess.fen());
+      }
     }
     const startedAt = new Date();
     const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
@@ -418,15 +540,29 @@ export class SequentialGameRunner {
       const model = isWhiteTurn ? config.models.white : config.models.black;
       const side = isWhiteTurn ? 'white' : 'black';
       const turnBeforeMove = chess.turn();
+      const simulatedFenByMove = buildSimulatedFenByMove(chess, legalMoveOptions);
+      const repetitionRiskByIndex = legalMoveOptions.map((move) => {
+        const nextFen = simulatedFenByMove[move.uci];
+        return Boolean(isImmediateReverse(lastMoveUci, move.uci) || (nextFen && seenFens.has(nextFen)));
+      });
 
-      const candidateMove =
-        (await this.getMoveString(
-          model,
-          chess.fen(),
-          legalMoveOptions,
+        const candidateMove =
+          (await this.getMoveString(
+            model,
+            chess.fen(),
+            legalMoveOptions,
           config.settings.moveTimeoutMs,
-          config.mode === 'free_generation' ? 'free_generation' : 'constrained_index'
-        )) ?? null;
+          config.mode === 'free_generation' ? 'free_generation' : 'constrained_index',
+            {
+              recentMoves: [...recentMoves],
+              repetitionRiskByIndex
+            },
+            {
+              providerRetryCount: config.settings.providerRetryCount,
+              providerBackoffMs: config.settings.providerBackoffMs,
+              maxTotalProviderWaitMs: config.settings.maxTotalProviderWaitMs
+            }
+          )) ?? null;
 
       let chosenMove = candidateMove;
       if (!chosenMove || !legalMoveOptions.some((m) => m.san === chosenMove)) {
@@ -436,7 +572,10 @@ export class SequentialGameRunner {
         chosenMove = chooseFallbackMove({
           legalMoves: legalMoveOptions,
           policy: config.settings.fallbackPolicy ?? 'deterministic_first',
-          rngSeed: config.settings.seed
+          rngSeed: config.settings.seed,
+          lastMoveUci,
+          previousFenSet: seenFens,
+          simulatedFenByMove
         }).move;
       }
 
@@ -447,6 +586,12 @@ export class SequentialGameRunner {
       }
 
       updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
+      lastMoveUci = `${moveResult.from}${moveResult.to}${moveResult.promotion ?? ''}`;
+      recentMoves.push(lastMoveUci);
+      if (recentMoves.length > 4) {
+        recentMoves.shift();
+      }
+      seenFens.add(chess.fen());
 
       await sleep(config.settings.moveDelayMs);
     }
@@ -483,33 +628,33 @@ export class SequentialGameRunner {
     const outputFile = path.join(outDir, `paper-research-match-${Date.now()}.json`);
     const exportEvery = Math.max(1, config.settings.exportInterval || 1);
     this.stockfishEvalDepth = Math.max(1, Math.floor(config.settings.stockfishEvalDepth ?? 10));
-
-    await this.assertOllamaAvailable();
-    // Warm models once to avoid cold-start timeouts on the first ply.
-    const warmupModels = new Set<string>([config.models.white, config.models.black]);
-    await Promise.all(
-      Array.from(warmupModels).map(async (model) => {
-        try {
-          const warmChess = new Chess();
-          const legal = warmChess.moves({ verbose: true }).slice(0, 10).map((m) => ({
-            san: m.san,
-            uci: `${m.from}${m.to}${m.promotion ?? ''}`
-          }));
-          await this.getMoveString(model, warmChess.fen(), legal, config.settings.moveTimeoutMs);
-          console.log(`   - Warmed model ${model}`);
-        } catch (e) {
-          console.warn(`   - Warmup failed for model ${model}: ${String(e)}`);
-        }
-      })
-    );
-    if (this.stockfishAnalyzer) {
-      this.stockfishAnalyzer.setAnalysisDepth(this.stockfishEvalDepth);
-    }
+    try {
+      await this.assertOllamaAvailable();
+      // Warm models once to avoid cold-start timeouts on the first ply.
+      const warmupModels = new Set<string>([config.models.white, config.models.black]);
+      await Promise.all(
+        Array.from(warmupModels).map(async (model) => {
+          try {
+            const warmChess = new Chess();
+            const legal = warmChess.moves({ verbose: true }).slice(0, 10).map((m) => ({
+              san: m.san,
+              uci: `${m.from}${m.to}${m.promotion ?? ''}`
+            }));
+            await this.getMoveString(model, warmChess.fen(), legal, config.settings.moveTimeoutMs);
+            console.log(`   - Warmed model ${model}`);
+          } catch (e) {
+            console.warn(`   - Warmup failed for model ${model}: ${String(e)}`);
+          }
+        })
+      );
+      if (this.stockfishAnalyzer) {
+        this.stockfishAnalyzer.setAnalysisDepth(this.stockfishEvalDepth);
+      }
     
     console.log(`\n📊 LOGGING ENABLED:`);
     console.log(`   - Run output: ${outputFile}`);
     if (this.gameLogger) {
-      console.log(`   - Centralized log: ${this.gameLogger.getLogPath()}`);
+      console.log(`   - Run log: ${this.gameLogger.getLogPath()}`);
       console.log(`   - Format: JSONL (one game per line, crash-safe)\n`);
     }
     const describeProvider = (model: string) =>
@@ -579,7 +724,7 @@ export class SequentialGameRunner {
     console.log(`   Total duration: ${Math.round(summary.totalDurationMs / 1000)}s`);
     console.log(`   Run output: ${outputFile}`);
     if (this.gameLogger) {
-      console.log(`   Backup log: ${this.gameLogger.getLogPath()}`);
+      console.log(`   Run log: ${this.gameLogger.getLogPath()}`);
     }
     await this.gameLogger?.writeRunSummary({
       summary,
@@ -590,7 +735,10 @@ export class SequentialGameRunner {
       totalGames: gameSummaries.length
     });
     
-    return { outputFile, summary, games: gameSummaries };
+      return { outputFile, summary, games: gameSummaries };
+    } finally {
+      await this.stockfishAnalyzer?.shutdown();
+    }
   }
 
   private async runSinglePaperGame(
@@ -602,11 +750,22 @@ export class SequentialGameRunner {
   ): Promise<GamePaperSummary> {
     const chess = new Chess();
     const openingRandomMoves = config.settings.openingRandomMoves ?? 4;
+    const seenFens = new Set<string>([chess.fen()]);
+    const recentMoves: string[] = [];
+    let lastMoveUci: string | null = null;
     for (let i = 0; i < openingRandomMoves; i += 1) {
       const moves = getLegalMoveOptions(chess);
       if (moves.length === 0) break;
       const pick = moves[Math.floor(rng() * moves.length)];
-      chess.move(pick.san);
+      const applied = chess.move(pick.san);
+      if (applied) {
+        lastMoveUci = `${applied.from}${applied.to}${applied.promotion ?? ''}`;
+        recentMoves.push(lastMoveUci);
+        if (recentMoves.length > 4) {
+          recentMoves.shift();
+        }
+        seenFens.add(chess.fen());
+      }
     }
     const startedAt = new Date();
     const deadline = startedAt.getTime() + config.settings.gameTimeoutMs;
@@ -633,6 +792,11 @@ export class SequentialGameRunner {
       const turnBeforeMove = chess.turn();
 
       const fenBefore = chess.fen();
+      const simulatedFenByMove = buildSimulatedFenByMove(chess, legalMoveOptions);
+      const repetitionRiskByIndex = legalMoveOptions.map((move) => {
+        const nextFen = simulatedFenByMove[move.uci];
+        return Boolean(isImmediateReverse(lastMoveUci, move.uci) || (nextFen && seenFens.has(nextFen)));
+      });
       const callStartedAt = Date.now();
       const primary = await this.getMoveDetailed(
         model,
@@ -640,7 +804,16 @@ export class SequentialGameRunner {
         legalMoveOptions,
         config.settings.moveTimeoutMs,
         false,
-        config.mode === 'free_generation' ? 'free_generation' : 'constrained_index'
+        config.mode === 'free_generation' ? 'free_generation' : 'constrained_index',
+        {
+          recentMoves: [...recentMoves],
+          repetitionRiskByIndex
+        },
+        {
+          providerRetryCount: config.settings.providerRetryCount,
+          providerBackoffMs: config.settings.providerBackoffMs,
+          maxTotalProviderWaitMs: config.settings.maxTotalProviderWaitMs
+        }
       );
       const thinkTimeMs = Date.now() - callStartedAt;
 
@@ -649,21 +822,34 @@ export class SequentialGameRunner {
       let retrySuccess = false;
       let illegalAttempt = false;
       const retryBudget = Math.max(0, Math.floor(config.settings.retryCount ?? 1));
+      const primaryIsProviderFailure =
+        primary.failureMode === 'rate_limited' ||
+        primary.failureMode === 'request_failed' ||
+        primary.failureMode === 'timeout_or_abort';
 
       if (!primary.move || !legalMoveOptions.some((m) => m.san === primary.move)) {
         illegalAttempt = true;
         ruleAudit.invalidModelMoveAttempts += 1;
         ruleAudit.illegalMoveAttempts += 1;
-        for (let attempt = 0; attempt < retryBudget; attempt += 1) {
+        for (let attempt = 0; attempt < retryBudget && !primaryIsProviderFailure; attempt += 1) {
           ruleAudit.retryAttempts += 1;
-          retryDetail = await this.getMoveDetailed(
-            model,
-            fenBefore,
-            legalMoveOptions,
+            retryDetail = await this.getMoveDetailed(
+              model,
+              fenBefore,
+              legalMoveOptions,
             config.settings.moveTimeoutMs,
             true,
-            config.mode === 'free_generation' ? 'free_generation' : 'constrained_index'
-          );
+            config.mode === 'free_generation' ? 'free_generation' : 'constrained_index',
+              {
+                recentMoves: [...recentMoves],
+                repetitionRiskByIndex
+              },
+              {
+                providerRetryCount: config.settings.providerRetryCount,
+                providerBackoffMs: config.settings.providerBackoffMs,
+                maxTotalProviderWaitMs: config.settings.maxTotalProviderWaitMs
+              }
+            );
           const retryCandidate = retryDetail;
           if (retryCandidate.move && legalMoveOptions.some((m) => m.san === retryCandidate.move)) {
             retrySuccess = true;
@@ -683,7 +869,10 @@ export class SequentialGameRunner {
         chosenMove = chooseFallbackMove({
           legalMoves: legalMoveOptions,
           policy: config.settings.fallbackPolicy ?? 'deterministic_first',
-          rngSeed: config.settings.seed
+          rngSeed: config.settings.seed,
+          lastMoveUci,
+          previousFenSet: seenFens,
+          simulatedFenByMove
         }).move;
       } else {
         accumulateBindingProfile(ruleAudit, detail.bindingProfile);
@@ -696,12 +885,25 @@ export class SequentialGameRunner {
         throw new Error(`Chosen move ${chosenMove} could not be applied for ${gameId}`);
       }
 
+      const chosenMoveUci = `${moveResult.from}${moveResult.to}${moveResult.promotion ?? ''}`;
+      const chosenMoveReversesLast = isImmediateReverse(lastMoveUci, chosenMoveUci);
+      const chosenMoveRecreatesPriorFen = Boolean(simulatedFenByMove[chosenMoveUci] && seenFens.has(simulatedFenByMove[chosenMoveUci]!));
+      const chosenMoveIndex = legalMoveOptions.findIndex((move) => move.san === chosenMove);
+      const repetitionRiskSelected =
+        chosenMoveIndex >= 0 ? Boolean(repetitionRiskByIndex[chosenMoveIndex]) : false;
+
       const illegalSuggestion = illegalAttempt || detail.failureMode !== null;
       const illegalFailureMode: IllegalMoveFailureMode | null = illegalSuggestion ? (detail.failureMode ?? 'wrong_format') : null;
       const bindingProfile: BindingProfile | null = detail.bindingProfile;
       const correctionApplied = !chosenMove || chosenMove !== detail.move;
 
       updateRuleAuditAfterMove(ruleAudit, chess, moveResult.flags, side, turnBeforeMove);
+      lastMoveUci = chosenMoveUci;
+      recentMoves.push(lastMoveUci);
+      if (recentMoves.length > 4) {
+        recentMoves.shift();
+      }
+      seenFens.add(chess.fen());
 
       const fenAfter = chess.fen();
 
@@ -751,7 +953,7 @@ export class SequentialGameRunner {
           side,
           model,
           fen: fenBefore,
-          legalMoves: legalMoveOptions.map((m, idx) => `${idx}:${m.san}`),
+          legalMoves: legalMoveOptions.map((m, idx) => `${idx}:${m.uci}${repetitionRiskByIndex[idx] ? '[repeat-risk]' : ''}`),
           rawPrimary: primary.rawResponse,
           rawRetry: retryDetail?.rawResponse ?? null,
           selectedIndex: detail.selectedIndex ?? null,
@@ -759,7 +961,20 @@ export class SequentialGameRunner {
           valid: legalMoveOptions.some((m) => m.san === chosenMove),
           retryUsed: retryDetail !== null,
           retrySuccess,
-          fallbackUsed: chosenMove !== detail.move
+          fallbackUsed: chosenMove !== detail.move,
+          failureModePrimary: primary.failureMode ?? 'none',
+          failureModeRetry: retryDetail?.failureMode ?? null,
+          statusCodePrimary: primary.statusCode ?? null,
+          statusCodeRetry: retryDetail?.statusCode ?? null,
+          retryAfterMsPrimary: primary.retryAfterMs ?? null,
+          retryAfterMsRetry: retryDetail?.retryAfterMs ?? null,
+          keyIdPrimary: primary.keyId ?? null,
+          keyIdRetry: retryDetail?.keyId ?? null,
+          providerRetriesPrimary: primary.providerRetries ?? 0,
+          providerRetriesRetry: retryDetail?.providerRetries ?? 0,
+          repetitionRiskSelected,
+          reversesLastMove: chosenMoveReversesLast,
+          recreatesPriorFen: chosenMoveRecreatesPriorFen
         });
       }
 

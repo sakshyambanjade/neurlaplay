@@ -28,6 +28,9 @@ export type RunConfig = {
     seed: number;
     openingRandomMoves: number;
     retryCount: number;
+    providerRetryCount?: number;
+    providerBackoffMs?: number;
+    maxTotalProviderWaitMs?: number;
     fallbackPolicy: FallbackPolicyName;
   };
   logging: {

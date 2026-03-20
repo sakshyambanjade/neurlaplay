@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { PreflightReport, RunConfig } from './types/run.js';
 import { inferProviderFromModel } from './types/provider.js';
+import { resolveStockfishEnginePath } from './StockfishAnalyzer.js';
 
 async function canWrite(dir: string): Promise<boolean> {
   try {
@@ -62,11 +63,11 @@ export async function runPreflightChecks(
     });
   }
 
-  const stockfishPackage = path.resolve(process.cwd(), 'node_modules', 'stockfish');
+  const stockfishEngine = resolveStockfishEnginePath();
   checks.push({
-    name: 'stockfish_package',
-    ok: fs.existsSync(stockfishPackage),
-    detail: fs.existsSync(stockfishPackage) ? 'stockfish package installed' : 'stockfish package missing'
+    name: 'stockfish_engine',
+    ok: stockfishEngine !== null,
+    detail: stockfishEngine ?? 'Stockfish engine script missing'
   });
 
   const scriptsRoot = path.resolve(process.cwd(), '../paper');

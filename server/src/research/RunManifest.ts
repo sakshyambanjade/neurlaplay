@@ -6,9 +6,9 @@ import type { RunConfig, RunManifest } from './types/run.js';
 
 export const PAPER_PROMPT_TEMPLATE = {
   system:
-    'You are given a chess position and a numbered list of legal moves. Return exactly one integer: the index of the best move.',
+    'Return exactly one integer index for the best chess move. No words. No punctuation.',
   user:
-    'FEN: {fen}\nLegal moves (index: SAN (UCI)):\n{moves}\nOutput only the integer index.'
+    'FEN: {fen}\nLegal moves:\n{moves}\nOutput only the integer index.'
 };
 
 export function hashAcceptedConfig(config: RunConfig): string {
@@ -44,6 +44,8 @@ export function createRunManifest(runId: string, gitCommit: string, config: RunC
 export async function writeRunManifest(runDir: string, manifest: RunManifest): Promise<string> {
   await mkdir(runDir, { recursive: true });
   const manifestPath = path.join(runDir, 'run_manifest.json');
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  const manifestJson = JSON.stringify(manifest, null, 2);
+  await writeFile(manifestPath, manifestJson, 'utf-8');
+  await writeFile(path.join(runDir, 'manifest.json'), manifestJson, 'utf-8');
   return manifestPath;
 }

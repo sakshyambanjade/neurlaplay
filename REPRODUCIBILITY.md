@@ -5,7 +5,7 @@
 - Node.js 20+
 - Python 3.10+ if you want to run the helper scripts in `paper/scripts/`
 - Groq API key for Groq-backed runs
-- Ollama only for local debug/smoke runs
+- Ollama only for legacy/local debug endpoints outside the canonical paper pipeline
 
 ## Install
 
@@ -19,13 +19,9 @@ npm install
 
 ## Canonical configs
 
-- `paper/configs/debug/smoke_test.json`
-- `paper/configs/pilot/llama8b_pilot.json`
-- `paper/configs/paper/groq_llama8b_constrained.json`
-- `paper/configs/paper/groq_multi_model_compare.json`
-- `paper/configs/ablation/free_vs_constrained.json`
-- `paper/configs/ablation/fallback_policy_compare.json`
-- `paper/configs/main/groq_llama8b_constrained.json`
+- `paper/configs/debug/smoke_10_games.json`
+- `paper/configs/pilot/pilot_300_games.json`
+- `paper/configs/main/main_1200_games.json`
 - `paper/configs/ablations/free_vs_constrained.json`
 - `paper/configs/ablations/fallback_policy_compare.json`
 
@@ -33,14 +29,14 @@ npm install
 
 ```powershell
 cd E:\neurlaplay\server
-npx tsx src/research/paper-cli.ts --config ..\paper\configs\paper\groq_llama8b_constrained.json
+npm run research:paper
 ```
 
 ## Run from the UI
 
 1. Start the backend with `npm run dev` from `server/`.
 2. Start the frontend with `npm run dev` from `client/`.
-3. Open the dashboard and submit the config.
+3. Open the Paper page and press the main experiment button.
 4. The accepted config returned by the server is the source of truth.
 
 ## Resume an interrupted run
@@ -56,7 +52,7 @@ Invoke-RestMethod -Uri http://localhost:3001/api/paper/resume/<runId> -Method Po
 ## What makes a run reproducible
 
 - The exact accepted config is saved to `accepted-config.json`.
-- The immutable manifest is saved to `run_manifest.json`.
+- The immutable manifest is saved to both `manifest.json` and `run_manifest.json`.
 - The accepted config hash is stored in both the manifest and run summary.
 - Every move is append-only logged in `moves.jsonl`.
 - Every completed game is append-only logged in `games.jsonl`.

@@ -67,7 +67,7 @@ export function RunConfigForm({
 
       <div style={footnoteStyle}>
         The button resumes the latest interrupted study automatically. If nothing is pending, it
-        launches the canonical `main_1200_full_study.json` preset.
+        launches the canonical `main_1200_games.json` preset.
       </div>
     </section>
   );

@@ -27,7 +27,7 @@ async function main() {
   const configArg = getArgValue('--config');
   const configPath = configArg
     ? path.resolve(process.cwd(), configArg)
-    : path.resolve(process.cwd(), '../paper/configs/paper/groq_llama8b_constrained.json');
+    : path.resolve(process.cwd(), '../paper/configs/main/main_1200_games.json');
 
   const raw = await readFile(configPath, 'utf-8');
   const config = validateRunConfig(JSON.parse(raw));

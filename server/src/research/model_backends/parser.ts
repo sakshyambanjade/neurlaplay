@@ -40,5 +40,7 @@ export function mapFailureToDetail(failureMode: SelectionFailureMode): string {
       return 'Provider returned a non-success status.';
     case 'invalid_output':
       return 'Provider returned malformed output.';
+    case 'rate_limited':
+      return 'Provider rejected the request due to rate limiting.';
   }
 }

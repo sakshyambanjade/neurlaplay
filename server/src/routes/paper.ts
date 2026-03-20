@@ -3,7 +3,6 @@ import type { Server as SocketIOServer } from 'socket.io';
 import fs from 'node:fs';
 import path from 'node:path';
 import { validateRunConfig } from '../config/schema.js';
-import { findExperimentPreset, getExperimentRegistry } from '../research/ExperimentRegistry.js';
 import {
   startPaperRun,
   getRunStatus,
@@ -12,81 +11,23 @@ import {
   resumePaperRun
 } from '../research/PaperPipeline.js';
 
-type ProgressMap = Record<string, number>;
+type PaperPresetKind = 'main' | 'pilot';
 
-function matchupKey(white: string, black: string): string {
-  return `${white}__vs__${black}`;
+function paperConfigPath(kind: PaperPresetKind): string {
+  return path.resolve(
+    process.cwd(),
+    kind === 'main'
+      ? '../paper/configs/main/main_1200_games.json'
+      : '../paper/configs/pilot/pilot_300_games.json'
+  );
 }
 
-function collectCompletedGamesByMatchup(): ProgressMap {
-  const result: ProgressMap = {};
-  const paperRunsRoot = path.resolve(process.cwd(), '../paper/runs');
-  if (!fs.existsSync(paperRunsRoot)) {
-    return result;
-  }
-
-  for (const runDirEntry of fs.readdirSync(paperRunsRoot, { withFileTypes: true })) {
-    if (!runDirEntry.isDirectory()) {
-      continue;
-    }
-
-    const runDir = path.join(paperRunsRoot, runDirEntry.name);
-    for (const matchupDirEntry of fs.readdirSync(runDir, { withFileTypes: true })) {
-      if (!matchupDirEntry.isDirectory()) {
-        continue;
-      }
-      const statsPath = path.join(runDir, matchupDirEntry.name, 'paper-stats.json');
-      const liveGamesPath = path.join(runDir, matchupDirEntry.name, 'paper-games.live.jsonl');
-      if (!fs.existsSync(statsPath)) {
-        if (!fs.existsSync(liveGamesPath)) {
-          continue;
-        }
-      }
-
-      try {
-        if (fs.existsSync(statsPath)) {
-          const parsed = JSON.parse(fs.readFileSync(statsPath, 'utf8')) as {
-            stats?: {
-              whiteModel: string;
-              blackModel: string;
-              totalGames: number;
-            };
-          };
-          if (!parsed.stats) {
-            continue;
-          }
-
-          const key = matchupKey(parsed.stats.whiteModel, parsed.stats.blackModel);
-          result[key] = Math.max(result[key] ?? 0, parsed.stats.totalGames);
-          continue;
-        }
-
-        const acceptedConfigPath = path.join(runDir, 'accepted-config.json');
-        const acceptedConfig = fs.existsSync(acceptedConfigPath)
-          ? (JSON.parse(fs.readFileSync(acceptedConfigPath, 'utf8')) as {
-              matchups?: Array<{ white: string; black: string; label: string }>;
-            })
-          : null;
-        const matchup = acceptedConfig?.matchups?.find((entry) => entry.label.replace(/[^a-zA-Z0-9._-]+/g, '_') === matchupDirEntry.name);
-        if (!matchup) {
-          continue;
-        }
-
-        const completed = fs
-          .readFileSync(liveGamesPath, 'utf8')
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean).length;
-        const key = matchupKey(matchup.white, matchup.black);
-        result[key] = Math.max(result[key] ?? 0, completed);
-      } catch {
-        // Ignore malformed partial files.
-      }
-    }
-  }
-
-  return result;
+function loadPaperPreset(kind: PaperPresetKind) {
+  const configPath = paperConfigPath(kind);
+  const raw = fs.readFileSync(configPath, 'utf8');
+  return validateRunConfig(JSON.parse(raw));
 }
+
 
 function getIncompleteRuns(): Array<{
   runId: string;
@@ -139,42 +80,6 @@ function getIncompleteRuns(): Array<{
   }>;
 }
 
-const DEFAULT_RUN_CONFIG = {
-  paperAngle: 'option_b_capability',
-  mode: 'constrained_index',
-  matchups: [
-    {
-      white: 'groq:llama-3.1-8b-instant',
-      black: 'groq:llama-3.1-8b-instant',
-      games: 20,
-      label: 'llama31_8b_mirror'
-    }
-  ],
-  seed: 42,
-  temperature: 0,
-  topP: 1,
-  maxTokens: 8,
-  contextPolicy: 'fen_only',
-  stockfishEvalDepth: 8,
-  blunderThresholdCp: 200,
-  settings: {
-    maxMoves: 120,
-    moveTimeoutMs: 10000,
-    gameTimeoutMs: 3600000,
-    moveDelayMs: 100,
-    interGameDelayMs: 100,
-    exportInterval: 1,
-    seed: 42,
-    openingRandomMoves: 4,
-    retryCount: 1,
-    fallbackPolicy: 'deterministic_first'
-  },
-  logging: {
-    logEveryMove: true,
-    schemaVersion: 'paper-run-v2'
-  }
-} as const;
-
 export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
   const router = Router();
 
@@ -209,44 +114,9 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     (io as any).__paperBridgeRegistered = true;
   }
 
-  router.get('/config/default', (_req, res) => {
-    res.json({ config: DEFAULT_RUN_CONFIG });
-  });
-
-  router.get('/presets', (_req, res) => {
-    const presets = getExperimentRegistry().map((preset) => ({
-      id: preset.id,
-      name: preset.name,
-      category: preset.category
-    }));
-    res.json({ presets });
-  });
-
-  router.get('/config/preset', (req, res) => {
-    const id = typeof req.query.id === 'string' ? req.query.id : '';
-    const preset = findExperimentPreset(id);
-    if (!preset) {
-      res.status(404).json({ error: 'Preset not found' });
-      return;
-    }
-
-    const raw = fs.readFileSync(preset.path, 'utf8');
-    res.json({
-      preset: {
-        id: preset.id,
-        name: preset.name,
-        category: preset.category
-      },
-      config: JSON.parse(raw)
-    });
-  });
-
-  router.post('/run', async (req, res) => {
+  router.post('/run/main', async (_req, res) => {
     try {
-      const acceptedConfig = validateRunConfig(
-        req.body && Object.keys(req.body).length > 0 ? req.body : DEFAULT_RUN_CONFIG
-      );
-
+      const acceptedConfig = loadPaperPreset('main');
       const { runId, promise } = startPaperRun(acceptedConfig, { ollamaBaseUrl });
       void promise.catch(() => {
         // status/log emission already handled inside the pipeline
@@ -263,26 +133,21 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     }
   });
 
-  router.post('/reset', (_req, res) => {
+  router.post('/run/pilot', async (_req, res) => {
     try {
-      const paperRunsDir = path.resolve(process.cwd(), '../paper/runs');
-      if (fs.existsSync(paperRunsDir)) {
-        fs.rmSync(paperRunsDir, { recursive: true, force: true });
-      }
+      const acceptedConfig = loadPaperPreset('pilot');
 
-      res.json({ ok: true });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : String(error)
+      const { runId, promise } = startPaperRun(acceptedConfig, { ollamaBaseUrl });
+      void promise.catch(() => {
+        // status/log emission already handled inside the pipeline
       });
-    }
-  });
 
-  router.get('/progress', (_req, res) => {
-    try {
-      res.json({ completedByMatchup: collectCompletedGamesByMatchup() });
+      res.json({
+        runId,
+        acceptedConfig
+      });
     } catch (error) {
-      res.status(500).json({
+      res.status(400).json({
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -303,26 +168,7 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     res.json(status);
   });
 
-  router.get('/run/:runId/status', (req, res) => {
-    const status = getRunStatus(req.params.runId);
-    if (!status) {
-      res.status(404).json({ error: 'Run not found' });
-      return;
-    }
-    res.json(status);
-  });
-
   router.get('/artifacts/:runId', async (req, res) => {
-    try {
-      res.json(await getArtifacts(req.params.runId));
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  router.get('/run/:runId/artifacts', async (req, res) => {
     try {
       res.json(await getArtifacts(req.params.runId));
     } catch (error) {

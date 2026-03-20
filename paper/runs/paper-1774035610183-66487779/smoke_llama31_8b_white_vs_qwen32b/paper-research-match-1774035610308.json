@@ -1,0 +1,212 @@
+{
+  "summary": {
+    "completedGames": 5,
+    "totalDurationMs": 92782,
+    "startedAt": "2026-03-20T19:40:10.307Z",
+    "endedAt": "2026-03-20T19:41:43.089Z",
+    "whiteModel": "groq:llama-3.1-8b-instant",
+    "blackModel": "groq:qwen/qwen3-32b"
+  },
+  "games": [
+    {
+      "gameId": "paper-game-001",
+      "gameIndex": 1,
+      "whiteModel": "groq:llama-3.1-8b-instant",
+      "blackModel": "groq:qwen/qwen3-32b",
+      "result": "1/2-1/2",
+      "termination": "threefold_repetition",
+      "moveCount": 57,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. g3 c6 2. f3 a5 3. b3 a4 4. f4 a3 5. Nxa3 Rxa3 6. c3 Rxa2 7. d3 Rxa1 8. c4 Ra2 9. g4 Ra1 10. Bd2 Ra2 11. e3 Ra1 12. e4 Ra2 13. b4 Ra1 14. d4 Ra2 15. e5 Ra1 16. d5 Ra2 17. h3 Ra1 18. Bc3 Ra2 19. Qd4 Ra1+ 20. Ke2 Ra2+ 21. Bb2 Ra1 22. Kd3 Ra2 23. f5 Ra1 24. d6 Ra2 25. dxe7 Ra1 26. Be2 Ra2 27. Bf1 Ra1 28. Be2 Ra2 29. Bf1 *",
+      "startedAt": "2026-03-20T19:40:10.984Z",
+      "endedAt": "2026-03-20T19:40:29.756Z",
+      "averageCplWhite": 683.1071428571429,
+      "averageCplBlack": 832.3333333333334,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": true,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 27,
+        "invalidModelMoveAttempts": 54,
+        "illegalMoveAttempts": 27,
+        "retryAttempts": 27,
+        "retrySuccesses": 0,
+        "invalidMoveFailureModes": {
+          "unparseable": 27
+        },
+        "bindingAttemptCount": 55,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-002",
+      "gameIndex": 2,
+      "whiteModel": "groq:llama-3.1-8b-instant",
+      "blackModel": "groq:qwen/qwen3-32b",
+      "result": "1-0",
+      "termination": "max_moves_white_ahead",
+      "moveCount": 60,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. Nc3 e5 2. Nb1 a5 3. c3 a4 4. Na3 Ra5 5. Nf3 Ra6 6. Qc2 Ra5 7. Kd1 Ra6 8. Ke1 Ra5 9. Kd1 Ra6 10. Ke1 Ra5 11. Qe4 Ra6 12. h3 Ra5 13. g3 Ra6 14. e3 Ra5 15. Ke2 Ra6 16. Qd5 Ra5 17. Qc6 Ra6 18. Qxb7 Ra5 19. Rb1 Ra6 20. Bg2 Ra5 21. Qa8 Ra6 22. Rg1 Ra5 23. Rh1 Ra6 24. Qxb8 Ra5 25. Rf1 Ra6 26. Qxc8 Ra5 27. Qxd8+ Kxd8 28. b3 axb3 29. axb3 Rxa3 30. g4 Ra1 *",
+      "startedAt": "2026-03-20T19:40:29.809Z",
+      "endedAt": "2026-03-20T19:40:50.586Z",
+      "averageCplWhite": 384.7241379310345,
+      "averageCplBlack": 510.17241379310343,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": true,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 29,
+        "invalidModelMoveAttempts": 58,
+        "illegalMoveAttempts": 29,
+        "retryAttempts": 29,
+        "retrySuccesses": 0,
+        "invalidMoveFailureModes": {
+          "unparseable": 29
+        },
+        "bindingAttemptCount": 58,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-003",
+      "gameIndex": 3,
+      "whiteModel": "groq:llama-3.1-8b-instant",
+      "blackModel": "groq:qwen/qwen3-32b",
+      "result": "0-1",
+      "termination": "max_moves_black_ahead",
+      "moveCount": 60,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. b4 d6 2. h4 a5 3. Nc3 a4 4. e3 a3 5. Nb5 Ra4 6. Nxd6+ cxd6 7. f3 Ra5 8. f4 Ra4 9. b5 Ra5 10. c3 Ra4 11. Qg4 Ra5 12. c4 Ra4 13. h5 Ra5 14. e4 Ra4 15. Rh2 Ra5 16. Qd1 Ra4 17. Qg4 Ra5 18. Ne2 Ra4 19. c5 Ra5 20. d3 Ra4 21. d4 Ra5 22. d5 Ra4 23. cxd6 Ra5 24. b6 Ra4 25. Nc3 Ra5 26. d7+ Nxd7 27. Bd3 Ra4 28. d6 Ra5 29. Bxa3 Rxa3 30. Rd1 Rxa2 *",
+      "startedAt": "2026-03-20T19:40:50.635Z",
+      "endedAt": "2026-03-20T19:41:12.795Z",
+      "averageCplWhite": 334.55172413793105,
+      "averageCplBlack": 703.1034482758621,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": true,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 0,
+        "fallbackMovesUsed": 29,
+        "invalidModelMoveAttempts": 58,
+        "illegalMoveAttempts": 29,
+        "retryAttempts": 29,
+        "retrySuccesses": 0,
+        "invalidMoveFailureModes": {
+          "unparseable": 29
+        },
+        "bindingAttemptCount": 58,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-004",
+      "gameIndex": 4,
+      "whiteModel": "groq:llama-3.1-8b-instant",
+      "blackModel": "groq:qwen/qwen3-32b",
+      "result": "0-1",
+      "termination": "max_moves_black_ahead",
+      "moveCount": 60,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. c4 e6 2. a3 a5 3. Ra2 a4 4. Nc3 Ra5 5. Qxa4 Rxa4 6. Nd5 Rxa3 7. c5 Rxa2 8. d3 Ra1 9. b3 Ra2 10. d4 Ra1 11. e3 Ra2 12. Nf4 Ra1 13. e4 Ra2 14. b4 Ra1 15. e5 Ra2 16. f3 Ra1 17. Nd5 Ra2 18. b5 Ra1 19. f4 Ra2 20. Bc4 Ra1 21. f5 Ra2 22. Bxa2 b6 23. f6 bxc5 24. Ne2 Na6 25. Kd1 Nb4 26. Bb3 Na2 27. fxg7 Nb4 28. Bg5 Na2 29. gxf8=N Nb4 30. Nxh7 Na2 *",
+      "startedAt": "2026-03-20T19:41:12.842Z",
+      "endedAt": "2026-03-20T19:41:30.476Z",
+      "averageCplWhite": 822.448275862069,
+      "averageCplBlack": 855.6206896551724,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": true,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 1,
+        "fallbackMovesUsed": 29,
+        "invalidModelMoveAttempts": 58,
+        "illegalMoveAttempts": 29,
+        "retryAttempts": 29,
+        "retrySuccesses": 0,
+        "invalidMoveFailureModes": {
+          "unparseable": 29
+        },
+        "bindingAttemptCount": 58,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    },
+    {
+      "gameId": "paper-game-005",
+      "gameIndex": 5,
+      "whiteModel": "groq:llama-3.1-8b-instant",
+      "blackModel": "groq:qwen/qwen3-32b",
+      "result": "1/2-1/2",
+      "termination": "threefold_repetition",
+      "moveCount": 41,
+      "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"*\"]\n\n1. Nc3 c5 2. Nb1 a5 3. f3 a4 4. c3 a3 5. bxa3 Rxa3 6. Nxa3 b5 7. Nc4 b4 8. Ne3 b3 9. d3 bxa2 10. Bd2 Na6 11. Kf2 Nb4 12. Qa4 Na6 13. Rb1 a1=B 14. Qxa1 Nb4 15. c4 Na2 16. d4 Nb4 17. Nd5 Na2 18. Nb6 Nb4 19. Nd5 Na2 20. Nb6 Nb4 21. Nd5 *",
+      "startedAt": "2026-03-20T19:41:30.522Z",
+      "endedAt": "2026-03-20T19:41:43.081Z",
+      "averageCplWhite": 814.55,
+      "averageCplBlack": 792.8947368421053,
+      "ruleAudit": {
+        "boardSetupValid": true,
+        "kingPresenceValid": true,
+        "turnAlternationValid": true,
+        "legalMoveOnly": true,
+        "ownKingSafetyMaintained": true,
+        "castlingMoves": 0,
+        "enPassantCaptures": 0,
+        "promotions": 1,
+        "fallbackMovesUsed": 19,
+        "invalidModelMoveAttempts": 38,
+        "illegalMoveAttempts": 19,
+        "retryAttempts": 19,
+        "retrySuccesses": 0,
+        "invalidMoveFailureModes": {
+          "unparseable": 19
+        },
+        "bindingAttemptCount": 39,
+        "bindingBoundCountTotal": 0,
+        "bindingComponentHits": {
+          "piece": 0,
+          "origin": 0,
+          "destination": 0,
+          "legalConstraint": 0
+        }
+      }
+    }
+  ]
+}

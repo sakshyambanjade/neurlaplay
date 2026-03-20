@@ -45,27 +45,35 @@ Smoke test:
 
 ```powershell
 cd E:\neurlaplay\server
-npx tsx src/research/paper-cli.ts --config ..\paper\configs\debug\smoke_test.json
+npm run research:smoke
+```
+
+Pilot run:
+
+```powershell
+cd E:\neurlaplay\server
+npm run research:pilot
 ```
 
 Main constrained run:
 
 ```powershell
 cd E:\neurlaplay\server
-npx tsx src/research/paper-cli.ts --config ..\paper\configs\paper\groq_llama8b_constrained.json
+npm run research:paper
 ```
 
 From the UI:
 
-- load a canonical preset from the preset selector,
-- start the run,
-- if the server restarts or the run pauses, continue from `Interrupted Runs`.
+- open the Paper page,
+- press the main experiment button,
+- if the server restarts or the run pauses, press it again to resume the latest interrupted run.
 
 ## Output artifacts
 
 Each run writes a self-contained directory under `paper/runs/<runId>/` with:
 
 - `accepted-config.json`
+- `manifest.json`
 - `run_manifest.json`
 - `status.json`
 - `pipeline.log`

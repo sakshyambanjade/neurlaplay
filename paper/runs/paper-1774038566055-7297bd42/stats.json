@@ -1,0 +1,29 @@
+{
+  "totalGames": 10,
+  "matchupCount": 2,
+  "overallFallbackRate": 0,
+  "overallRetrySuccessRate": 0,
+  "overallIllegalMoveAttemptRate": 0,
+  "modelComparison": [
+    {
+      "label": "smoke_llama31_8b_white_vs_qwen32b",
+      "whiteModel": "groq:llama-3.1-8b-instant",
+      "blackModel": "groq:qwen/qwen3-32b",
+      "avgCplOverall": 584.7344827586207,
+      "fallbackRate": 0,
+      "repetitionRate": 0,
+      "illegalMoveAttemptRate": 0,
+      "retrySuccessRate": 0
+    },
+    {
+      "label": "smoke_qwen32b_white_vs_llama31_8b",
+      "whiteModel": "groq:qwen/qwen3-32b",
+      "blackModel": "groq:llama-3.1-8b-instant",
+      "avgCplOverall": 679.6068965517242,
+      "fallbackRate": 0,
+      "repetitionRate": 0,
+      "illegalMoveAttemptRate": 0,
+      "retrySuccessRate": 0
+    }
+  ]
+}

@@ -94,7 +94,7 @@ export function createResearchRouter(ollamaBaseUrl: string, io?: SocketIOServer)
 
   router.post('/smoke', async (_req, res) => {
     try {
-      const configPath = path.resolve(process.cwd(), '../paper/configs/debug/smoke_test.json');
+      const configPath = path.resolve(process.cwd(), '../paper/configs/debug/smoke_10_games.json');
       const raw = await readFile(configPath, 'utf-8');
       const config = validateRunConfig(JSON.parse(raw));
       const matchup = config.matchups[0];

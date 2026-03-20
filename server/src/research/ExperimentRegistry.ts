@@ -37,7 +37,10 @@ function listJsonFiles(root: string, configsRoot: string): ExperimentPreset[] {
 
 export function getExperimentRegistry(): ExperimentPreset[] {
   const configsRoot = path.resolve(process.cwd(), '../paper/configs');
-  return listJsonFiles(configsRoot, configsRoot);
+  const allowedRoots = ['debug', 'pilot', 'main', 'ablations']
+    .map((segment) => path.join(configsRoot, segment))
+    .filter((fullPath) => fs.existsSync(fullPath));
+  return allowedRoots.flatMap((root) => listJsonFiles(root, configsRoot));
 }
 
 export function findExperimentPreset(id: string): ExperimentPreset | null {

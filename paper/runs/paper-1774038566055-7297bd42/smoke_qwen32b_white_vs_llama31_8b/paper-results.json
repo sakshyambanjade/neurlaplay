@@ -1,0 +1,21 @@
+{
+  "totalGames": 5,
+  "whiteModel": "groq:qwen/qwen3-32b",
+  "blackModel": "groq:llama-3.1-8b-instant",
+  "whiteWins": 1,
+  "blackWins": 2,
+  "draws": 2,
+  "totalBlunders": 230,
+  "avgCPL": {
+    "white": 646.9862068965517,
+    "black": 712.2275862068966
+  },
+  "extraMetrics": {
+    "illegal_move_attempt_rate": 0,
+    "retry_success_rate": 0,
+    "fallback_rate": 0,
+    "move_selection_entropy": 7.297658615720346,
+    "repetition_rate": 0
+  },
+  "latexTable3": "\\begin{table}[h]\n\\centering\n\\caption{Model Performance Comparison}\n\\begin{tabular}{lcccc}\n\\toprule\nModel & Win Rate & Avg CPL & Blunder Rate & LLM Move Rate \\\\\n\\midrule\ngroq:qwen/qwen3-32b & 0.200 & 647.0 & 0.772 & 1.000 \\\\\ngroq:llama-3.1-8b-instant & 0.400 & 712.2 & 0.814 & 1.000 \\\\\n\\bottomrule\n\\end{tabular}\n\\end{table}"
+}

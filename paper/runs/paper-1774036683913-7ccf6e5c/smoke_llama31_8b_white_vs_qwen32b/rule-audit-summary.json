@@ -1,0 +1,6 @@
+{
+  "gamesWithRuleAudit": 5,
+  "totalFallbackMoves": 74,
+  "totalInvalidModelMoveAttempts": 74,
+  "legalMoveOnlyGames": 5
+}

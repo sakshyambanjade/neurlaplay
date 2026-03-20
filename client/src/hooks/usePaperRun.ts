@@ -32,6 +32,9 @@ export type RunConfig = {
     seed: number;
     openingRandomMoves: number;
     retryCount: number;
+    providerRetryCount?: number;
+    providerBackoffMs?: number;
+    maxTotalProviderWaitMs?: number;
     fallbackPolicy: 'deterministic_first' | 'stockfish_best' | 'random_seeded';
   };
   logging: {
@@ -50,18 +53,6 @@ export type RunStatus = {
   startedAt: string;
   finishedAt?: string;
 };
-
-type AcceptedConfigResponse = {
-  config: RunConfig;
-};
-
-type PresetInfo = {
-  id: string;
-  name: string;
-  category: string;
-};
-
-const MAIN_1200_PRESET_ID = 'main/main_1200_full_study.json';
 
 type ArtifactIndex = {
   files: string[];
@@ -107,40 +98,10 @@ type HealthState = {
   matchupLabel: string;
 };
 
-const FALLBACK_CONFIG: RunConfig = {
-  paperAngle: 'option_b_capability',
-  mode: 'constrained_index',
-  matchups: [
-    {
-      white: 'groq:llama-3.1-8b-instant',
-      black: 'groq:llama-3.1-8b-instant',
-      games: 20,
-      label: 'llama31_8b_mirror'
-    }
-  ],
-  seed: 42,
-  temperature: 0,
-  topP: 1,
-  maxTokens: 8,
-  contextPolicy: 'fen_only',
-  stockfishEvalDepth: 8,
-  blunderThresholdCp: 200,
-  settings: {
-    maxMoves: 120,
-    moveTimeoutMs: 10000,
-    gameTimeoutMs: 3600000,
-    moveDelayMs: 100,
-    interGameDelayMs: 100,
-    exportInterval: 1,
-    seed: 42,
-    openingRandomMoves: 4,
-    retryCount: 1,
-    fallbackPolicy: 'deterministic_first'
-  },
-  logging: {
-    logEveryMove: true,
-    schemaVersion: 'paper-run-v2'
-  }
+type RunStartResponse = {
+  runId?: string;
+  acceptedConfig?: RunConfig;
+  error?: string;
 };
 
 export function matchupKey(white: string, black: string): string {
@@ -148,7 +109,6 @@ export function matchupKey(white: string, black: string): string {
 }
 
 export function usePaperRun() {
-  const [config, setConfig] = useState<RunConfig>(FALLBACK_CONFIG);
   const [acceptedConfig, setAcceptedConfig] = useState<RunConfig | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [status, setStatus] = useState<RunStatus | null>(null);
@@ -177,10 +137,7 @@ export function usePaperRun() {
     gamesPerHour: 0,
     etaSec: null
   });
-  const [completedByMatchup, setCompletedByMatchup] = useState<Record<string, number>>({});
   const [incompleteRuns, setIncompleteRuns] = useState<IncompleteRun[]>([]);
-  const [presets, setPresets] = useState<PresetInfo[]>([]);
-  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
   const [health, setHealth] = useState<HealthState>({
     ok: true,
     warnings: [],
@@ -219,58 +176,6 @@ export function usePaperRun() {
     });
   }
 
-  async function loadDefaultConfig(): Promise<void> {
-    try {
-      const response = await fetch(`${API}/api/paper/config/default`);
-      const data = (await response.json()) as AcceptedConfigResponse;
-      if (data.config) {
-        setConfig(data.config);
-      }
-    } catch {
-      setConfig(FALLBACK_CONFIG);
-    }
-  }
-
-  async function loadPresets(): Promise<PresetInfo[]> {
-    const response = await fetch(`${API}/api/paper/presets`);
-    const data = (await response.json()) as { presets?: PresetInfo[] };
-    const nextPresets = data.presets ?? [];
-    setPresets(nextPresets);
-    if (!selectedPresetId && nextPresets.length > 0) {
-      setSelectedPresetId(nextPresets[0]!.id);
-    }
-    return nextPresets;
-  }
-
-  async function loadPreset(id: string): Promise<void> {
-    const response = await fetch(`${API}/api/paper/config/preset?id=${encodeURIComponent(id)}`);
-    const data = (await response.json()) as { config?: RunConfig; error?: string };
-    if (!response.ok || !data.config) {
-      throw new Error(data.error ?? 'Failed to load preset.');
-    }
-    setSelectedPresetId(id);
-    setConfig(data.config);
-  }
-
-  async function startPresetRun(id: string): Promise<void> {
-    const response = await fetch(`${API}/api/paper/config/preset?id=${encodeURIComponent(id)}`);
-    const data = (await response.json()) as { config?: RunConfig; error?: string };
-    if (!response.ok || !data.config) {
-      throw new Error(data.error ?? 'Failed to load preset.');
-    }
-    setSelectedPresetId(id);
-    setConfig(data.config);
-    await startRun(data.config);
-  }
-
-  async function loadProgress(): Promise<Record<string, number>> {
-    const response = await fetch(`${API}/api/paper/progress`);
-    const data = (await response.json()) as { completedByMatchup?: Record<string, number> };
-    const progressMap = data.completedByMatchup ?? {};
-    setCompletedByMatchup(progressMap);
-    return progressMap;
-  }
-
   async function loadIncompleteRuns(): Promise<IncompleteRun[]> {
     const response = await fetch(`${API}/api/paper/incomplete`);
     const data = (await response.json()) as { runs?: IncompleteRun[] };
@@ -299,9 +204,6 @@ export function usePaperRun() {
   }
 
   useEffect(() => {
-    void loadDefaultConfig();
-    void loadProgress();
-    void loadPresets();
     void loadIncompleteRuns().then((runs) => {
       const savedRunId = localStorage.getItem('paper_run_id');
       if (!savedRunId && runs.length > 0) {
@@ -431,53 +333,21 @@ export function usePaperRun() {
     };
   }, [runId]);
 
-  async function startRun(submittedConfig: RunConfig = config): Promise<void> {
-    const response = await fetch(`${API}/api/paper/run`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(submittedConfig)
+  async function startLockedRun(kind: 'main' | 'pilot'): Promise<void> {
+    const response = await fetch(`${API}/api/paper/run/${kind}`, {
+      method: 'POST'
     });
-    const data = (await response.json()) as { runId?: string; acceptedConfig?: RunConfig; error?: string };
+    const data = (await response.json()) as RunStartResponse;
     if (!response.ok || !data.runId || !data.acceptedConfig) {
-      throw new Error(data.error ?? 'Failed to start run.');
+      throw new Error(data.error ?? `Failed to start ${kind} run.`);
     }
 
     resetUiState();
-    setConfig(submittedConfig);
     setAcceptedConfig(data.acceptedConfig);
     setRunId(data.runId);
     localStorage.setItem('paper_run_id', data.runId);
     setLogs([`Accepted config received from server. Run ${data.runId} started.`]);
     await fetchStatus(data.runId);
-    await loadIncompleteRuns();
-  }
-
-  async function continueRemaining(): Promise<void> {
-    const latestCompletedByMatchup = await loadProgress();
-    const remainingMatchups = config.matchups
-      .map((matchup) => {
-        const completed = latestCompletedByMatchup[matchupKey(matchup.white, matchup.black)] ?? 0;
-        return {
-          ...matchup,
-          games: Math.max(0, matchup.games - completed)
-        };
-      })
-      .filter((matchup) => matchup.games > 0);
-
-    if (remainingMatchups.length === 0) {
-      setLogs((current) => [...current.slice(-199), 'All configured matchup targets already reached.']);
-      return;
-    }
-
-    const nextConfig = { ...config, matchups: remainingMatchups };
-    await startRun(nextConfig);
-  }
-
-  async function resetResearch(): Promise<void> {
-    await fetch(`${API}/api/paper/reset`, { method: 'POST' });
-    localStorage.removeItem('paper_run_id');
-    resetUiState();
-    await loadProgress();
     await loadIncompleteRuns();
   }
 
@@ -510,13 +380,16 @@ export function usePaperRun() {
       await resumeRun(incompleteRuns[0]!.runId);
       return;
     }
-    await startPresetRun(MAIN_1200_PRESET_ID);
+    await startLockedRun('main');
   }
 
-  const totalGames = useMemo(
-    () => config.matchups.reduce((sum, matchup) => sum + matchup.games, 0),
-    [config.matchups]
-  );
+  async function launchPilotExperiment(): Promise<void> {
+    if (incompleteRuns.length > 0) {
+      await resumeRun(incompleteRuns[0]!.runId);
+      return;
+    }
+    await startLockedRun('pilot');
+  }
 
   const etaText = useMemo(() => {
     if (eta.etaSec === null) {
@@ -525,31 +398,6 @@ export function usePaperRun() {
     const etaHours = eta.etaSec / 3600;
     return etaHours >= 1 ? `${etaHours.toFixed(2)} h` : `${Math.ceil(eta.etaSec / 60)} min`;
   }, [eta.etaSec]);
-
-  function updateMatchup(index: number, patch: Partial<MatchupConfig>): void {
-    setConfig((current) => {
-      const nextMatchups = [...current.matchups];
-      nextMatchups[index] = { ...nextMatchups[index], ...patch };
-      return { ...current, matchups: nextMatchups };
-    });
-  }
-
-  function updateConfig<K extends keyof RunConfig>(key: K, value: RunConfig[K]): void {
-    setConfig((current) => ({ ...current, [key]: value }));
-  }
-
-  function updateSettings<K extends keyof RunConfig['settings']>(
-    key: K,
-    value: RunConfig['settings'][K]
-  ): void {
-    setConfig((current) => ({
-      ...current,
-      settings: {
-        ...current.settings,
-        [key]: value
-      }
-    }));
-  }
 
   function artifactUrl(file: string): string {
     if (!runId) {
@@ -566,7 +414,6 @@ export function usePaperRun() {
     socket,
     runId,
     status,
-    config,
     acceptedConfig,
     logs,
     artifacts,
@@ -576,28 +423,13 @@ export function usePaperRun() {
     quality,
     eta,
     etaText,
-    totalGames,
-    completedByMatchup,
     incompleteRuns,
-    presets,
-    selectedPresetId,
     health,
-    updateConfig,
-    updateSettings,
-    updateMatchup,
-    loadProgress,
     fetchStatus,
     fetchArtifacts,
-    loadPreset,
-    loadPresets,
-    setSelectedPresetId,
-    startRun,
-    continueRemaining,
-    resetResearch,
     resumeRun,
     launchMainExperiment,
-    startPresetRun,
-    main1200PresetId: MAIN_1200_PRESET_ID,
+    launchPilotExperiment,
     artifactUrl
   };
 }

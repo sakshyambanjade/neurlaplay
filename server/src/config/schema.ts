@@ -123,6 +123,11 @@ export function validateRunConfig(input: unknown): RunConfig {
       seed: Math.floor(readNumber(settingsRecord, 'seed', readNumber(record, 'seed', 42, 0), 0)),
       openingRandomMoves: Math.floor(readNumber(settingsRecord, 'openingRandomMoves', 4, 0)),
       retryCount: Math.floor(readNumber(settingsRecord, 'retryCount', 1, 0)),
+      providerRetryCount: Math.floor(readNumber(settingsRecord, 'providerRetryCount', 3, 0)),
+      providerBackoffMs: Math.floor(readNumber(settingsRecord, 'providerBackoffMs', 2000, 0)),
+      maxTotalProviderWaitMs: Math.floor(
+        readNumber(settingsRecord, 'maxTotalProviderWaitMs', 30000, 0)
+      ),
       fallbackPolicy: readString(settingsRecord, 'fallbackPolicy', 'deterministic_first') as RunConfig['settings']['fallbackPolicy']
     },
     logging: {
@@ -157,6 +162,9 @@ export function runConfigToBatchConfig(
       seed: config.settings.seed,
       openingRandomMoves: config.settings.openingRandomMoves,
       retryCount: config.settings.retryCount,
+      providerRetryCount: config.settings.providerRetryCount,
+      providerBackoffMs: config.settings.providerBackoffMs,
+      maxTotalProviderWaitMs: config.settings.maxTotalProviderWaitMs,
       fallbackPolicy: config.settings.fallbackPolicy
     }
   };

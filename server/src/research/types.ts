@@ -1,3 +1,5 @@
+// Active compatibility types used by the current paper pipeline and analysis
+// stack. These remain until the full migration to split type modules is done.
 export type BatchConfig = {
   mode?: 'free_generation' | 'constrained_index' | 'move_scoring';
   resumeFromGameIndex?: number;
@@ -19,6 +21,9 @@ export type BatchConfig = {
     seed?: number;
     openingRandomMoves?: number;
     retryCount?: number;
+    providerRetryCount?: number;
+    providerBackoffMs?: number;
+    maxTotalProviderWaitMs?: number;
     fallbackPolicy?: 'deterministic_first' | 'stockfish_best' | 'random_seeded';
   };
 };
@@ -38,6 +43,7 @@ export type IllegalMoveFailureMode =
   | 'non_chess_text'
   | 'pseudo_legal_or_illegal'
   | 'request_failed'
+  | 'rate_limited'
   | 'timeout_or_abort'
   | 'unparseable'
   | 'unknown';

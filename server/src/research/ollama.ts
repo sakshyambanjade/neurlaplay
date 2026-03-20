@@ -1,15 +1,14 @@
+// Active compatibility provider adapter used by the current paper pipeline.
+// Keep this file in sync with the modular backends until the live path is
+// fully migrated away from it.
 import { Chess, type Square } from 'chess.js';
 import type { BindingProfile, IllegalMoveFailureMode } from './types.js';
+import type { LegalMoveOption } from './types/move.js';
 
 type OllamaResponse = {
   message?: {
     content?: string;
   };
-};
-
-export type LegalMoveOption = {
-  san: string;
-  uci: string;
 };
 
 function escapeRegExp(text: string): string {
@@ -24,6 +23,17 @@ export type OllamaMoveResponse = {
   rawResponse: string;
   failureMode: IllegalMoveFailureMode | null;
   bindingProfile: BindingProfile;
+  statusCode?: number;
+  retryAfterMs?: number | null;
+  keyId?: string | null;
+  providerRetries?: number;
+  providerWaitMs?: number;
+};
+
+type MoveRequestContext = {
+  recentMoves?: string[];
+  repetitionRiskByIndex?: boolean[];
+  keyId?: string | null;
 };
 
 const EMPTY_BINDING_PROFILE: BindingProfile = {
@@ -186,6 +196,92 @@ function parseIndexFromText(text: string, upperBound: number): number | null {
   return idx;
 }
 
+function parseRetryAfterMs(raw: string, retryAfterHeader?: string | null): number | null {
+  if (retryAfterHeader) {
+    const retryAfterSeconds = Number(retryAfterHeader);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+      return Math.round(retryAfterSeconds * 1000);
+    }
+  }
+
+  const match = raw.match(/try again in\s+([0-9]+(?:\.[0-9]+)?)s/i);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  const seconds = Number(match[1]);
+  return Number.isFinite(seconds) ? Math.round(seconds * 1000) : null;
+}
+
+function buildGroqReasoningOptions(model: string): Record<string, unknown> {
+  if (/qwen\/qwen3/i.test(model)) {
+    return {
+      reasoning_format: 'hidden',
+      reasoning_effort: 'none'
+    };
+  }
+
+  return {};
+}
+
+function buildConstrainedPrompt(
+  fen: string,
+  legalMoves: LegalMoveOption[],
+  strict: boolean,
+  context?: MoveRequestContext
+): { system: string; user: string } {
+  const indexedMoves = legalMoves
+    .map((move, idx) => {
+      const repeatRisk = context?.repetitionRiskByIndex?.[idx] ? ' [repeat-risk]' : '';
+      return `${idx}: ${move.uci}${repeatRisk}`;
+    })
+    .join('\n');
+  const recentMovesBlock =
+    context?.recentMoves && context.recentMoves.length > 0
+      ? `Recent moves:\n${context.recentMoves.join('\n')}\n`
+      : '';
+
+  return {
+    system: strict
+      ? 'Return exactly one integer index from the legal move list. No words. No punctuation.'
+      : 'Return exactly one integer index for the best move. No words. No punctuation.',
+    user:
+      `FEN: ${fen}\n${recentMovesBlock}` +
+      `Avoid immediate back-and-forth repetition when reasonable alternatives exist.\n` +
+      `Legal moves:\n${indexedMoves}\n` +
+      `Output only the integer index (0-${legalMoves.length - 1}).`
+  };
+}
+
+function buildFreeGenerationPrompt(
+  fen: string,
+  legalMoves: LegalMoveOption[],
+  strict: boolean,
+  context?: MoveRequestContext
+): { system: string; user: string } {
+  const indexedMoves = legalMoves
+    .map((move, idx) => {
+      const repeatRisk = context?.repetitionRiskByIndex?.[idx] ? ' [repeat-risk]' : '';
+      return `${idx}: ${move.uci}${repeatRisk}`;
+    })
+    .join('\n');
+  const recentMovesBlock =
+    context?.recentMoves && context.recentMoves.length > 0
+      ? `Recent moves:\n${context.recentMoves.join('\n')}\n`
+      : '';
+
+  return {
+    system: strict
+      ? 'Return exactly one legal move from the list. Output only the UCI move.'
+      : 'Choose exactly one legal move from the list. Output only the UCI move.',
+    user:
+      `FEN: ${fen}\n${recentMovesBlock}` +
+      `Avoid immediate back-and-forth repetition when reasonable alternatives exist.\n` +
+      `Legal moves:\n${indexedMoves}\n` +
+      `Output only one UCI move from the list above.`
+  };
+}
+
 function pickMoveFromText(text: string, legalMoves: LegalMoveOption[]): string | null {
   const idx = parseIndexFromText(text, legalMoves.length);
   if (idx !== null) {
@@ -235,6 +331,9 @@ function classifyIllegalMoveFailure(raw: string): IllegalMoveFailureMode {
   }
 
   const lower = compact.toLowerCase();
+  if (/(rate limit|rate_limit|too many requests|status\s*429)/i.test(lower)) {
+    return 'rate_limited';
+  }
   if (/(timeout|timed out|abort|aborted|cancelled)/i.test(lower)) {
     return 'timeout_or_abort';
   }
@@ -269,18 +368,13 @@ export async function chooseMoveWithOllamaDetailed(
   legalMoves: LegalMoveOption[],
   timeoutMs: number,
   strict: boolean = false,
-  mode: 'constrained_index' | 'free_generation' = 'constrained_index'
+  mode: 'constrained_index' | 'free_generation' = 'constrained_index',
+  context?: MoveRequestContext
 ): Promise<OllamaMoveResponse> {
-  const indexedMoves = legalMoves.map((m, idx) => `${idx}: ${m.san} (${m.uci})`).join('\n');
-  const moveList = legalMoves.map((move) => move.san).join(', ');
-  const userPrompt =
+  const prompts =
     mode === 'free_generation'
-      ? strict
-        ? `FEN: ${fen}\nLegal moves: ${moveList}\nRespond ONLY with one legal move from the list above. No explanation.`
-        : `Choose exactly one legal move from the provided list.\nDo NOT invent moves.\nFEN: ${fen}\nLegal moves: ${moveList}\nReply with only the move text.`
-      : strict
-        ? `FEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nRespond ONLY with the integer index (0-${legalMoves.length - 1}).`
-        : `You must choose exactly one move index from the list.\nDo NOT invent moves.\nFEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nReply with only the index (0-${legalMoves.length - 1}).`;
+      ? buildFreeGenerationPrompt(fen, legalMoves, strict, context)
+      : buildConstrainedPrompt(fen, legalMoves, strict, context);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -294,39 +388,42 @@ export async function chooseMoveWithOllamaDetailed(
         messages: [
           {
             role: 'system',
-            content:
-              mode === 'free_generation'
-                ? 'Choose exactly one legal move from the list. Output only the move.'
-                : 'Choose exactly one legal move index. Output only the integer.'
+            content: prompts.system
           },
           {
             role: 'user',
-            content: userPrompt
+            content: prompts.user
           }
         ],
         options: {
-          num_predict: 4,     // force very short output
+          num_predict: 2,
           temperature: 0.0,
           top_k: 1,
           top_p: 1.0,
           num_ctx: 512,
           num_thread: 12,
           repeat_penalty: 1.3,
-          stop: ['\n', '.', ',']
+          stop: ['\n']
         }
       }),
       signal: controller.signal
     });
 
     if (!response.ok) {
+      const rawResponse = await response.text();
       return {
         move: null,
         selectedIndex: null,
         reasoning: 'Model request failed.',
         confidence: 0.5,
-        rawResponse: `HTTP ${response.status}`,
+        rawResponse,
         failureMode: 'request_failed',
-        bindingProfile: EMPTY_BINDING_PROFILE
+        bindingProfile: EMPTY_BINDING_PROFILE,
+        statusCode: response.status,
+        retryAfterMs: parseRetryAfterMs(rawResponse, response.headers.get('retry-after')),
+        keyId: context?.keyId ?? null,
+        providerRetries: 0,
+        providerWaitMs: 0
       };
     }
 
@@ -342,7 +439,12 @@ export async function chooseMoveWithOllamaDetailed(
       confidence: parseConfidence(raw),
       rawResponse: raw,
       failureMode: move ? null : classifyIllegalMoveFailure(raw),
-      bindingProfile: buildBindingProfile(raw, fen, legalMoves)
+      bindingProfile: buildBindingProfile(raw, fen, legalMoves),
+      statusCode: 200,
+      retryAfterMs: null,
+      keyId: context?.keyId ?? null,
+      providerRetries: 0,
+      providerWaitMs: 0
     };
   } catch {
     return {
@@ -352,7 +454,11 @@ export async function chooseMoveWithOllamaDetailed(
       confidence: 0.5,
       rawResponse: '',
       failureMode: 'timeout_or_abort',
-      bindingProfile: EMPTY_BINDING_PROFILE
+      bindingProfile: EMPTY_BINDING_PROFILE,
+      retryAfterMs: null,
+      keyId: context?.keyId ?? null,
+      providerRetries: 0,
+      providerWaitMs: 0
     };
   } finally {
     clearTimeout(timer);
@@ -366,20 +472,15 @@ export async function chooseMoveWithGroq(
   legalMoves: LegalMoveOption[],
   timeoutMs: number,
   strict: boolean = false,
-  mode: 'constrained_index' | 'free_generation' = 'constrained_index'
+  mode: 'constrained_index' | 'free_generation' = 'constrained_index',
+  context?: MoveRequestContext
 ): Promise<OllamaMoveResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const indexedMoves = legalMoves.map((m, idx) => `${idx}: ${m.san} (${m.uci})`).join('\n');
-  const moveList = legalMoves.map((move) => move.san).join(', ');
-  const userPrompt =
+  const prompts =
     mode === 'free_generation'
-      ? strict
-        ? `FEN: ${fen}\nLegal moves: ${moveList}\nRespond ONLY with one legal move from the list above.`
-        : `Choose exactly one legal move from the list.\nFEN: ${fen}\nLegal moves: ${moveList}\nReply with only the move.`
-      : strict
-        ? `FEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nRespond ONLY with the integer index (0-${legalMoves.length - 1}).`
-        : `Choose exactly one move index from the list.\nFEN: ${fen}\nLegal moves (index: SAN (UCI)):\n${indexedMoves}\nReply with only the index (0-${legalMoves.length - 1}).`;
+      ? buildFreeGenerationPrompt(fen, legalMoves, strict, context)
+      : buildConstrainedPrompt(fen, legalMoves, strict, context);
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -392,34 +493,38 @@ export async function chooseMoveWithGroq(
         messages: [
           {
             role: 'system',
-            content:
-              mode === 'free_generation'
-                ? 'Choose exactly one legal move from the list. Output only the move.'
-                : 'Choose exactly one legal move index. Output only the integer.'
+            content: prompts.system
           },
           {
             role: 'user',
-            content: userPrompt
+            content: prompts.user
           }
         ],
-        max_tokens: 6,
+        max_tokens: 2,
         temperature: 0.0,
         top_p: 1.0,
-        stop: ['\n', '.', ',']
+        stop: ['\n'],
+        ...buildGroqReasoningOptions(model)
       }),
       signal: controller.signal
     });
 
     if (!response.ok) {
       const err = await response.text();
+      const retryAfterMs = response.status === 429 ? parseRetryAfterMs(err, response.headers.get('retry-after')) : null;
       return {
         move: null,
         selectedIndex: null,
         reasoning: `Groq request failed: ${err.slice(0, 100)}`,
         confidence: 0.5,
         rawResponse: err,
-        failureMode: 'request_failed',
-        bindingProfile: EMPTY_BINDING_PROFILE
+        failureMode: response.status === 429 ? 'rate_limited' : 'request_failed',
+        bindingProfile: EMPTY_BINDING_PROFILE,
+        statusCode: response.status,
+        retryAfterMs,
+        keyId: context?.keyId ?? null,
+        providerRetries: 0,
+        providerWaitMs: 0
       };
     }
 
@@ -435,7 +540,12 @@ export async function chooseMoveWithGroq(
       confidence: parseConfidence(raw),
       rawResponse: raw,
       failureMode: move ? null : classifyIllegalMoveFailure(raw),
-      bindingProfile: buildBindingProfile(raw, fen, legalMoves)
+      bindingProfile: buildBindingProfile(raw, fen, legalMoves),
+      statusCode: 200,
+      retryAfterMs: null,
+      keyId: context?.keyId ?? null,
+      providerRetries: 0,
+      providerWaitMs: 0
     };
   } catch {
     return {
@@ -445,7 +555,11 @@ export async function chooseMoveWithGroq(
       confidence: 0.5,
       rawResponse: '',
       failureMode: 'timeout_or_abort',
-      bindingProfile: EMPTY_BINDING_PROFILE
+      bindingProfile: EMPTY_BINDING_PROFILE,
+      retryAfterMs: null,
+      keyId: context?.keyId ?? null,
+      providerRetries: 0,
+      providerWaitMs: 0
     };
   } finally {
     clearTimeout(timer);
@@ -458,8 +572,18 @@ export async function chooseMoveWithOllama(
   fen: string,
   legalMoves: LegalMoveOption[],
   timeoutMs: number,
-  mode: 'constrained_index' | 'free_generation' = 'constrained_index'
+  mode: 'constrained_index' | 'free_generation' = 'constrained_index',
+  context?: MoveRequestContext
 ): Promise<string | null> {
-  const result = await chooseMoveWithOllamaDetailed(baseUrl, model, fen, legalMoves, timeoutMs, false, mode);
+  const result = await chooseMoveWithOllamaDetailed(
+    baseUrl,
+    model,
+    fen,
+    legalMoves,
+    timeoutMs,
+    false,
+    mode,
+    context
+  );
   return result.move;
 }

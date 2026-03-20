@@ -1,0 +1,15 @@
+{
+  "summary": {
+    "completedGames": 5,
+    "totalDurationMs": 63544,
+    "startedAt": "2026-03-20T20:14:50.500Z",
+    "endedAt": "2026-03-20T20:15:54.044Z",
+    "whiteModel": "groq:llama-3.1-8b-instant",
+    "blackModel": "groq:qwen/qwen3-32b"
+  },
+  "outputFile": "E:\\neurlaplay\\paper\\runs\\paper-1774037690079-b49871c0\\smoke_llama31_8b_white_vs_qwen32b\\paper-research-match-1774037690501.json",
+  "whiteModel": "groq:llama-3.1-8b-instant",
+  "blackModel": "groq:qwen/qwen3-32b",
+  "runType": "paper",
+  "totalGames": 5
+}
