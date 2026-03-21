@@ -1,6 +1,7 @@
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { GamePaperSummary } from './types.js';
+import { getPaperLogsRoot } from './PaperPaths.js';
 
 /**
  * Persistent game logger that saves every game immediately.
@@ -15,7 +16,7 @@ export class GameLogger {
   private runSummaryPath: string | null = null;
   private paperMode = false;
 
-  constructor(private readonly baseDir: string = '../paper/logs') {
+  constructor(private readonly baseDir: string = getPaperLogsRoot()) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     this.logFilePath = path.resolve(process.cwd(), baseDir, `games-${timestamp}.jsonl`);
   }
@@ -56,13 +57,13 @@ export class GameLogger {
    */
   async logGame(game: GamePaperSummary, metadata?: Record<string, unknown>): Promise<void> {
     await this.ensureLogDir();
-    
+
     const entry = {
       timestamp: new Date().toISOString(),
-      game,
-      metadata
+      ...game,
+      metadata: metadata ?? null
     };
-    
+
     // JSONL format: one line per game, never loses data even on crash
     const line = JSON.stringify(entry) + '\n';
     if (!this.paperMode) {

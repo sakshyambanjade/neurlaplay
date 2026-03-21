@@ -25,7 +25,7 @@ export function buildSelectionPrompts(input: MoveSelectionInput): {
       ? `Recent moves:\n${input.recentMoves.join('\n')}\n`
       : '';
   const repetitionHint = input.avoidImmediateRepetition
-    ? 'Avoid immediate back-and-forth repetition when reasonable alternatives exist.\n'
+    ? 'Avoid:\n- reversing the previous move\n- recreating previous positions\n- moving the same piece back and forth when reasonable alternatives exist\n'
     : '';
 
   return {
@@ -33,8 +33,8 @@ export function buildSelectionPrompts(input: MoveSelectionInput): {
       input.systemPrompt ??
       (
         input.strict
-          ? 'Return exactly one integer index from the legal move list. No words. No punctuation.'
-          : 'You are given a chess position and a numbered list of legal moves. Return exactly one integer: the index of the best move. No words. No punctuation.'
+          ? 'Return exactly one integer index from the legal move list. Do not output words or punctuation.'
+          : 'Return exactly one integer index for the best move. Do not output words or punctuation.'
       ),
     user:
       `FEN: ${input.fen}\n${recentMovesBlock}${repetitionHint}Legal moves:\n${moves}\n` +

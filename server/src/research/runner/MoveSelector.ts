@@ -1,6 +1,6 @@
 import type { ModelBackend } from '../model_backends/base.js';
 import type { FallbackPolicyName } from '../types/provider.js';
-import type { LegalMoveOption, ModelSelectionResult } from '../types/move.js';
+import type { LegalMoveOption, ModelSelectionResult, RepetitionRisk } from '../types/move.js';
 import { chooseFallbackMove } from './FallbackPolicy.js';
 
 export type ValidatedMoveResult = {
@@ -27,6 +27,39 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function scoreRisk(risk: RepetitionRisk | undefined): number {
+  if (!risk) {
+    return 0;
+  }
+  return (
+    (risk.reversesLastMove ? 4 : 0) +
+    (risk.recreatesPriorFen ? 4 : 0) +
+    (risk.noProgressRisk ? 2 : 0) +
+    risk.repeatStateCountAfterMove
+  );
+}
+
+function isBadOscillationChoice(
+  selectedIndex: number,
+  repetitionRiskByIndex?: RepetitionRisk[]
+): boolean {
+  const selectedRisk = repetitionRiskByIndex?.[selectedIndex];
+  if (!selectedRisk) {
+    return false;
+  }
+  if (
+    !selectedRisk.reversesLastMove &&
+    !selectedRisk.recreatesPriorFen &&
+    !selectedRisk.noProgressRisk
+  ) {
+    return false;
+  }
+  const selectedScore = scoreRisk(selectedRisk);
+  return Boolean(
+    repetitionRiskByIndex?.some((risk, index) => index !== selectedIndex && scoreRisk(risk) < selectedScore)
+  );
+}
+
 export async function selectValidatedMove(args: {
   backend: ModelBackend;
   fen: string;
@@ -42,6 +75,7 @@ export async function selectValidatedMove(args: {
   lastMoveUci?: string | null;
   previousFenSet?: Set<string>;
   simulatedFenByMove?: Record<string, string>;
+  repetitionRiskByIndex?: RepetitionRisk[];
 }): Promise<ValidatedMoveResult> {
   const legalMovesUci = args.legalMoves.map((move) => move.uci);
   const providerRetryCount = Math.max(0, args.providerRetryCount ?? 3);
@@ -59,7 +93,9 @@ export async function selectValidatedMove(args: {
       providerModel: args.providerModel,
       timeoutMs: args.timeoutMs,
       temperature: 0,
-      strict
+      strict,
+      repetitionRiskByIndex: args.repetitionRiskByIndex,
+      avoidImmediateRepetition: true
     });
 
     while (
@@ -83,7 +119,9 @@ export async function selectValidatedMove(args: {
         providerModel: args.providerModel,
         timeoutMs: args.timeoutMs,
         temperature: 0,
-        strict
+        strict,
+        repetitionRiskByIndex: args.repetitionRiskByIndex,
+        avoidImmediateRepetition: true
       });
     }
 
@@ -94,7 +132,12 @@ export async function selectValidatedMove(args: {
 
   const primaryMove =
     typeof primary.selectedIndex === 'number' ? args.legalMoves[primary.selectedIndex]?.san ?? null : null;
-  if (primary.valid && primaryMove) {
+  if (
+    primary.valid &&
+    primaryMove &&
+    (typeof primary.selectedIndex !== 'number' ||
+      !isBadOscillationChoice(primary.selectedIndex, args.repetitionRiskByIndex))
+  ) {
     return {
       selectedMove: primaryMove,
       selectedIndex: primary.selectedIndex,
@@ -113,6 +156,12 @@ export async function selectValidatedMove(args: {
     const retryMove =
       typeof retry.selectedIndex === 'number' ? args.legalMoves[retry.selectedIndex]?.san ?? null : null;
     if (retry.valid && retryMove) {
+      if (
+        typeof retry.selectedIndex === 'number' &&
+        isBadOscillationChoice(retry.selectedIndex, args.repetitionRiskByIndex)
+      ) {
+        // fall through to deterministic fallback
+      } else {
       return {
         selectedMove: retryMove,
         selectedIndex: retry.selectedIndex,
@@ -123,16 +172,22 @@ export async function selectValidatedMove(args: {
         fallbackReason: null,
         providerRetries
       };
+      }
     }
   }
 
+  const repetitionRiskByMove =
+    args.repetitionRiskByIndex && args.repetitionRiskByIndex.length === args.legalMoves.length
+      ? Object.fromEntries(args.legalMoves.map((move, index) => [move.uci, args.repetitionRiskByIndex![index]!]))
+      : undefined;
   const fallback = chooseFallbackMove({
     legalMoves: args.legalMoves,
     policy: args.fallbackPolicy,
     rngSeed: args.seed,
     lastMoveUci: args.lastMoveUci,
     previousFenSet: args.previousFenSet,
-    simulatedFenByMove: args.simulatedFenByMove
+    simulatedFenByMove: args.simulatedFenByMove,
+    repetitionRiskByMove
   });
   return {
     selectedMove: fallback.move,

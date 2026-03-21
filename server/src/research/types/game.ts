@@ -30,4 +30,9 @@ export type GameTrace = {
   fallbackMovesUsed: number;
   retryAttempts: number;
   retrySuccesses: number;
+  reverseMoveCount?: number;
+  repeatStateCount?: number;
+  oscillationRejectedCount?: number;
+  noProgressMaxStreak?: number;
+  collapseDetected?: boolean;
 };

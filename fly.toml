@@ -1,0 +1,28 @@
+app = "neurlaplay-paper"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+  PAPER_WORKSPACE_ROOT = "/app/paper"
+  PAPER_DATA_ROOT = "/data/paper"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "paper_data"
+  destination = "/data"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "2gb"

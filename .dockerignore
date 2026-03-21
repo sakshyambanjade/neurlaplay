@@ -1,0 +1,9 @@
+.git
+.gitignore
+**/node_modules
+client/dist
+server/dist
+paper/runs
+paper/logs
+paper/figures
+paper/tables

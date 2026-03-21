@@ -24,6 +24,12 @@ export type BatchConfig = {
     providerRetryCount?: number;
     providerBackoffMs?: number;
     maxTotalProviderWaitMs?: number;
+    antiOscillation?: boolean;
+    avoidImmediateRepetition?: boolean;
+    recentMoveWindow?: number;
+    maxNoProgressPlies?: number;
+    enableLiveCpl?: boolean;
+    enablePostRunCpl?: boolean;
     fallbackPolicy?: 'deterministic_first' | 'stockfish_best' | 'random_seeded';
   };
 };
@@ -81,6 +87,13 @@ export type PaperDatapoint = {
   illegalFailureMode: IllegalMoveFailureMode | null;
   bindingProfile: BindingProfile | null;
   correctionApplied: boolean;
+  repetitionRiskSelected?: boolean;
+  reversesLastMove?: boolean;
+  recreatesPriorFen?: boolean;
+  noProgressRisk?: boolean;
+  recentRepeatCount?: number;
+  oscillationRejected?: boolean;
+  oscillationOverrideUsed?: boolean;
 };
 
 export type GamePaperSummary = {
@@ -96,6 +109,11 @@ export type GamePaperSummary = {
   endedAt: string;
   averageCplWhite: number;
   averageCplBlack: number;
+  reverseMoveCount: number;
+  repeatStateCount: number;
+  noProgressMaxStreak: number;
+  collapseDetected: boolean;
+  collapseReason: 'repeat_state' | 'reverse_loop' | 'fallback_loop' | 'no_progress' | null;
   ruleAudit: RuleAudit;
 };
 
@@ -116,6 +134,15 @@ export type RuleAudit = {
   invalidMoveFailureModes: Partial<Record<IllegalMoveFailureMode, number>>;
   bindingAttemptCount: number;
   bindingBoundCountTotal: number;
+  reverseMoveCount: number;
+  repeatStateCount: number;
+  noProgressCount: number;
+  noProgressMaxStreak: number;
+  oscillationRejectedCount: number;
+  oscillationOverrideCount: number;
+  behaviorallyStable: boolean;
+  collapseDetected: boolean;
+  collapseReason: 'repeat_state' | 'reverse_loop' | 'fallback_loop' | 'no_progress' | null;
   bindingComponentHits: {
     piece: number;
     origin: number;
@@ -213,6 +240,11 @@ export type PaperStatsSummary = {
     fallback_rate: number;
     move_selection_entropy: number;
     repetition_rate: number;
+    reverse_move_rate: number;
+    repeat_state_rate: number;
+    oscillation_rate: number;
+    behavioral_collapse_rate: number;
+    no_progress_max_streak: number;
   };
 };
 
@@ -234,5 +266,10 @@ export type GameResult = {
   pgn: string;
   startedAt: string;
   endedAt: string;
+  reverseMoveCount?: number;
+  repeatStateCount?: number;
+  noProgressMaxStreak?: number;
+  collapseDetected?: boolean;
+  collapseReason?: 'repeat_state' | 'reverse_loop' | 'fallback_loop' | 'no_progress' | null;
   ruleAudit: RuleAudit;
 };

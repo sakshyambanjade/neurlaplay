@@ -128,6 +128,12 @@ export function validateRunConfig(input: unknown): RunConfig {
       maxTotalProviderWaitMs: Math.floor(
         readNumber(settingsRecord, 'maxTotalProviderWaitMs', 30000, 0)
       ),
+      antiOscillation: readBoolean(settingsRecord, 'antiOscillation', true),
+      avoidImmediateRepetition: readBoolean(settingsRecord, 'avoidImmediateRepetition', true),
+      recentMoveWindow: Math.floor(readNumber(settingsRecord, 'recentMoveWindow', 6, 1)),
+      maxNoProgressPlies: Math.floor(readNumber(settingsRecord, 'maxNoProgressPlies', 12, 1)),
+      enableLiveCpl: readBoolean(settingsRecord, 'enableLiveCpl', false),
+      enablePostRunCpl: readBoolean(settingsRecord, 'enablePostRunCpl', true),
       fallbackPolicy: readString(settingsRecord, 'fallbackPolicy', 'deterministic_first') as RunConfig['settings']['fallbackPolicy']
     },
     logging: {
@@ -165,6 +171,12 @@ export function runConfigToBatchConfig(
       providerRetryCount: config.settings.providerRetryCount,
       providerBackoffMs: config.settings.providerBackoffMs,
       maxTotalProviderWaitMs: config.settings.maxTotalProviderWaitMs,
+      antiOscillation: config.settings.antiOscillation,
+      avoidImmediateRepetition: config.settings.avoidImmediateRepetition,
+      recentMoveWindow: config.settings.recentMoveWindow,
+      maxNoProgressPlies: config.settings.maxNoProgressPlies,
+      enableLiveCpl: config.settings.enableLiveCpl,
+      enablePostRunCpl: config.settings.enablePostRunCpl,
       fallbackPolicy: config.settings.fallbackPolicy
     }
   };

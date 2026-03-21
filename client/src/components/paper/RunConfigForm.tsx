@@ -8,21 +8,18 @@ type Props = {
     progress: number;
     total: number;
   }>;
-  runInProgress: boolean;
   onLaunchMainExperiment: () => Promise<void>;
+  onLaunchPilotExperiment: () => Promise<void>;
+  onResumeLatestRun: () => Promise<void>;
 };
 
 export function RunConfigForm({
   incompleteRuns,
-  runInProgress,
-  onLaunchMainExperiment
+  onLaunchMainExperiment,
+  onLaunchPilotExperiment,
+  onResumeLatestRun
 }: Props) {
   const latestInterruptedRun = incompleteRuns[0] ?? null;
-  const buttonLabel = runInProgress
-    ? 'Main experiment running...'
-    : latestInterruptedRun
-      ? 'Resume main experiment'
-      : 'Run main experiment (1200 games)';
 
   return (
     <section style={panelStyle}>
@@ -49,25 +46,44 @@ export function RunConfigForm({
         </div>
       ) : null}
 
-      <button
-        onClick={() => void onLaunchMainExperiment()}
-        disabled={runInProgress}
-        style={{
-          ...primaryButtonStyle,
-          width: '100%',
-          marginTop: 24,
-          background: runInProgress
-            ? '#666'
-            : 'linear-gradient(135deg, #1f8f55 0%, #0f6d8d 100%)',
-          cursor: runInProgress ? 'not-allowed' : 'pointer'
-        }}
-      >
-        {buttonLabel}
-      </button>
+      <div style={buttonGroupStyle}>
+        <button
+          onClick={() => void onLaunchMainExperiment()}
+          style={{
+            ...primaryButtonStyle,
+            background: 'linear-gradient(135deg, #1f8f55 0%, #0f6d8d 100%)',
+            cursor: 'pointer'
+          }}
+        >
+          Run Main Experiment
+        </button>
+
+        <button
+          onClick={() => void onLaunchPilotExperiment()}
+          style={{
+            ...secondaryButtonStyle,
+            cursor: 'pointer',
+            opacity: 1
+          }}
+        >
+          Run Validation Batch
+        </button>
+
+        <button
+          onClick={() => void onResumeLatestRun()}
+          disabled={!latestInterruptedRun}
+          style={{
+            ...secondaryButtonStyle,
+            cursor: !latestInterruptedRun ? 'not-allowed' : 'pointer',
+            opacity: !latestInterruptedRun ? 0.65 : 1
+          }}
+        >
+          Resume Last Run
+        </button>
+      </div>
 
       <div style={footnoteStyle}>
-        The button resumes the latest interrupted study automatically. If nothing is pending, it
-        launches the canonical `main_1200_games.json` preset.
+        Main and pilot start fresh locked presets. Resume only continues the latest interrupted run.
       </div>
     </section>
   );
@@ -120,12 +136,31 @@ const resumeCardStyle: CSSProperties = {
 
 const primaryButtonStyle: CSSProperties = {
   padding: '16px 24px',
-  fontSize: 20,
+  fontSize: 18,
   fontWeight: 800,
   color: 'white',
   border: 'none',
   borderRadius: 14,
-  boxShadow: '0 10px 30px rgba(15, 109, 141, 0.35)'
+  boxShadow: '0 10px 30px rgba(15, 109, 141, 0.35)',
+  width: '100%'
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  padding: '14px 20px',
+  fontSize: 15,
+  fontWeight: 700,
+  color: 'white',
+  border: '1px solid rgba(145, 180, 255, 0.3)',
+  borderRadius: 12,
+  background: '#182338',
+  width: '100%'
+};
+
+const buttonGroupStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr',
+  gap: 12,
+  marginTop: 24
 };
 
 const footnoteStyle: CSSProperties = {

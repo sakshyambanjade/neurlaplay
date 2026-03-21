@@ -8,8 +8,6 @@ export default function PaperRun() {
   const {
     runId,
     status,
-    acceptedConfig,
-    logs,
     artifacts,
     artifactZipUrl,
     currentFen,
@@ -20,6 +18,8 @@ export default function PaperRun() {
     incompleteRuns,
     health,
     launchMainExperiment,
+    launchPilotExperiment,
+    resumeLatestRun,
     artifactUrl
   } = usePaperRun();
 
@@ -51,32 +51,16 @@ export default function PaperRun() {
         <RunConfigForm
           incompleteRuns={incompleteRuns}
           onLaunchMainExperiment={launchMainExperiment}
-          runInProgress={Boolean(runId && !status?.done)}
+          onLaunchPilotExperiment={launchPilotExperiment}
+          onResumeLatestRun={resumeLatestRun}
         />
       </div>
 
-      <RunProgress status={status} acceptedConfig={acceptedConfig} health={health} />
-
-      {logs.length > 0 ? (
-        <section style={{ marginTop: 24, marginBottom: 24 }}>
-          <h2>Live Activity Log</h2>
-          <pre
-            style={{
-              background: '#000',
-              color: '#0f0',
-              padding: 20,
-              borderRadius: 12,
-              height: 320,
-              overflowY: 'auto',
-              fontSize: 13,
-              border: '2px solid #333',
-              lineHeight: 1.6
-            }}
-          >
-            {logs.slice(-150).join('\n')}
-          </pre>
-        </section>
-      ) : null}
+      <RunProgress
+        status={status}
+        health={health}
+        artifactReady={artifacts.length > 0 || Boolean(artifactZipUrl)}
+      />
 
       <ArtifactsPanel
         runId={runId}

@@ -119,6 +119,7 @@ export class StockfishAnalyzer {
       let evalBefore = 0;
       let evalAfter = 0;
       let timeout: NodeJS.Timeout;
+      const analysisTimeoutMs = Math.min(2500, Math.max(1200, this.analysisDepth * 250));
 
       const beforeHandler = (line: string) => {
         const evalMatch = line.match(/score cp (-?\d+)/);
@@ -153,7 +154,7 @@ export class StockfishAnalyzer {
       timeout = setTimeout(() => {
         this.messageHandlers = [];
         resolve(this.fallbackCPL(fenBefore, playedMove));
-      }, 4000);
+      }, analysisTimeoutMs);
 
       this.messageHandlers.push(beforeHandler);
       this.sendCommand(`position fen ${fenBefore}`);

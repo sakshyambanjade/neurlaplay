@@ -20,5 +20,8 @@ export function updateRuleAudit(state: RuleAudit, patch: Partial<RuleAudit>): Ru
 }
 
 export function finalizeRuleAudit(state: RuleAudit): RuleAudit {
-  return state;
+  return {
+    ...state,
+    behaviorallyStable: !state.collapseDetected
+  };
 }

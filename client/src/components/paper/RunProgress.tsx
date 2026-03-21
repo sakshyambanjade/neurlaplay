@@ -1,18 +1,23 @@
-import type { RunConfig, RunStatus } from '../../hooks/usePaperRun';
+import type { RunStatus } from '../../hooks/usePaperRun';
 
 type Props = {
   status: RunStatus | null;
-  acceptedConfig: RunConfig | null;
   health: {
     ok: boolean;
     warnings: string[];
     completedGames: number;
     totalMoves: number;
     matchupLabel: string;
+    fallbackMoves: number;
+    repeatStateMoves: number;
+    oscillationRejectedCount: number;
+    collapseDetectedGames: number;
+    noProgressMaxStreak: number;
   };
+  artifactReady: boolean;
 };
 
-export function RunProgress({ status, acceptedConfig, health }: Props) {
+export function RunProgress({ status, health, artifactReady }: Props) {
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       {status ? (
@@ -52,6 +57,12 @@ export function RunProgress({ status, acceptedConfig, health }: Props) {
           <div>Matchup: {health.matchupLabel || '-'}</div>
           <div>Completed games observed: {health.completedGames}</div>
           <div>Total moves observed: {health.totalMoves}</div>
+          <div>Fallback moves: {health.fallbackMoves}</div>
+          <div>Repeat-state moves: {health.repeatStateMoves}</div>
+          <div>Oscillation rejected: {health.oscillationRejectedCount}</div>
+          <div>No-progress streak max: {health.noProgressMaxStreak}</div>
+          <div>Collapse-detected games: {health.collapseDetectedGames}</div>
+          <div>Artifacts ready: {artifactReady ? 'yes' : 'no'}</div>
         </div>
         {health.warnings.length > 0 ? (
           <ul style={{ marginTop: 0, color: '#ffb86c' }}>
@@ -62,23 +73,6 @@ export function RunProgress({ status, acceptedConfig, health }: Props) {
         ) : (
           <div style={{ color: '#8fd19e' }}>No health warnings reported yet.</div>
         )}
-      </section>
-
-      <section style={{ background: '#1a1a2e', padding: 20, borderRadius: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Accepted Config</h2>
-        <pre
-          style={{
-            background: '#000',
-            color: '#d7e3ff',
-            padding: 16,
-            borderRadius: 10,
-            overflowX: 'auto',
-            fontSize: 12,
-            lineHeight: 1.5
-          }}
-        >
-          {JSON.stringify(acceptedConfig, null, 2)}
-        </pre>
       </section>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { LegalMoveOption } from '../types/move.js';
+import type { LegalMoveOption, RepetitionRisk } from '../types/move.js';
 import type { FallbackPolicyName } from '../types/provider.js';
 
 function isImmediateReverse(previousMoveUci: string | null | undefined, nextMoveUci: string): boolean {
@@ -19,6 +19,7 @@ export function chooseFallbackMove(args: {
   lastMoveUci?: string | null;
   previousFenSet?: Set<string>;
   simulatedFenByMove?: Record<string, string>;
+  repetitionRiskByMove?: Record<string, RepetitionRisk>;
 }): { move: string; reason: string } {
   const { legalMoves, policy, stockfishBestMove } = args;
   if (legalMoves.length === 0) {
@@ -51,15 +52,23 @@ export function chooseFallbackMove(args: {
   });
   const repeatFiltered = withoutRepeatState.length > 0 ? withoutRepeatState : reverseFiltered;
 
-  const sorted = [...repeatFiltered].sort((a, b) => a.uci.localeCompare(b.uci));
+  const withoutNoProgress = repeatFiltered.filter((entry) => {
+    const risk = args.repetitionRiskByMove?.[entry.uci];
+    return !risk?.noProgressRisk;
+  });
+  const noProgressFiltered = withoutNoProgress.length > 0 ? withoutNoProgress : repeatFiltered;
+
+  const sorted = [...noProgressFiltered].sort((a, b) => a.uci.localeCompare(b.uci));
   const chosen = sorted[0]!;
   let reason = 'deterministic_first_forced_repeat';
-  if (withoutReverse.length > 0 && withoutRepeatState.length > 0) {
+  if (withoutReverse.length > 0 && withoutRepeatState.length > 0 && withoutNoProgress.length > 0) {
     reason = 'deterministic_first_safe';
   } else if (withoutReverse.length > 0 && withoutRepeatState.length === 0) {
     reason = 'deterministic_first_avoided_reverse';
   } else if (withoutReverse.length === 0 && withoutRepeatState.length > 0) {
     reason = 'deterministic_first_avoided_repeat_state';
+  } else if (withoutNoProgress.length > 0) {
+    reason = 'deterministic_first_safe';
   }
   return { move: chosen.san, reason };
 }

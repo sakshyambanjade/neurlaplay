@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { Chess } from 'chess.js';
 import type {
   BindingProfile,
   GamePaperSummary,
@@ -9,6 +10,7 @@ import type {
   PaperDatapoint,
   PaperStatsSummary
 } from './types.js';
+import { StockfishAnalyzer } from './StockfishAnalyzer.js';
 
 function average(values: number[]): number {
   if (values.length === 0) {
@@ -36,6 +38,40 @@ function clamp01(value: number): number {
     return 1;
   }
   return value;
+}
+
+function clampCpl(value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    return -1;
+  }
+  return Math.max(0, Math.min(1000, value));
+}
+
+function moveToUci(fenBefore: string, move: string): string | null {
+  try {
+    const chess = new Chess(fenBefore);
+    const applied = chess.move(move, { strict: true });
+    if (!applied) {
+      return null;
+    }
+    return `${applied.from}${applied.to}${applied.promotion ?? ''}`;
+  } catch {
+    return null;
+  }
+}
+
+function heuristicCpl(fenBefore: string, move: string, fenAfter: string): number {
+  try {
+    const before = new Chess(fenBefore);
+    const after = new Chess(fenAfter);
+    const beforeChecks = before.inCheck() ? 1 : 0;
+    const afterChecks = after.inCheck() ? 1 : 0;
+    const mobilityPenalty = Math.max(0, before.moves().length - after.moves().length);
+    const syntaxPenalty = /[+#]$/.test(move) ? -20 : 20;
+    return Math.max(0, beforeChecks * 60 + afterChecks * 80 + mobilityPenalty * 3 + syntaxPenalty);
+  } catch {
+    return -1;
+  }
 }
 
 function erf(x: number): number {
@@ -138,6 +174,71 @@ export class PaperDataCollector {
 
   getGameSummariesSnapshot(): GamePaperSummary[] {
     return [...this.gameSummaries];
+  }
+
+  private recomputeGameAverageCpl(): void {
+    const byGame = new Map<string, { white: number[]; black: number[] }>();
+    for (const point of this.datapoints) {
+      if (point.cpl < 0) {
+        continue;
+      }
+      const bucket = byGame.get(point.gameId) ?? { white: [], black: [] };
+      if (point.side === 'white') {
+        bucket.white.push(point.cpl);
+      } else {
+        bucket.black.push(point.cpl);
+      }
+      byGame.set(point.gameId, bucket);
+    }
+
+    for (const game of this.gameSummaries) {
+      const values = byGame.get(game.gameId);
+      game.averageCplWhite = average(values?.white ?? []);
+      game.averageCplBlack = average(values?.black ?? []);
+    }
+  }
+
+  async enrichOfflineCpl(): Promise<void> {
+    const unresolved = this.datapoints.filter((point) => point.cpl < 0);
+    if (unresolved.length === 0) {
+      this.recomputeGameAverageCpl();
+      return;
+    }
+
+    const analyzer = new StockfishAnalyzer();
+    const cache = new Map<string, number>();
+    try {
+      await analyzer.initialize();
+      analyzer.setAnalysisDepth(this.stockfishEvalDepth);
+
+      for (const point of this.datapoints) {
+        if (point.cpl >= 0) {
+          continue;
+        }
+
+        const uci = moveToUci(point.fenBefore, point.move);
+        const cacheKey = `${this.stockfishEvalDepth}|${point.fenBefore}|${uci ?? point.move}`;
+        let cpl = cache.get(cacheKey);
+        if (typeof cpl !== 'number') {
+          if (uci) {
+            cpl = await analyzer.computeCPL(point.fenBefore, uci);
+          } else {
+            cpl = -1;
+          }
+          if (cpl < 0) {
+            cpl = heuristicCpl(point.fenBefore, point.move, point.fenAfter);
+          }
+          cache.set(cacheKey, cpl);
+        }
+
+        point.cpl = clampCpl(cpl);
+        point.isCritical = point.cpl >= 0 && point.cpl >= this.blunderThresholdCpl;
+      }
+    } finally {
+      await analyzer.shutdown();
+    }
+
+    this.recomputeGameAverageCpl();
   }
 
   getLiveStats(): {
@@ -322,6 +423,14 @@ export class PaperDataCollector {
     }
 
     const repetitionGames = this.gameSummaries.filter((g) => g.termination === 'threefold_repetition').length;
+    const reverseMoveCount = this.datapoints.filter((d) => d.reversesLastMove).length;
+    const repeatStateCount = this.datapoints.filter((d) => d.recreatesPriorFen).length;
+    const oscillationRejectedCount = this.datapoints.filter((d) => d.oscillationRejected).length;
+    const collapseDetectedGames = this.gameSummaries.filter((g) => g.collapseDetected).length;
+    const noProgressMaxStreak = this.gameSummaries.reduce(
+      (max, game) => Math.max(max, game.noProgressMaxStreak ?? 0),
+      0
+    );
 
     return {
       totalGames,
@@ -398,7 +507,12 @@ export class PaperDataCollector {
         retry_success_rate: retryAttempts > 0 ? retrySuccesses / retryAttempts : 0,
         fallback_rate: totalMoves > 0 ? fallbackMoves / totalMoves : 0,
         move_selection_entropy: entropyFromCounts(moveCounts),
-        repetition_rate: totalGames > 0 ? repetitionGames / totalGames : 0
+        repetition_rate: totalGames > 0 ? repetitionGames / totalGames : 0,
+        reverse_move_rate: totalMoves > 0 ? reverseMoveCount / totalMoves : 0,
+        repeat_state_rate: totalMoves > 0 ? repeatStateCount / totalMoves : 0,
+        oscillation_rate: totalMoves > 0 ? oscillationRejectedCount / totalMoves : 0,
+        behavioral_collapse_rate: totalGames > 0 ? collapseDetectedGames / totalGames : 0,
+        no_progress_max_streak: noProgressMaxStreak
       }
     };
   }
@@ -424,8 +538,14 @@ export class PaperDataCollector {
     return this.gameSummaries.map((game) => game.pgn.trim()).filter(Boolean).join('\n\n');
   }
 
-  async generatePaperArtifacts(outputDir: string): Promise<PaperArtifacts> {
+  async generatePaperArtifacts(
+    outputDir: string,
+    opts: { enablePostRunCpl?: boolean } = {}
+  ): Promise<PaperArtifacts> {
     await mkdir(outputDir, { recursive: true });
+    if (opts.enablePostRunCpl ?? false) {
+      await this.enrichOfflineCpl();
+    }
     const stats = this.computeResearchStats();
     const totalGames = this.gameSummaries.length;
     const blunderThreshold = this.blunderThresholdCpl;
@@ -511,7 +631,18 @@ export class PaperDataCollector {
             (sum, g) => sum + g.ruleAudit.invalidModelMoveAttempts,
             0
           ),
-          legalMoveOnlyGames: this.gameSummaries.filter((g) => g.ruleAudit.legalMoveOnly).length
+          legalMoveOnlyGames: this.gameSummaries.filter((g) => g.ruleAudit.legalMoveOnly).length,
+          collapseDetectedGames: this.gameSummaries.filter((g) => g.collapseDetected).length,
+          reverseMoveCount: this.gameSummaries.reduce((sum, g) => sum + g.reverseMoveCount, 0),
+          repeatStateCount: this.gameSummaries.reduce((sum, g) => sum + g.repeatStateCount, 0),
+          oscillationRejectedCount: this.gameSummaries.reduce(
+            (sum, g) => sum + (g.ruleAudit.oscillationRejectedCount ?? 0),
+            0
+          ),
+          oscillationOverrideCount: this.gameSummaries.reduce(
+            (sum, g) => sum + (g.ruleAudit.oscillationOverrideCount ?? 0),
+            0
+          )
         },
         null,
         2

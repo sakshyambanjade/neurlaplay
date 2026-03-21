@@ -32,6 +32,11 @@ export type AggregatedMatchupStats = {
     fallback_rate: number;
     move_selection_entropy: number;
     repetition_rate: number;
+    reverse_move_rate: number;
+    repeat_state_rate: number;
+    oscillation_rate: number;
+    behavioral_collapse_rate: number;
+    no_progress_max_streak: number;
   };
 };
 

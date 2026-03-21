@@ -12,6 +12,9 @@ type Props = {
   quality: {
     illegalSuggestions: number;
     correctionsApplied: number;
+    repeatStateMoves: number;
+    oscillationRejected: number;
+    oscillationOverrides: number;
     lastMove: string;
     lastModel: string;
     lastSide: string;
@@ -45,6 +48,9 @@ export function LiveBoard({ currentFen, gameInfo, quality, eta, etaText }: Props
             <div>Game: {gameInfo.gameNum} / {gameInfo.totalGames}</div>
             <div>Illegal suggestions: {quality.illegalSuggestions}</div>
             <div>Corrections applied: {quality.correctionsApplied}</div>
+            <div>Repeat-state moves: {quality.repeatStateMoves}</div>
+            <div>Oscillation rejected: {quality.oscillationRejected}</div>
+            <div>Oscillation overrides: {quality.oscillationOverrides}</div>
             <div>
               Last move:{' '}
               {quality.lastSide ? `${quality.lastSide} ${quality.lastModel} ${quality.lastMove}` : '-'}

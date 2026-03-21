@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { getPaperConfigsRoot } from './PaperPaths.js';
 
 export type ExperimentPreset = {
   id: string;
@@ -36,7 +37,7 @@ function listJsonFiles(root: string, configsRoot: string): ExperimentPreset[] {
 }
 
 export function getExperimentRegistry(): ExperimentPreset[] {
-  const configsRoot = path.resolve(process.cwd(), '../paper/configs');
+  const configsRoot = getPaperConfigsRoot();
   const allowedRoots = ['debug', 'pilot', 'main', 'ablations']
     .map((segment) => path.join(configsRoot, segment))
     .filter((fullPath) => fs.existsSync(fullPath));

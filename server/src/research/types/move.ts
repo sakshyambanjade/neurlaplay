@@ -3,6 +3,10 @@ import type { ProviderKind } from './provider.js';
 export type LegalMoveOption = {
   san: string;
   uci: string;
+  flags?: string;
+  piece?: string;
+  isCapture?: boolean;
+  isPawnMove?: boolean;
 };
 
 export type SelectionFailureMode =
@@ -78,4 +82,11 @@ export type MoveTrace = {
   cpl?: number | null;
   latencyMs: number;
   timestamp: string;
+  repetitionRiskSelected?: boolean;
+  reversesLastMove?: boolean;
+  recreatesPriorFen?: boolean;
+  noProgressRisk?: boolean;
+  recentRepeatCount?: number;
+  oscillationRejected?: boolean;
+  oscillationOverrideUsed?: boolean;
 };

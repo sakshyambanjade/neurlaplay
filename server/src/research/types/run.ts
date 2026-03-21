@@ -31,6 +31,12 @@ export type RunConfig = {
     providerRetryCount?: number;
     providerBackoffMs?: number;
     maxTotalProviderWaitMs?: number;
+    antiOscillation?: boolean;
+    avoidImmediateRepetition?: boolean;
+    recentMoveWindow?: number;
+    maxNoProgressPlies?: number;
+    enableLiveCpl?: boolean;
+    enablePostRunCpl?: boolean;
     fallbackPolicy: FallbackPolicyName;
   };
   logging: {

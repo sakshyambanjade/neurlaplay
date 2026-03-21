@@ -6,6 +6,8 @@ export type ComputedPaperMetrics = {
   overallFallbackRate: number;
   overallRetrySuccessRate: number;
   overallIllegalMoveAttemptRate: number;
+  overallOscillationRate: number;
+  overallBehavioralCollapseRate: number;
   modelComparison: Array<{
     label: string;
     whiteModel: string;
@@ -13,6 +15,9 @@ export type ComputedPaperMetrics = {
     avgCplOverall: number;
     fallbackRate: number;
     repetitionRate: number;
+    oscillationRate: number;
+    repeatStateRate: number;
+    behavioralCollapseRate: number;
     illegalMoveAttemptRate: number;
     retrySuccessRate: number;
   }>;
@@ -35,6 +40,12 @@ export function computePaperMetrics(aggregated: AggregatedRunStats): ComputedPap
   const overallIllegalMoveAttemptRate = safeAverage(
     aggregated.matchups.map((matchup) => matchup.extraMetrics?.illegal_move_attempt_rate ?? 0)
   );
+  const overallOscillationRate = safeAverage(
+    aggregated.matchups.map((matchup) => matchup.extraMetrics?.oscillation_rate ?? 0)
+  );
+  const overallBehavioralCollapseRate = safeAverage(
+    aggregated.matchups.map((matchup) => matchup.extraMetrics?.behavioral_collapse_rate ?? 0)
+  );
 
   return {
     totalGames: aggregated.totalGames,
@@ -42,6 +53,8 @@ export function computePaperMetrics(aggregated: AggregatedRunStats): ComputedPap
     overallFallbackRate,
     overallRetrySuccessRate,
     overallIllegalMoveAttemptRate,
+    overallOscillationRate,
+    overallBehavioralCollapseRate,
     modelComparison: aggregated.matchups.map((matchup) => ({
       label: matchup.label,
       whiteModel: matchup.whiteModel,
@@ -49,6 +62,9 @@ export function computePaperMetrics(aggregated: AggregatedRunStats): ComputedPap
       avgCplOverall: matchup.avgCpl.overall,
       fallbackRate: matchup.compliance.fallbackRate,
       repetitionRate: matchup.extraMetrics?.repetition_rate ?? 0,
+      oscillationRate: matchup.extraMetrics?.oscillation_rate ?? 0,
+      repeatStateRate: matchup.extraMetrics?.repeat_state_rate ?? 0,
+      behavioralCollapseRate: matchup.extraMetrics?.behavioral_collapse_rate ?? 0,
       illegalMoveAttemptRate: matchup.extraMetrics?.illegal_move_attempt_rate ?? 0,
       retrySuccessRate: matchup.extraMetrics?.retry_success_rate ?? 0
     }))

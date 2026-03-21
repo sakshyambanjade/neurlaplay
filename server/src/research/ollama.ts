@@ -33,6 +33,7 @@ export type OllamaMoveResponse = {
 type MoveRequestContext = {
   recentMoves?: string[];
   repetitionRiskByIndex?: boolean[];
+  avoidImmediateRepetition?: boolean;
   keyId?: string | null;
 };
 
@@ -240,14 +241,17 @@ function buildConstrainedPrompt(
     context?.recentMoves && context.recentMoves.length > 0
       ? `Recent moves:\n${context.recentMoves.join('\n')}\n`
       : '';
+  const repetitionHint = context?.avoidImmediateRepetition
+    ? 'Avoid:\n- reversing the previous move\n- recreating previous positions\n- moving the same piece back and forth when reasonable alternatives exist\n'
+    : '';
 
   return {
     system: strict
-      ? 'Return exactly one integer index from the legal move list. No words. No punctuation.'
-      : 'Return exactly one integer index for the best move. No words. No punctuation.',
+      ? 'Return exactly one integer index from the legal move list. Do not output words or punctuation.'
+      : 'Return exactly one integer index for the best move. Do not output words or punctuation.',
     user:
       `FEN: ${fen}\n${recentMovesBlock}` +
-      `Avoid immediate back-and-forth repetition when reasonable alternatives exist.\n` +
+      repetitionHint +
       `Legal moves:\n${indexedMoves}\n` +
       `Output only the integer index (0-${legalMoves.length - 1}).`
   };
@@ -269,6 +273,9 @@ function buildFreeGenerationPrompt(
     context?.recentMoves && context.recentMoves.length > 0
       ? `Recent moves:\n${context.recentMoves.join('\n')}\n`
       : '';
+  const repetitionHint = context?.avoidImmediateRepetition
+    ? 'Avoid:\n- reversing the previous move\n- recreating previous positions\n- moving the same piece back and forth when reasonable alternatives exist\n'
+    : '';
 
   return {
     system: strict
@@ -276,7 +283,7 @@ function buildFreeGenerationPrompt(
       : 'Choose exactly one legal move from the list. Output only the UCI move.',
     user:
       `FEN: ${fen}\n${recentMovesBlock}` +
-      `Avoid immediate back-and-forth repetition when reasonable alternatives exist.\n` +
+      repetitionHint +
       `Legal moves:\n${indexedMoves}\n` +
       `Output only one UCI move from the list above.`
   };

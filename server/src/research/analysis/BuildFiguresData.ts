@@ -16,9 +16,27 @@ export async function buildFiguresData(
       matchupCount: aggregated.matchupCount,
       overallFallbackRate: metrics.overallFallbackRate,
       overallRetrySuccessRate: metrics.overallRetrySuccessRate,
-      overallIllegalMoveAttemptRate: metrics.overallIllegalMoveAttemptRate
+      overallIllegalMoveAttemptRate: metrics.overallIllegalMoveAttemptRate,
+      overallOscillationRate: metrics.overallOscillationRate,
+      overallBehavioralCollapseRate: metrics.overallBehavioralCollapseRate
     },
     figures: {
+      systemIntegrity: aggregated.matchups.map((matchup) => ({
+        label: matchup.label,
+        fallbackRate: matchup.compliance.fallbackRate,
+        retrySuccessRate: matchup.extraMetrics?.retry_success_rate ?? 0,
+        illegalMoveAttemptRate: matchup.extraMetrics?.illegal_move_attempt_rate ?? 0
+      })),
+      behaviorCollapse: aggregated.matchups.map((matchup) => ({
+        label: matchup.label,
+        repetitionRate: matchup.extraMetrics?.repetition_rate ?? 0,
+        reverseMoveRate: matchup.extraMetrics?.reverse_move_rate ?? 0,
+        repeatStateRate: matchup.extraMetrics?.repeat_state_rate ?? 0,
+        oscillationRate: matchup.extraMetrics?.oscillation_rate ?? 0,
+        behavioralCollapseRate: matchup.extraMetrics?.behavioral_collapse_rate ?? 0,
+        noProgressMaxStreak: matchup.extraMetrics?.no_progress_max_streak ?? 0,
+        avgCplOverall: matchup.avgCpl.overall
+      })),
       modelComparison: metrics.modelComparison,
       reliability: aggregated.matchups.map((matchup) => ({
         label: matchup.label,
@@ -26,6 +44,15 @@ export async function buildFiguresData(
         llmMoveRate: matchup.compliance.llmMoveRate,
         illegalMoveAttemptRate: matchup.extraMetrics?.illegal_move_attempt_rate ?? 0,
         retrySuccessRate: matchup.extraMetrics?.retry_success_rate ?? 0
+      })),
+      behavior: aggregated.matchups.map((matchup) => ({
+        label: matchup.label,
+        repetitionRate: matchup.extraMetrics?.repetition_rate ?? 0,
+        reverseMoveRate: matchup.extraMetrics?.reverse_move_rate ?? 0,
+        repeatStateRate: matchup.extraMetrics?.repeat_state_rate ?? 0,
+        oscillationRate: matchup.extraMetrics?.oscillation_rate ?? 0,
+        behavioralCollapseRate: matchup.extraMetrics?.behavioral_collapse_rate ?? 0,
+        noProgressMaxStreak: matchup.extraMetrics?.no_progress_max_streak ?? 0
       })),
       quality: aggregated.matchups.map((matchup) => ({
         label: matchup.label,

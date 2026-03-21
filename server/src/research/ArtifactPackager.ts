@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import archiver from 'archiver';
 
 function listFilesRecursive(root: string, base: string = root): string[] {
   if (!fs.existsSync(root)) {
@@ -19,15 +19,42 @@ function listFilesRecursive(root: string, base: string = root): string[] {
   return out.sort();
 }
 
+async function createZipArchive(runDir: string, zipPath: string): Promise<boolean> {
+  const files = listFilesRecursive(runDir).filter(
+    (relativePath) => relativePath !== 'artifacts.zip' && relativePath !== 'artifacts_manifest.json'
+  );
+  if (files.length === 0) {
+    return false;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const output = fs.createWriteStream(zipPath);
+    const archive = archiver('zip', {
+      zlib: { level: 9 }
+    });
+
+    output.on('close', () => resolve());
+    output.on('error', (error: Error) => reject(error));
+    archive.on('error', (error: Error) => reject(error));
+
+    archive.pipe(output);
+
+    for (const relativePath of files) {
+      archive.file(path.join(runDir, relativePath), { name: relativePath });
+    }
+
+    void archive.finalize();
+  });
+
+  return fs.existsSync(zipPath);
+}
+
 export async function packageArtifacts(runDir: string): Promise<{ files: string[]; zipPath: string | null }> {
   const zipPath = path.join(runDir, 'artifacts.zip');
   let zipCreated = false;
 
   try {
-    execSync(`powershell -Command "Compress-Archive -Path '${runDir}\\*' -DestinationPath '${zipPath}' -Force"`, {
-      stdio: 'ignore'
-    });
-    zipCreated = fs.existsSync(zipPath);
+    zipCreated = await createZipArchive(runDir, zipPath);
   } catch {
     zipCreated = false;
   }

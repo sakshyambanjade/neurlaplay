@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { RuleAudit } from './types.js';
+import { getPaperAuditRoot, getPaperRunsRoot } from './PaperPaths.js';
 
 type GameWithAudit = {
   gameId: string;
@@ -66,7 +67,7 @@ function hasFlag(flag: string): boolean {
 
 async function findLatestMatchFile(serverCwd: string): Promise<string> {
   const runRoots = [
-    path.resolve(serverCwd, '../paper/runs'),
+    getPaperRunsRoot(),
     path.resolve(serverCwd, 'server/game-data'),
     path.resolve(serverCwd, 'game-data')
   ];
@@ -244,7 +245,7 @@ function toMarkdown(summary: AuditSummary): string {
 
 async function main(): Promise<void> {
   const serverCwd = process.cwd();
-  const outputDir = path.resolve(serverCwd, parseArgValue('--outputDir') ?? '../paper/audit');
+  const outputDir = path.resolve(serverCwd, parseArgValue('--outputDir') ?? getPaperAuditRoot());
   const inputArg = parseArgValue('--input');
 
   const sourcePath = inputArg

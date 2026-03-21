@@ -10,15 +10,15 @@ import {
   jobEmitter,
   resumePaperRun
 } from '../research/PaperPipeline.js';
+import { getPaperConfigsRoot, getPaperRunsRoot } from '../research/PaperPaths.js';
 
 type PaperPresetKind = 'main' | 'pilot';
 
 function paperConfigPath(kind: PaperPresetKind): string {
-  return path.resolve(
-    process.cwd(),
-    kind === 'main'
-      ? '../paper/configs/main/main_1200_games.json'
-      : '../paper/configs/pilot/pilot_300_games.json'
+  const configsRoot = getPaperConfigsRoot();
+  return path.join(
+    configsRoot,
+    kind === 'main' ? 'main/main_1200_games.json' : 'pilot/pilot_300_games.json'
   );
 }
 
@@ -36,7 +36,7 @@ function getIncompleteRuns(): Array<{
   progress: number;
   total: number;
 }> {
-  const paperRunsRoot = path.resolve(process.cwd(), '../paper/runs');
+  const paperRunsRoot = getPaperRunsRoot();
   if (!fs.existsSync(paperRunsRoot)) {
     return [];
   }

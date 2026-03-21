@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 
-const API = 'http://localhost:3001';
+function resolveApiBase(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3001';
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+}
+
+const API = resolveApiBase();
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 export type MatchupConfig = {
@@ -35,6 +49,12 @@ export type RunConfig = {
     providerRetryCount?: number;
     providerBackoffMs?: number;
     maxTotalProviderWaitMs?: number;
+    antiOscillation?: boolean;
+    avoidImmediateRepetition?: boolean;
+    recentMoveWindow?: number;
+    maxNoProgressPlies?: number;
+    enableLiveCpl?: boolean;
+    enablePostRunCpl?: boolean;
     fallbackPolicy: 'deterministic_first' | 'stockfish_best' | 'random_seeded';
   };
   logging: {
@@ -78,6 +98,9 @@ type GameInfo = {
 type QualityState = {
   illegalSuggestions: number;
   correctionsApplied: number;
+  repeatStateMoves: number;
+  oscillationRejected: number;
+  oscillationOverrides: number;
   lastMove: string;
   lastModel: string;
   lastSide: string;
@@ -96,6 +119,11 @@ type HealthState = {
   completedGames: number;
   totalMoves: number;
   matchupLabel: string;
+  fallbackMoves: number;
+  repeatStateMoves: number;
+  oscillationRejectedCount: number;
+  collapseDetectedGames: number;
+  noProgressMaxStreak: number;
 };
 
 type RunStartResponse = {
@@ -127,6 +155,9 @@ export function usePaperRun() {
   const [quality, setQuality] = useState<QualityState>({
     illegalSuggestions: 0,
     correctionsApplied: 0,
+    repeatStateMoves: 0,
+    oscillationRejected: 0,
+    oscillationOverrides: 0,
     lastMove: '',
     lastModel: '',
     lastSide: ''
@@ -143,7 +174,12 @@ export function usePaperRun() {
     warnings: [],
     completedGames: 0,
     totalMoves: 0,
-    matchupLabel: ''
+    matchupLabel: '',
+    fallbackMoves: 0,
+    repeatStateMoves: 0,
+    oscillationRejectedCount: 0,
+    collapseDetectedGames: 0,
+    noProgressMaxStreak: 0
   });
 
   function resetUiState(): void {
@@ -157,6 +193,9 @@ export function usePaperRun() {
     setQuality({
       illegalSuggestions: 0,
       correctionsApplied: 0,
+      repeatStateMoves: 0,
+      oscillationRejected: 0,
+      oscillationOverrides: 0,
       lastMove: '',
       lastModel: '',
       lastSide: ''
@@ -172,7 +211,12 @@ export function usePaperRun() {
       warnings: [],
       completedGames: 0,
       totalMoves: 0,
-      matchupLabel: ''
+      matchupLabel: '',
+      fallbackMoves: 0,
+      repeatStateMoves: 0,
+      oscillationRejectedCount: 0,
+      collapseDetectedGames: 0,
+      noProgressMaxStreak: 0
     });
   }
 
@@ -227,7 +271,7 @@ export function usePaperRun() {
       return;
     }
 
-    const s = io(API);
+    const s = API ? io(API) : io();
     s.emit('join:paper', runId);
 
     s.on('paper:status', (payload: RunStatus) => {
@@ -262,7 +306,12 @@ export function usePaperRun() {
         warnings: payload.warnings ?? [],
         completedGames: payload.completedGames ?? 0,
         totalMoves: payload.totalMoves ?? 0,
-        matchupLabel: payload.matchupLabel ?? ''
+        matchupLabel: payload.matchupLabel ?? '',
+        fallbackMoves: payload.fallbackMoves ?? 0,
+        repeatStateMoves: payload.repeatStateMoves ?? 0,
+        oscillationRejectedCount: payload.oscillationRejectedCount ?? 0,
+        collapseDetectedGames: payload.collapseDetectedGames ?? 0,
+        noProgressMaxStreak: payload.noProgressMaxStreak ?? 0
       });
     });
     s.on('game:start', (payload: { gameInfo?: GameInfo; quality?: Partial<QualityState> }) => {
@@ -275,7 +324,10 @@ export function usePaperRun() {
         setQuality((current) => ({
           ...current,
           illegalSuggestions: qualityUpdate.illegalSuggestions ?? current.illegalSuggestions,
-          correctionsApplied: qualityUpdate.correctionsApplied ?? current.correctionsApplied
+          correctionsApplied: qualityUpdate.correctionsApplied ?? current.correctionsApplied,
+          repeatStateMoves: qualityUpdate.repeatStateMoves ?? current.repeatStateMoves,
+          oscillationRejected: qualityUpdate.oscillationRejected ?? current.oscillationRejected,
+          oscillationOverrides: qualityUpdate.oscillationOverrides ?? current.oscillationOverrides
         }));
       }
     });
@@ -301,6 +353,9 @@ export function usePaperRun() {
           ...current,
           illegalSuggestions: payload.quality?.illegalSuggestions ?? current.illegalSuggestions,
           correctionsApplied: payload.quality?.correctionsApplied ?? current.correctionsApplied,
+          repeatStateMoves: payload.quality?.repeatStateMoves ?? current.repeatStateMoves,
+          oscillationRejected: payload.quality?.oscillationRejected ?? current.oscillationRejected,
+          oscillationOverrides: payload.quality?.oscillationOverrides ?? current.oscillationOverrides,
           lastMove: payload.move ?? current.lastMove,
           lastModel: payload.model ?? current.lastModel,
           lastSide: payload.side ?? current.lastSide
@@ -319,9 +374,14 @@ export function usePaperRun() {
         result?: string;
         termination?: string;
         moveCount?: number;
+        collapseDetected?: boolean;
+        collapseReason?: string | null;
         gameInfo?: GameInfo;
       }) => {
-        const summaryLine = `G${payload.gameInfo?.gameNum ?? '?'} finished: ${payload.result ?? '?'} (${payload.termination ?? 'unknown'}), moves=${payload.moveCount ?? '?'}`;
+        const collapseTag = payload.collapseDetected
+          ? `, collapse=${payload.collapseReason ?? 'detected'}`
+          : '';
+        const summaryLine = `G${payload.gameInfo?.gameNum ?? '?'} finished: ${payload.result ?? '?'} (${payload.termination ?? 'unknown'}), moves=${payload.moveCount ?? '?'}${collapseTag}`;
         setLogs((current) => [...current.slice(-199), summaryLine]);
       }
     );
@@ -376,19 +436,18 @@ export function usePaperRun() {
   }
 
   async function launchMainExperiment(): Promise<void> {
-    if (incompleteRuns.length > 0) {
-      await resumeRun(incompleteRuns[0]!.runId);
-      return;
-    }
     await startLockedRun('main');
   }
 
   async function launchPilotExperiment(): Promise<void> {
-    if (incompleteRuns.length > 0) {
-      await resumeRun(incompleteRuns[0]!.runId);
-      return;
-    }
     await startLockedRun('pilot');
+  }
+
+  async function resumeLatestRun(): Promise<void> {
+    if (incompleteRuns.length === 0) {
+      throw new Error('No interrupted run is available to resume.');
+    }
+    await resumeRun(incompleteRuns[0]!.runId);
   }
 
   const etaText = useMemo(() => {
@@ -428,6 +487,7 @@ export function usePaperRun() {
     fetchStatus,
     fetchArtifacts,
     resumeRun,
+    resumeLatestRun,
     launchMainExperiment,
     launchPilotExperiment,
     artifactUrl

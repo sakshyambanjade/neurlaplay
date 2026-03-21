@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { PreflightReport, RunConfig } from './types/run.js';
 import { inferProviderFromModel } from './types/provider.js';
+import { getPaperDataRoot, getPaperWorkspaceRoot } from './PaperPaths.js';
 import { resolveStockfishEnginePath } from './StockfishAnalyzer.js';
 
 async function canWrite(dir: string): Promise<boolean> {
@@ -70,11 +71,17 @@ export async function runPreflightChecks(
     detail: stockfishEngine ?? 'Stockfish engine script missing'
   });
 
-  const scriptsRoot = path.resolve(process.cwd(), '../paper');
+  const workspaceRoot = getPaperWorkspaceRoot();
   checks.push({
-    name: 'paper_root',
-    ok: fs.existsSync(scriptsRoot),
-    detail: scriptsRoot
+    name: 'paper_workspace_root',
+    ok: fs.existsSync(workspaceRoot),
+    detail: workspaceRoot
+  });
+
+  checks.push({
+    name: 'paper_data_root',
+    ok: await canWrite(getPaperDataRoot()),
+    detail: getPaperDataRoot()
   });
 
   return {

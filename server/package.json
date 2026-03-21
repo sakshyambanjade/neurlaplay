@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "research:reset": "tsx src/tools/reset-paper-data.ts",
+    "research:budget": "tsx src/tools/estimate-paper-budget.ts",
     "research:paper": "tsx src/research/paper-cli.ts --config ../paper/configs/main/main_1200_games.json",
     "research:pilot": "tsx src/research/paper-cli.ts --config ../paper/configs/pilot/pilot_300_games.json",
     "research:smoke": "tsx src/research/paper-cli.ts --config ../paper/configs/debug/smoke_10_games.json",
@@ -14,6 +16,7 @@
     "check:preflight": "tsx src/tools/preflight.ts"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
     "chess.js": "^1.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -22,6 +25,7 @@
     "stockfish": "^17.1.0"
   },
   "devDependencies": {
+    "@types/archiver": "^6.0.4",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "tsx": "^4.19.2",

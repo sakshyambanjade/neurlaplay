@@ -15,6 +15,7 @@ import { evaluateRunHealth } from './HealthMonitor.js';
 import { aggregateRunStats } from './analysis/AggregateRunStats.js';
 import { computePaperMetrics } from './analysis/ComputePaperMetrics.js';
 import { buildFiguresData } from './analysis/BuildFiguresData.js';
+import { getPaperRunsRoot } from './PaperPaths.js';
 import type { GamePaperSummary, PaperDatapoint, PaperCollectionOptions } from './types.js';
 import type {
   MatchupConfig,
@@ -44,16 +45,8 @@ function sanitizeLabel(label: string): string {
   return label.replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
 
-function getPaperRoot(): string {
-  return path.resolve(process.cwd(), '../paper');
-}
-
-function getRunsRoot(): string {
-  return path.join(getPaperRoot(), 'runs');
-}
-
 function getRunDir(runId: string): string {
-  return path.join(getRunsRoot(), runId);
+  return path.join(getPaperRunsRoot(), runId);
 }
 
 function getStatusPath(runId: string): string {
@@ -265,6 +258,9 @@ async function runMatchup(
   let currentGameNum = restoredGames.length;
   let illegalSuggestions = restoredDatapoints.filter((point) => point.illegalSuggestion).length;
   let correctionsApplied = restoredDatapoints.filter((point) => point.correctionApplied).length;
+  let repeatStateMoves = restoredDatapoints.filter((point) => point.recreatesPriorFen).length;
+  let oscillationRejectedCount = restoredDatapoints.filter((point) => point.oscillationRejected).length;
+  let oscillationOverrideCount = restoredDatapoints.filter((point) => point.oscillationOverrideUsed).length;
   const runStartedAt = Date.now();
 
   if (restoredGames.length > 0) {
@@ -283,6 +279,13 @@ async function runMatchup(
         moveNumber: 0,
         gameNum: restoredGames.length + 1,
         totalGames: matchup.games
+      },
+      quality: {
+        illegalSuggestions,
+        correctionsApplied,
+        repeatStateMoves,
+        oscillationRejected: oscillationRejectedCount,
+        oscillationOverrides: oscillationOverrideCount
       }
     });
 
@@ -295,6 +298,15 @@ async function runMatchup(
         }
         if (point.correctionApplied) {
           correctionsApplied += 1;
+        }
+        if (point.recreatesPriorFen) {
+          repeatStateMoves += 1;
+        }
+        if (point.oscillationRejected) {
+          oscillationRejectedCount += 1;
+        }
+        if (point.oscillationOverrideUsed) {
+          oscillationOverrideCount += 1;
         }
 
         emit(runId, 'game:move', {
@@ -313,7 +325,10 @@ async function runMatchup(
             illegalSuggestion: point.illegalSuggestion,
             correctionApplied: point.correctionApplied,
             illegalSuggestions,
-            correctionsApplied
+            correctionsApplied,
+            repeatStateMoves,
+            oscillationRejected: oscillationRejectedCount,
+            oscillationOverrides: oscillationOverrideCount
           }
         });
       },
@@ -329,12 +344,33 @@ async function runMatchup(
           totalMoves: datapointsSnapshot.length,
           fallbackMoves: gameSnapshot.reduce((sum, game) => sum + game.ruleAudit.fallbackMovesUsed, 0),
           retryAttempts: gameSnapshot.reduce((sum, game) => sum + (game.ruleAudit.retryAttempts ?? 0), 0),
-          retrySuccesses: gameSnapshot.reduce((sum, game) => sum + (game.ruleAudit.retrySuccesses ?? 0), 0)
+          retrySuccesses: gameSnapshot.reduce((sum, game) => sum + (game.ruleAudit.retrySuccesses ?? 0), 0),
+          repeatStateMoves: gameSnapshot.reduce((sum, game) => sum + (game.repeatStateCount ?? 0), 0),
+          oscillationRejectedCount: gameSnapshot.reduce(
+            (sum, game) => sum + (game.ruleAudit.oscillationRejectedCount ?? 0),
+            0
+          ),
+          collapseDetectedGames: gameSnapshot.filter((game) => game.collapseDetected).length,
+          noProgressMaxStreak: gameSnapshot.reduce(
+            (max, game) => Math.max(max, game.noProgressMaxStreak ?? 0),
+            0
+          )
         });
         const healthPayload = {
           matchupLabel,
           totalMoves: datapointsSnapshot.length,
           completedGames: currentGameNum,
+          fallbackMoves: gameSnapshot.reduce((sum, game) => sum + game.ruleAudit.fallbackMovesUsed, 0),
+          repeatStateMoves: gameSnapshot.reduce((sum, game) => sum + (game.repeatStateCount ?? 0), 0),
+          oscillationRejectedCount: gameSnapshot.reduce(
+            (sum, game) => sum + (game.ruleAudit.oscillationRejectedCount ?? 0),
+            0
+          ),
+          collapseDetectedGames: gameSnapshot.filter((game) => game.collapseDetected).length,
+          noProgressMaxStreak: gameSnapshot.reduce(
+            (max, game) => Math.max(max, game.noProgressMaxStreak ?? 0),
+            0
+          ),
           ok: health.ok,
           warnings: health.warnings
         };
@@ -363,14 +399,22 @@ async function runMatchup(
           },
           result: summary.result,
           termination: summary.termination,
-          moveCount: summary.moveCount
+          moveCount: summary.moveCount,
+          collapseDetected: summary.collapseDetected,
+          collapseReason: summary.collapseReason
         });
       }
     });
     outputFile = result.outputFile;
   }
 
-  await collector.generatePaperArtifacts(matchupDir);
+  await appendPipelineLog(
+    runId,
+    `Finalizing ${matchup.label}: post-run CPL ${config.settings.enablePostRunCpl === false ? 'disabled' : 'enabled'}.`
+  );
+  await collector.generatePaperArtifacts(matchupDir, {
+    enablePostRunCpl: config.settings.enablePostRunCpl ?? true
+  });
 
   return {
     label: matchupLabel,
