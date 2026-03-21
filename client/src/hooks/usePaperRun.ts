@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 
+const DEFAULT_REMOTE_API = 'https://neurlaplay.fly.dev';
+
 function resolveApiBase(): string {
   const configured = import.meta.env.VITE_API_BASE_URL?.trim();
   if (configured) {
@@ -10,13 +12,44 @@ function resolveApiBase(): string {
     return 'http://localhost:3001';
   }
   if (typeof window !== 'undefined') {
-    return window.location.origin;
+    const origin = window.location.origin.replace(/\/$/, '');
+    if (origin.includes('fly.dev')) {
+      return origin;
+    }
+    return DEFAULT_REMOTE_API;
   }
-  return '';
+  return DEFAULT_REMOTE_API;
 }
 
 const API = resolveApiBase();
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+async function readJsonOrThrow<T>(response: Response): Promise<T> {
+  const raw = await response.text();
+  const trimmed = raw.trim();
+  const looksLikeHtml =
+    trimmed.startsWith('<!doctype') ||
+    trimmed.startsWith('<html') ||
+    trimmed.startsWith('<!DOCTYPE');
+
+  if (looksLikeHtml) {
+    throw new Error(`Expected JSON from ${response.url}, but received HTML. The frontend is pointing at the wrong origin.`);
+  }
+
+  let parsed: T;
+  try {
+    parsed = JSON.parse(raw) as T;
+  } catch {
+    throw new Error(`Expected JSON from ${response.url}, but received invalid response text.`);
+  }
+
+  if (!response.ok) {
+    const errorPayload = parsed as { error?: string; message?: string };
+    throw new Error(errorPayload.error ?? errorPayload.message ?? `Request failed (${response.status}).`);
+  }
+
+  return parsed;
+}
 
 export type MatchupConfig = {
   white: string;
@@ -223,7 +256,7 @@ export function usePaperRun() {
 
   async function loadIncompleteRuns(): Promise<IncompleteRun[]> {
     const response = await fetch(`${API}/api/paper/incomplete`);
-    const data = (await response.json()) as { runs?: IncompleteRun[] };
+    const data = await readJsonOrThrow<{ runs?: IncompleteRun[] }>(response);
     const runs = data.runs ?? [];
     setIncompleteRuns(runs);
     return runs;
@@ -231,40 +264,40 @@ export function usePaperRun() {
 
   async function fetchStatus(id: string): Promise<void> {
     const response = await fetch(`${API}/api/paper/status/${id}`);
-    if (!response.ok) {
-      return;
-    }
-    const data = (await response.json()) as RunStatus;
+    const data = await readJsonOrThrow<RunStatus>(response);
     setStatus(data);
   }
 
   async function fetchArtifacts(id: string): Promise<void> {
     const response = await fetch(`${API}/api/paper/artifacts/${id}`);
-    if (!response.ok) {
-      return;
-    }
-    const data = (await response.json()) as ArtifactIndex;
+    const data = await readJsonOrThrow<ArtifactIndex>(response);
     setArtifacts(data.files ?? []);
     setArtifactZip(data.zipPath ?? null);
   }
 
   useEffect(() => {
-    void loadIncompleteRuns().then((runs) => {
-      const savedRunId = localStorage.getItem('paper_run_id');
-      if (!savedRunId && runs.length > 0) {
-        const latest = runs[0]!;
-        setRunId(latest.runId);
-        void fetchStatus(latest.runId);
-        void fetchArtifacts(latest.runId);
-      }
-    });
+    void (async () => {
+      try {
+        const runs = await loadIncompleteRuns();
+        const savedRunId = localStorage.getItem('paper_run_id');
+        if (!savedRunId && runs.length > 0) {
+          const latest = runs[0]!;
+          setRunId(latest.runId);
+          await fetchStatus(latest.runId);
+          await fetchArtifacts(latest.runId);
+          return;
+        }
 
-    const savedRunId = localStorage.getItem('paper_run_id');
-    if (savedRunId) {
-      setRunId(savedRunId);
-      void fetchStatus(savedRunId);
-      void fetchArtifacts(savedRunId);
-    }
+        if (savedRunId) {
+          setRunId(savedRunId);
+          await fetchStatus(savedRunId);
+          await fetchArtifacts(savedRunId);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setLogs((current) => [...current.slice(-199), message]);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -398,7 +431,16 @@ export function usePaperRun() {
     const response = await fetch(`${API}/api/paper/run/${kind}`, {
       method: 'POST'
     });
-    const data = (await response.json()) as RunStartResponse;
+    const raw = await response.text();
+    let data: RunStartResponse = {};
+    try {
+      data = JSON.parse(raw) as RunStartResponse;
+    } catch {
+      if (raw.trim().startsWith('<')) {
+        throw new Error(`Expected JSON from ${response.url}, but received HTML. The frontend is pointing at the wrong origin.`);
+      }
+      throw new Error(`Expected JSON from ${response.url}, but received invalid response text.`);
+    }
     if (response.status === 409) {
       if (data.runId) {
         setRunId(data.runId);
@@ -428,14 +470,11 @@ export function usePaperRun() {
     const response = await fetch(`${API}/api/paper/resume/${targetRunId}`, {
       method: 'POST'
     });
-    const data = (await response.json()) as {
+    const data = await readJsonOrThrow<{
       runId: string;
       restarted: boolean;
       state?: { done?: boolean };
-    };
-    if (!response.ok) {
-      throw new Error('Failed to resume run.');
-    }
+    }>(response);
 
     setRunId(data.runId);
     localStorage.setItem('paper_run_id', data.runId);
