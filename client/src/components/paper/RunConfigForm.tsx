@@ -23,25 +23,41 @@ export function RunConfigForm({
 
   return (
     <section style={panelStyle}>
-      <h2 style={{ marginTop: 0, fontSize: 28 }}>Main Paper Run</h2>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 12,
+          flexWrap: 'wrap'
+        }}
+      >
+        <h2 style={{ margin: 0, fontSize: 30, letterSpacing: '-0.05em', textTransform: 'uppercase' }}>
+          Launch Control
+        </h2>
+        <div style={tagStyle}>Locked Protocol</div>
+      </div>
       <p style={leadStyle}>
-        One click starts the full canonical study: 4 Groq models, 12 color-balanced matchups,
-        1200 total games, per-move logging, per-game checkpoints, and automatic resume support.
+        Main and pilot runs use fixed paper presets. Resume continues the latest interrupted run
+        from disk without changing the protocol.
       </p>
 
       <div style={summaryGridStyle}>
-        <SummaryItem label="Models" value="4" />
-        <SummaryItem label="Matchups" value="12" />
-        <SummaryItem label="Games" value="1200" />
-        <SummaryItem label="Mode" value="Constrained index" />
+        <SummaryItem label="Models" value="4" detail="Groq-backed" />
+        <SummaryItem label="Matchups" value="12" detail="Color-balanced" />
+        <SummaryItem label="Games" value="1200" detail="Main preset" />
+        <SummaryItem label="Mode" value="Index" detail="Legal selection only" />
       </div>
 
       {latestInterruptedRun ? (
         <div style={resumeCardStyle}>
-          <div style={{ fontSize: 12, color: '#9bb0d1', marginBottom: 6 }}>Interrupted run found</div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{latestInterruptedRun.runId}</div>
-          <div style={{ fontSize: 13, color: '#d2def7', marginTop: 6 }}>
-            {latestInterruptedRun.step} | {latestInterruptedRun.progress} / {latestInterruptedRun.total}
+          <div style={{ fontSize: 11, color: '#f5c469', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Interrupted run found
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f7fb' }}>{latestInterruptedRun.runId}</div>
+          <div style={{ fontSize: 13, color: '#b8c1cf', marginTop: 6 }}>
+            {latestInterruptedRun.step} · {latestInterruptedRun.progress} / {latestInterruptedRun.total}
           </div>
         </div>
       ) : null}
@@ -51,7 +67,7 @@ export function RunConfigForm({
           onClick={() => void onLaunchMainExperiment()}
           style={{
             ...primaryButtonStyle,
-            background: 'linear-gradient(135deg, #1f8f55 0%, #0f6d8d 100%)',
+            background: 'linear-gradient(135deg, #f3b64d 0%, #d38b2f 100%)',
             cursor: 'pointer'
           }}
         >
@@ -89,28 +105,30 @@ export function RunConfigForm({
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function SummaryItem({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
     <div style={summaryItemStyle}>
-      <div style={{ fontSize: 12, color: '#95a7c9', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+      <div style={{ fontSize: 11, color: '#8f98a8', textTransform: 'uppercase', letterSpacing: 1 }}>
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 6 }}>{value}</div>
+      <div style={{ fontSize: 23, fontWeight: 800, marginTop: 6, color: '#f4f7fb' }}>{value}</div>
+      <div style={{ fontSize: 12, color: '#a2acbb', marginTop: 4 }}>{detail}</div>
     </div>
   );
 }
 
 const panelStyle: CSSProperties = {
-  background: '#1a1a2e',
-  padding: 24,
-  borderRadius: 16,
-  boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+  background: 'linear-gradient(180deg, rgba(16,18,23,0.96) 0%, rgba(12,14,18,0.94) 100%)',
+  padding: 28,
+  borderRadius: 24,
+  border: '1px solid rgba(147, 163, 184, 0.12)',
+  boxShadow: '0 28px 80px rgba(0,0,0,0.32)'
 };
 
 const leadStyle: CSSProperties = {
-  fontSize: 15,
-  lineHeight: 1.6,
-  color: '#d7e1f5',
+  fontSize: 14,
+  lineHeight: 1.7,
+  color: '#a4adbb',
   marginBottom: 20
 };
 
@@ -121,27 +139,28 @@ const summaryGridStyle: CSSProperties = {
 };
 
 const summaryItemStyle: CSSProperties = {
-  background: '#111827',
-  borderRadius: 12,
-  padding: 14
+  background: 'linear-gradient(180deg, rgba(19,22,29,0.96) 0%, rgba(13,15,20,0.98) 100%)',
+  borderRadius: 16,
+  padding: 16,
+  border: '1px solid rgba(148, 163, 184, 0.08)'
 };
 
 const resumeCardStyle: CSSProperties = {
   marginTop: 18,
-  padding: 14,
-  borderRadius: 12,
-  background: '#132238',
-  border: '1px solid rgba(120, 180, 255, 0.25)'
+  padding: 16,
+  borderRadius: 16,
+  background: 'linear-gradient(180deg, rgba(36,24,7,0.92) 0%, rgba(22,18,14,0.96) 100%)',
+  border: '1px solid rgba(243, 182, 77, 0.18)'
 };
 
 const primaryButtonStyle: CSSProperties = {
   padding: '16px 24px',
-  fontSize: 18,
+  fontSize: 17,
   fontWeight: 800,
-  color: 'white',
+  color: '#0f1115',
   border: 'none',
-  borderRadius: 14,
-  boxShadow: '0 10px 30px rgba(15, 109, 141, 0.35)',
+  borderRadius: 16,
+  boxShadow: '0 18px 36px rgba(0, 0, 0, 0.28)',
   width: '100%'
 };
 
@@ -149,10 +168,10 @@ const secondaryButtonStyle: CSSProperties = {
   padding: '14px 20px',
   fontSize: 15,
   fontWeight: 700,
-  color: 'white',
-  border: '1px solid rgba(145, 180, 255, 0.3)',
-  borderRadius: 12,
-  background: '#182338',
+  color: '#edf2fa',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+  borderRadius: 14,
+  background: 'rgba(20, 24, 31, 0.88)',
   width: '100%'
 };
 
@@ -166,6 +185,16 @@ const buttonGroupStyle: CSSProperties = {
 const footnoteStyle: CSSProperties = {
   marginTop: 14,
   fontSize: 12,
-  color: '#98aacb',
+  color: '#8390a3',
   lineHeight: 1.5
+};
+
+const tagStyle: CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 999,
+  background: 'rgba(96, 165, 250, 0.12)',
+  color: '#9ecaff',
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: 1
 };

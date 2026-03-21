@@ -19,61 +19,214 @@ type Props = {
 
 export function RunProgress({ status, health, artifactReady }: Props) {
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
+    <div style={{ display: 'grid', gap: 22, marginBottom: 28 }}>
       {status ? (
         <section
           style={{
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-            padding: 20,
-            borderRadius: 12,
-            border: '2px solid #4C72B0'
+            background: 'linear-gradient(180deg, rgba(16,18,23,0.96) 0%, rgba(12,14,18,0.94) 100%)',
+            padding: 24,
+            borderRadius: 24,
+            border: '1px solid rgba(147, 163, 184, 0.12)',
+            boxShadow: '0 28px 80px rgba(0,0,0,0.32)'
           }}
         >
-          <div style={{ fontSize: 16, marginBottom: 8 }}>
-            <strong>Stage:</strong> {status.step || 'Initializing...'}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 16,
+              flexWrap: 'wrap',
+              marginBottom: 16
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>
+                Execution
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#f4f7fb', marginTop: 4 }}>
+                {status.step || 'Initializing'}
+              </div>
+            </div>
+            <div style={status.done ? completeBadgeStyle : activeBadgeStyle}>
+              {status.done ? 'Completed' : 'Running'}
+            </div>
           </div>
-          <div style={{ fontSize: 14, color: '#aaa' }}>
-            <strong>Progress:</strong> {status.progress || 0} / {status.total || 0}
+
+          <div style={metricGridStyle}>
+            <MetricCard label="Progress" value={`${status.progress || 0} / ${status.total || 0}`} />
+            <MetricCard
+              label="Completion"
+              value={`${((((status.progress || 0) / (status.total || 1)) * 100) || 0).toFixed(1)}%`}
+            />
+            <MetricCard label="Artifacts" value={artifactReady ? 'Ready' : 'Pending'} />
           </div>
-          <div style={{ background: '#0a0a0a', borderRadius: 8, height: 24, marginTop: 12, overflow: 'hidden' }}>
+
+          <div
+            style={{
+              background: '#151922',
+              borderRadius: 999,
+              height: 14,
+              marginTop: 18,
+              overflow: 'hidden',
+              border: '1px solid rgba(148, 163, 184, 0.08)'
+            }}
+          >
             <div
               style={{
-                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(90deg, #6aa6ff 0%, #f3b64d 100%)',
                 width: `${((status.progress || 0) / (status.total || 1)) * 100}%`,
                 height: '100%',
                 transition: 'width 0.4s ease'
               }}
             />
           </div>
-          {status.done ? <div style={{ color: '#55A868', marginTop: 12 }}>Run complete</div> : null}
-          {status.error ? <div style={{ color: '#ff6b6b', marginTop: 12 }}>{status.error}</div> : null}
+          {status.done ? <div style={{ color: '#7ed39a', marginTop: 14, fontWeight: 700 }}>Run complete</div> : null}
+          {status.error ? <div style={{ color: '#ff8383', marginTop: 14, fontWeight: 700 }}>{status.error}</div> : null}
         </section>
       ) : null}
 
-      <section style={{ background: '#1a1a2e', padding: 20, borderRadius: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Run Health</h2>
-        <div style={{ fontSize: 14, lineHeight: 1.8, marginBottom: 12 }}>
-          <div>Status: {health.ok ? 'healthy' : 'warning'}</div>
-          <div>Matchup: {health.matchupLabel || '-'}</div>
-          <div>Completed games observed: {health.completedGames}</div>
-          <div>Total moves observed: {health.totalMoves}</div>
-          <div>Fallback moves: {health.fallbackMoves}</div>
-          <div>Repeat-state moves: {health.repeatStateMoves}</div>
-          <div>Oscillation rejected: {health.oscillationRejectedCount}</div>
-          <div>No-progress streak max: {health.noProgressMaxStreak}</div>
-          <div>Collapse-detected games: {health.collapseDetectedGames}</div>
-          <div>Artifacts ready: {artifactReady ? 'yes' : 'no'}</div>
+      <section
+        style={{
+          background: 'linear-gradient(180deg, rgba(16,18,23,0.96) 0%, rgba(12,14,18,0.94) 100%)',
+          padding: 24,
+          borderRadius: 24,
+          border: '1px solid rgba(147, 163, 184, 0.12)',
+          boxShadow: '0 28px 80px rgba(0,0,0,0.32)'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+            marginBottom: 18
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>
+              Runtime Health
+            </div>
+            <h2 style={{ margin: '4px 0 0', fontSize: 28, letterSpacing: '-0.05em' }}>Operational Signals</h2>
+          </div>
+          <div style={health.ok ? completeBadgeStyle : warningBadgeStyle}>{health.ok ? 'Healthy' : 'Warning'}</div>
         </div>
+
+        <div style={metricGridStyle}>
+          <MetricCard label="Matchup" value={health.matchupLabel || '-'} compact />
+          <MetricCard label="Observed Games" value={String(health.completedGames)} />
+          <MetricCard label="Observed Moves" value={String(health.totalMoves)} />
+          <MetricCard label="Fallback Moves" value={String(health.fallbackMoves)} />
+          <MetricCard label="Repeat-State Moves" value={String(health.repeatStateMoves)} />
+          <MetricCard label="Oscillation Rejects" value={String(health.oscillationRejectedCount)} />
+          <MetricCard label="Max No-Progress" value={String(health.noProgressMaxStreak)} />
+          <MetricCard label="Collapse Games" value={String(health.collapseDetectedGames)} />
+        </div>
+
         {health.warnings.length > 0 ? (
-          <ul style={{ marginTop: 0, color: '#ffb86c' }}>
+          <ul
+            style={{
+              marginTop: 16,
+              marginBottom: 0,
+              color: '#ffcb86',
+              background: 'rgba(91, 52, 14, 0.34)',
+              borderRadius: 16,
+              padding: '14px 18px 14px 34px',
+              border: '1px solid rgba(243, 182, 77, 0.18)'
+            }}
+          >
             {health.warnings.map((warning) => (
               <li key={warning}>{warning}</li>
             ))}
           </ul>
         ) : (
-          <div style={{ color: '#8fd19e' }}>No health warnings reported yet.</div>
+          <div
+            style={{
+              color: '#8edaa9',
+              marginTop: 16,
+              padding: '14px 16px',
+              borderRadius: 16,
+              background: 'rgba(24, 64, 39, 0.34)',
+              border: '1px solid rgba(70, 183, 116, 0.15)'
+            }}
+          >
+            No health warnings reported yet.
+          </div>
         )}
       </section>
     </div>
   );
 }
+
+function MetricCard({
+  label,
+  value,
+  compact = false
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        padding: '14px 16px',
+        borderRadius: 16,
+        background: 'linear-gradient(180deg, rgba(18,21,27,0.98) 0%, rgba(13,15,20,0.98) 100%)',
+        border: '1px solid rgba(148, 163, 184, 0.08)'
+      }}
+    >
+      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>{label}</div>
+      <div
+        style={{
+          marginTop: 6,
+          fontSize: compact ? 14 : 22,
+          lineHeight: 1.35,
+          fontWeight: 800,
+          color: '#f4f7fb',
+          wordBreak: 'break-word'
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+const metricGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+  gap: 14
+};
+
+const activeBadgeStyle = {
+  padding: '8px 14px',
+  borderRadius: 999,
+  background: 'rgba(96, 165, 250, 0.12)',
+  color: '#9ecaff',
+  fontSize: 11,
+  textTransform: 'uppercase' as const,
+  letterSpacing: 1
+};
+
+const completeBadgeStyle = {
+  padding: '8px 14px',
+  borderRadius: 999,
+  background: 'rgba(70, 183, 116, 0.16)',
+  color: '#8edaa9',
+  fontSize: 11,
+  textTransform: 'uppercase' as const,
+  letterSpacing: 1
+};
+
+const warningBadgeStyle = {
+  padding: '8px 14px',
+  borderRadius: 999,
+  background: 'rgba(243, 182, 77, 0.16)',
+  color: '#ffcb86',
+  fontSize: 11,
+  textTransform: 'uppercase' as const,
+  letterSpacing: 1
+};
