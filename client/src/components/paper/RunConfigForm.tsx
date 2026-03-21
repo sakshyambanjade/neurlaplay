@@ -34,13 +34,13 @@ export function RunConfigForm({
         }}
       >
         <h2 style={{ margin: 0, fontSize: 30, letterSpacing: '-0.05em', textTransform: 'uppercase' }}>
-          Launch Control
+          Fight Card
         </h2>
         <div style={tagStyle}>Locked Protocol</div>
       </div>
       <p style={leadStyle}>
         Main and pilot runs use fixed paper presets. Resume continues the latest interrupted run
-        from disk without changing the protocol.
+        from disk without changing the protocol. Matchups stay locked so the data remains clean.
       </p>
 
       <div style={summaryGridStyle}>
@@ -53,7 +53,7 @@ export function RunConfigForm({
       {latestInterruptedRun ? (
         <div style={resumeCardStyle}>
           <div style={{ fontSize: 11, color: '#f5c469', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Interrupted run found
+            Interrupted bout found
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f7fb' }}>{latestInterruptedRun.runId}</div>
           <div style={{ fontSize: 13, color: '#b8c1cf', marginTop: 6 }}>
@@ -121,7 +121,7 @@ const panelStyle: CSSProperties = {
   background: 'linear-gradient(180deg, rgba(16,18,23,0.96) 0%, rgba(12,14,18,0.94) 100%)',
   padding: 28,
   borderRadius: 24,
-  border: '1px solid rgba(147, 163, 184, 0.12)',
+  border: '1px solid rgba(243, 182, 77, 0.14)',
   boxShadow: '0 28px 80px rgba(0,0,0,0.32)'
 };
 
@@ -142,7 +142,7 @@ const summaryItemStyle: CSSProperties = {
   background: 'linear-gradient(180deg, rgba(19,22,29,0.96) 0%, rgba(13,15,20,0.98) 100%)',
   borderRadius: 16,
   padding: 16,
-  border: '1px solid rgba(148, 163, 184, 0.08)'
+  border: '1px solid rgba(243, 182, 77, 0.08)'
 };
 
 const resumeCardStyle: CSSProperties = {
@@ -169,7 +169,7 @@ const secondaryButtonStyle: CSSProperties = {
   fontSize: 15,
   fontWeight: 700,
   color: '#edf2fa',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
+  border: '1px solid rgba(243, 182, 77, 0.12)',
   borderRadius: 14,
   background: 'rgba(20, 24, 31, 0.88)',
   width: '100%'
@@ -192,8 +192,8 @@ const footnoteStyle: CSSProperties = {
 const tagStyle: CSSProperties = {
   padding: '8px 12px',
   borderRadius: 999,
-  background: 'rgba(96, 165, 250, 0.12)',
-  color: '#9ecaff',
+  background: 'rgba(243, 182, 77, 0.12)',
+  color: '#f3c575',
   fontSize: 11,
   textTransform: 'uppercase',
   letterSpacing: 1

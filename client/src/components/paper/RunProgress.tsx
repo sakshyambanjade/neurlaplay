@@ -41,8 +41,8 @@ export function RunProgress({ status, health, artifactReady }: Props) {
             }}
           >
             <div>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>
-                Execution
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#b39a70' }}>
+                Bout Status
               </div>
               <div style={{ fontSize: 28, fontWeight: 800, color: '#f4f7fb', marginTop: 4 }}>
                 {status.step || 'Initializing'}
@@ -64,7 +64,7 @@ export function RunProgress({ status, health, artifactReady }: Props) {
 
           <div
             style={{
-              background: '#151922',
+                background: '#151922',
               borderRadius: 999,
               height: 14,
               marginTop: 18,
@@ -74,7 +74,7 @@ export function RunProgress({ status, health, artifactReady }: Props) {
           >
             <div
               style={{
-                background: 'linear-gradient(90deg, #6aa6ff 0%, #f3b64d 100%)',
+                background: 'linear-gradient(90deg, #b24734 0%, #f3b64d 100%)',
                 width: `${((status.progress || 0) / (status.total || 1)) * 100}%`,
                 height: '100%',
                 transition: 'width 0.4s ease'
@@ -106,8 +106,8 @@ export function RunProgress({ status, health, artifactReady }: Props) {
           }}
         >
           <div>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>
-              Runtime Health
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#b39a70' }}>
+              Judge Table
             </div>
             <h2 style={{ margin: '4px 0 0', fontSize: 28, letterSpacing: '-0.05em' }}>Operational Signals</h2>
           </div>
@@ -175,10 +175,10 @@ function MetricCard({
         padding: '14px 16px',
         borderRadius: 16,
         background: 'linear-gradient(180deg, rgba(18,21,27,0.98) 0%, rgba(13,15,20,0.98) 100%)',
-        border: '1px solid rgba(148, 163, 184, 0.08)'
+        border: '1px solid rgba(243, 182, 77, 0.08)'
       }}
     >
-      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>{label}</div>
+      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#b39a70' }}>{label}</div>
       <div
         style={{
           marginTop: 6,
@@ -204,8 +204,8 @@ const metricGridStyle = {
 const activeBadgeStyle = {
   padding: '8px 14px',
   borderRadius: 999,
-  background: 'rgba(96, 165, 250, 0.12)',
-  color: '#9ecaff',
+  background: 'rgba(243, 182, 77, 0.12)',
+  color: '#f3c575',
   fontSize: 11,
   textTransform: 'uppercase' as const,
   letterSpacing: 1

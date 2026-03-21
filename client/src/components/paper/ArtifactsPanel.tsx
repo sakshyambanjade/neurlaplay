@@ -31,8 +31,8 @@ export function ArtifactsPanel({ runId, artifacts, artifactUrl, artifactZipUrl }
         }}
       >
         <div>
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8' }}>
-            Artifacts
+          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#b39a70' }}>
+            Archive
           </div>
           <h2 style={{ margin: '4px 0 0', fontSize: 28, letterSpacing: '-0.05em' }}>Run Output</h2>
         </div>
@@ -40,8 +40,8 @@ export function ArtifactsPanel({ runId, artifacts, artifactUrl, artifactZipUrl }
           style={{
             padding: '8px 14px',
             borderRadius: 999,
-            background: 'rgba(96, 165, 250, 0.12)',
-            color: '#9ecaff',
+            background: 'rgba(243, 182, 77, 0.12)',
+            color: '#f3c575',
             fontSize: 11,
             textTransform: 'uppercase',
             letterSpacing: 1
@@ -72,10 +72,10 @@ export function ArtifactsPanel({ runId, artifacts, artifactUrl, artifactZipUrl }
               background: 'linear-gradient(180deg, rgba(19,22,29,0.98) 0%, rgba(13,15,20,0.98) 100%)',
               color: '#dce4ef',
               textDecoration: 'none',
-              border: '1px solid rgba(148, 163, 184, 0.08)'
+              border: '1px solid rgba(243, 182, 77, 0.08)'
             }}
           >
-            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#8f98a8', marginBottom: 6 }}>
+            <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#b39a70', marginBottom: 6 }}>
               File
             </div>
             <div style={{ fontSize: 13, lineHeight: 1.5, wordBreak: 'break-word' }}>
