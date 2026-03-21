@@ -16,6 +16,9 @@ export default function PaperRun() {
     eta,
     etaText,
     incompleteRuns,
+    hasActiveRun,
+    canStartFresh,
+    canResumeLatest,
     health,
     launchMainExperiment,
     launchPilotExperiment,
@@ -140,6 +143,11 @@ export default function PaperRun() {
 
           <RunConfigForm
             incompleteRuns={incompleteRuns}
+            hasActiveRun={hasActiveRun}
+            canStartFresh={canStartFresh}
+            canResumeLatest={canResumeLatest}
+            activeRunId={runId}
+            activeRunStep={status?.step}
             onLaunchMainExperiment={launchMainExperiment}
             onLaunchPilotExperiment={launchPilotExperiment}
             onResumeLatestRun={resumeLatestRun}

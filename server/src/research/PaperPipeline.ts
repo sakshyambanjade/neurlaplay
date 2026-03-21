@@ -17,6 +17,7 @@ import { computePaperMetrics } from './analysis/ComputePaperMetrics.js';
 import { buildFiguresData } from './analysis/BuildFiguresData.js';
 import { getPaperRunsRoot } from './PaperPaths.js';
 import { upsertMatchupRecord, upsertRunRecord } from './SupabaseRunStore.js';
+import { sendRunNotification } from './NotificationService.js';
 import type { GamePaperSummary, PaperDatapoint, PaperCollectionOptions } from './types.js';
 import type {
   MatchupConfig,
@@ -89,6 +90,26 @@ async function saveStatus(
     artifacts: extras?.artifacts
   });
   emit(status.runId, 'paper:status', status as unknown as Record<string, unknown>);
+}
+
+async function notifyRunStatus(
+  status: RunStatus,
+  runDir: string,
+  artifactZipPath?: string | null
+): Promise<void> {
+  try {
+    const sent = await sendRunNotification({
+      status,
+      runDir,
+      artifactZipPath
+    });
+    if (sent) {
+      await appendPipelineLog(status.runId, `Notification sent for run ${status.runId}.`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await appendPipelineLog(status.runId, `Notification failed: ${message}`);
+  }
 }
 
 export function getRunStatus(runId: string): RunStatus | null {
@@ -594,6 +615,7 @@ export async function runPaperPipeline(
       artifacts: packaged
     });
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
+    await notifyRunStatus(status, runDir, packaged.zipPath);
 
     return {
       runId,
@@ -614,6 +636,7 @@ export async function runPaperPipeline(
     await saveStatus(status, { runDir, acceptedConfig: config });
     await appendPipelineLog(runId, `Pipeline failed: ${status.error}`);
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
+    await notifyRunStatus(status, runDir, null);
     throw error;
   }
 }

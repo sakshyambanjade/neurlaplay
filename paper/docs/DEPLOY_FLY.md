@@ -42,6 +42,15 @@ If you want the Supabase run index enabled:
 fly secrets set SUPABASE_DB_URL="postgresql://..."
 ```
 
+If you want completion/failure email notifications:
+
+```bash
+fly secrets set APP_PUBLIC_URL="https://neurlaplay.fly.dev"
+fly secrets set RESEND_API_KEY="re_..."
+fly secrets set RUN_NOTIFY_EMAIL_TO="you@example.com"
+fly secrets set RUN_NOTIFY_EMAIL_FROM="NeuraPlay <onboarding@resend.dev>"
+```
+
 Optional:
 
 ```bash

@@ -13,6 +13,7 @@ dotenv.config();
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
+const host = process.env.HOST ?? '0.0.0.0';
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
 const httpServer = http.createServer(app);
 const paperArtifactsDir = getPaperDataRoot();
@@ -61,6 +62,6 @@ io.on('connection', (socket) => {
   });
 });
 
-httpServer.listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+httpServer.listen(port, host, () => {
+  console.log(`Server listening on http://${host}:${port}`);
 });

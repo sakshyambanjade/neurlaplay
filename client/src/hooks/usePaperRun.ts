@@ -130,6 +130,7 @@ type RunStartResponse = {
   runId?: string;
   acceptedConfig?: RunConfig;
   error?: string;
+  existingRunId?: string;
 };
 
 export function matchupKey(white: string, black: string): string {
@@ -398,6 +399,18 @@ export function usePaperRun() {
       method: 'POST'
     });
     const data = (await response.json()) as RunStartResponse;
+    if (response.status === 409) {
+      if (data.runId) {
+        setRunId(data.runId);
+        localStorage.setItem('paper_run_id', data.runId);
+        await fetchStatus(data.runId);
+        await fetchArtifacts(data.runId);
+        await loadIncompleteRuns();
+      }
+      throw new Error(
+        data.error ?? 'An unfinished run already exists. Resume it instead of starting a new one.'
+      );
+    }
     if (!response.ok || !data.runId || !data.acceptedConfig) {
       throw new Error(data.error ?? `Failed to start ${kind} run.`);
     }
@@ -468,6 +481,12 @@ export function usePaperRun() {
   const artifactZipUrl =
     runId && artifactZip !== null ? `${API}/artifacts/runs/${runId}/artifacts.zip` : null;
 
+  const latestIncompleteRun = incompleteRuns[0] ?? null;
+  const hasActiveRun = Boolean(status && !status.done);
+  const runLocked = hasActiveRun || latestIncompleteRun !== null;
+  const canStartFresh = !runLocked;
+  const canResumeLatest = latestIncompleteRun !== null && !hasActiveRun;
+
   return {
     apiBase: API,
     socket,
@@ -483,7 +502,12 @@ export function usePaperRun() {
     eta,
     etaText,
     incompleteRuns,
+    latestIncompleteRun,
     health,
+    hasActiveRun,
+    runLocked,
+    canStartFresh,
+    canResumeLatest,
     fetchStatus,
     fetchArtifacts,
     resumeRun,

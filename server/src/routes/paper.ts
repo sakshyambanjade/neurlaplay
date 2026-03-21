@@ -81,6 +81,11 @@ function getIncompleteRunsFromFs(): Array<{
   }>;
 }
 
+async function getCurrentIncompleteRuns() {
+  const storeRuns = await listIncompleteRunsFromStore();
+  return storeRuns.length > 0 ? storeRuns : getIncompleteRunsFromFs();
+}
+
 export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
   const router = Router();
 
@@ -117,6 +122,14 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
 
   router.post('/run/main', async (_req, res) => {
     try {
+      const incompleteRuns = await getCurrentIncompleteRuns();
+      if (incompleteRuns.length > 0) {
+        res.status(409).json({
+          error: 'An unfinished run already exists. Resume the latest run instead of starting a new one.',
+          runId: incompleteRuns[0]!.runId
+        });
+        return;
+      }
       const acceptedConfig = loadPaperPreset('main');
       const { runId, promise } = startPaperRun(acceptedConfig, { ollamaBaseUrl });
       void promise.catch(() => {
@@ -136,6 +149,14 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
 
   router.post('/run/pilot', async (_req, res) => {
     try {
+      const incompleteRuns = await getCurrentIncompleteRuns();
+      if (incompleteRuns.length > 0) {
+        res.status(409).json({
+          error: 'An unfinished run already exists. Resume the latest run instead of starting a new one.',
+          runId: incompleteRuns[0]!.runId
+        });
+        return;
+      }
       const acceptedConfig = loadPaperPreset('pilot');
 
       const { runId, promise } = startPaperRun(acceptedConfig, { ollamaBaseUrl });
@@ -155,9 +176,9 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
   });
 
   router.get('/incomplete', async (_req, res) => {
-    const runs = await listIncompleteRunsFromStore();
+    const runs = await getCurrentIncompleteRuns();
     res.json({
-      runs: runs.length > 0 ? runs : getIncompleteRunsFromFs()
+      runs
     });
   });
 

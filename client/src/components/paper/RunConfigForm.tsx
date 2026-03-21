@@ -1,13 +1,20 @@
 import type { CSSProperties } from 'react';
 
+type IncompleteRun = {
+  runId: string;
+  startedAt: string;
+  step: string;
+  progress: number;
+  total: number;
+};
+
 type Props = {
-  incompleteRuns: Array<{
-    runId: string;
-    startedAt: string;
-    step: string;
-    progress: number;
-    total: number;
-  }>;
+  incompleteRuns: IncompleteRun[];
+  hasActiveRun: boolean;
+  canStartFresh: boolean;
+  canResumeLatest: boolean;
+  activeRunId: string | null;
+  activeRunStep?: string;
   onLaunchMainExperiment: () => Promise<void>;
   onLaunchPilotExperiment: () => Promise<void>;
   onResumeLatestRun: () => Promise<void>;
@@ -15,11 +22,21 @@ type Props = {
 
 export function RunConfigForm({
   incompleteRuns,
+  hasActiveRun,
+  canStartFresh,
+  canResumeLatest,
+  activeRunId,
+  activeRunStep,
   onLaunchMainExperiment,
   onLaunchPilotExperiment,
   onResumeLatestRun
 }: Props) {
   const latestInterruptedRun = incompleteRuns[0] ?? null;
+  const lockMessage = hasActiveRun
+    ? 'A run is already active. Fresh launch controls are locked until it finishes.'
+    : latestInterruptedRun
+      ? 'An unfinished run already exists. Fresh launch controls are locked until you resume it.'
+      : null;
 
   return (
     <section style={panelStyle}>
@@ -39,8 +56,8 @@ export function RunConfigForm({
         <div style={tagStyle}>Locked Protocol</div>
       </div>
       <p style={leadStyle}>
-        Main and pilot runs use fixed paper presets. Resume continues the latest interrupted run
-        from disk without changing the protocol. Matchups stay locked so the data remains clean.
+        Main and pilot runs use fixed paper presets. Once a run starts, the panel becomes
+        monitor-only until that run finishes or needs resume.
       </p>
 
       <div style={summaryGridStyle}>
@@ -50,14 +67,45 @@ export function RunConfigForm({
         <SummaryItem label="Mode" value="Index" detail="Legal selection only" />
       </div>
 
+      {lockMessage ? (
+        <div style={lockCardStyle}>
+          <div
+            style={{
+              fontSize: 11,
+              color: '#d8b57a',
+              marginBottom: 6,
+              textTransform: 'uppercase',
+              letterSpacing: 1
+            }}
+          >
+            Control locked
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f7fb' }}>
+            {activeRunId ?? latestInterruptedRun?.runId ?? 'Run in progress'}
+          </div>
+          <div style={{ fontSize: 13, color: '#b8c1cf', marginTop: 6 }}>
+            {activeRunStep ?? latestInterruptedRun?.step ?? 'running'}
+          </div>
+          <div style={{ fontSize: 13, color: '#98a2b3', marginTop: 8 }}>{lockMessage}</div>
+        </div>
+      ) : null}
+
       {latestInterruptedRun ? (
         <div style={resumeCardStyle}>
-          <div style={{ fontSize: 11, color: '#f5c469', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Interrupted bout found
+          <div
+            style={{
+              fontSize: 11,
+              color: '#f5c469',
+              marginBottom: 6,
+              textTransform: 'uppercase',
+              letterSpacing: 1
+            }}
+          >
+            Latest resumable run
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#f4f7fb' }}>{latestInterruptedRun.runId}</div>
           <div style={{ fontSize: 13, color: '#b8c1cf', marginTop: 6 }}>
-            {latestInterruptedRun.step} · {latestInterruptedRun.progress} / {latestInterruptedRun.total}
+            {latestInterruptedRun.step} | {latestInterruptedRun.progress} / {latestInterruptedRun.total}
           </div>
         </div>
       ) : null}
@@ -65,10 +113,14 @@ export function RunConfigForm({
       <div style={buttonGroupStyle}>
         <button
           onClick={() => void onLaunchMainExperiment()}
+          disabled={!canStartFresh}
           style={{
             ...primaryButtonStyle,
-            background: 'linear-gradient(135deg, #f3b64d 0%, #d38b2f 100%)',
-            cursor: 'pointer'
+            background: canStartFresh
+              ? 'linear-gradient(135deg, #f3b64d 0%, #d38b2f 100%)'
+              : 'linear-gradient(135deg, rgba(83,87,94,0.9) 0%, rgba(48,51,56,0.96) 100%)',
+            cursor: canStartFresh ? 'pointer' : 'not-allowed',
+            opacity: canStartFresh ? 1 : 0.72
           }}
         >
           Run Main Experiment
@@ -76,10 +128,11 @@ export function RunConfigForm({
 
         <button
           onClick={() => void onLaunchPilotExperiment()}
+          disabled={!canStartFresh}
           style={{
             ...secondaryButtonStyle,
-            cursor: 'pointer',
-            opacity: 1
+            cursor: canStartFresh ? 'pointer' : 'not-allowed',
+            opacity: canStartFresh ? 1 : 0.6
           }}
         >
           Run Validation Batch
@@ -87,11 +140,11 @@ export function RunConfigForm({
 
         <button
           onClick={() => void onResumeLatestRun()}
-          disabled={!latestInterruptedRun}
+          disabled={!canResumeLatest}
           style={{
             ...secondaryButtonStyle,
-            cursor: !latestInterruptedRun ? 'not-allowed' : 'pointer',
-            opacity: !latestInterruptedRun ? 0.65 : 1
+            cursor: !canResumeLatest ? 'not-allowed' : 'pointer',
+            opacity: !canResumeLatest ? 0.65 : 1
           }}
         >
           Resume Last Run
@@ -99,7 +152,7 @@ export function RunConfigForm({
       </div>
 
       <div style={footnoteStyle}>
-        Main and pilot start fresh locked presets. Resume only continues the latest interrupted run.
+        Once a run starts, fresh launches stay locked. Resume is only available after an interruption.
       </div>
     </section>
   );
@@ -143,6 +196,14 @@ const summaryItemStyle: CSSProperties = {
   borderRadius: 16,
   padding: 16,
   border: '1px solid rgba(243, 182, 77, 0.08)'
+};
+
+const lockCardStyle: CSSProperties = {
+  marginTop: 18,
+  padding: 16,
+  borderRadius: 16,
+  background: 'linear-gradient(180deg, rgba(45,19,15,0.94) 0%, rgba(23,12,11,0.98) 100%)',
+  border: '1px solid rgba(176, 75, 54, 0.28)'
 };
 
 const resumeCardStyle: CSSProperties = {
