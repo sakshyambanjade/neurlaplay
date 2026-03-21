@@ -16,6 +16,7 @@ import { aggregateRunStats } from './analysis/AggregateRunStats.js';
 import { computePaperMetrics } from './analysis/ComputePaperMetrics.js';
 import { buildFiguresData } from './analysis/BuildFiguresData.js';
 import { getPaperRunsRoot } from './PaperPaths.js';
+import { upsertMatchupRecord, upsertRunRecord } from './SupabaseRunStore.js';
 import type { GamePaperSummary, PaperDatapoint, PaperCollectionOptions } from './types.js';
 import type {
   MatchupConfig,
@@ -66,11 +67,27 @@ async function appendPipelineLog(runId: string, line: string): Promise<void> {
   emit(runId, 'paper:log', { msg: payload });
 }
 
-async function saveStatus(status: RunStatus): Promise<void> {
+async function saveStatus(
+  status: RunStatus,
+  extras?: {
+    runDir?: string;
+    acceptedConfig?: RunConfig;
+    manifest?: Awaited<ReturnType<typeof createRunManifest>>;
+    preflight?: Awaited<ReturnType<typeof runPreflightChecks>>;
+    artifacts?: { files: string[]; zipPath: string | null };
+  }
+): Promise<void> {
   const runDir = getRunDir(status.runId);
   await mkdir(runDir, { recursive: true });
   await writeFile(getStatusPath(status.runId), JSON.stringify(status, null, 2), 'utf-8');
   activeRuns.set(status.runId, status);
+  await upsertRunRecord(status, {
+    runDir: extras?.runDir,
+    acceptedConfig: extras?.acceptedConfig,
+    manifest: extras?.manifest,
+    preflight: extras?.preflight,
+    artifacts: extras?.artifacts
+  });
   emit(status.runId, 'paper:status', status as unknown as Record<string, unknown>);
 }
 
@@ -415,6 +432,13 @@ async function runMatchup(
   await collector.generatePaperArtifacts(matchupDir, {
     enablePostRunCpl: config.settings.enablePostRunCpl ?? true
   });
+  await upsertMatchupRecord({
+    runId,
+    matchup,
+    matchupDir,
+    completedGames: collector.getGameSummariesSnapshot().length,
+    status: 'completed'
+  });
 
   return {
     label: matchupLabel,
@@ -442,7 +466,7 @@ export async function runPaperPipeline(
   const resumeState = await resumeRunIfPossible(runDir);
 
   const status = createInitialStatus(runId, config);
-  await saveStatus(status);
+  await saveStatus(status, { runDir, acceptedConfig: config });
 
   try {
     await writeFile(path.join(runDir, 'accepted-config.json'), JSON.stringify(config, null, 2), 'utf-8');
@@ -450,10 +474,12 @@ export async function runPaperPipeline(
 
     const manifest = createRunManifest(runId, getGitCommit(), config);
     await writeRunManifest(runDir, manifest);
+    await saveStatus(status, { runDir, acceptedConfig: config, manifest });
     await appendPipelineLog(runId, `Manifest written for ${runId}.`);
 
     const preflight = await runPreflightChecks(config, { runDir, ollamaBaseUrl: opts.ollamaBaseUrl });
     await writeFile(path.join(runDir, 'preflight.json'), JSON.stringify(preflight, null, 2), 'utf-8');
+    await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
     if (!preflight.ok) {
       throw new Error(
         `Preflight failed: ${preflight.checks
@@ -477,7 +503,14 @@ export async function runPaperPipeline(
 
       status.step = `running:${matchup.label}`;
       status.progress = completedGames;
-      await saveStatus(status);
+      await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
+      await upsertMatchupRecord({
+        runId,
+        matchup,
+        matchupDir: path.join(runDir, sanitizeLabel(matchup.label)),
+        completedGames: 0,
+        status: 'running'
+      });
       await appendPipelineLog(
         runId,
         `Starting matchup ${matchup.label}: ${matchup.white} vs ${matchup.black} (${matchup.games} games).`
@@ -494,7 +527,14 @@ export async function runPaperPipeline(
         async (completedGamesInMatchup) => {
           status.step = `running:${matchup.label}`;
           status.progress = completedGames + completedGamesInMatchup;
-          await saveStatus(status);
+          await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
+          await upsertMatchupRecord({
+            runId,
+            matchup,
+            matchupDir: path.join(runDir, sanitizeLabel(matchup.label)),
+            completedGames: completedGamesInMatchup,
+            status: 'running'
+          });
         }
       );
       artifacts.push(matchupArtifacts);
@@ -502,7 +542,7 @@ export async function runPaperPipeline(
 
       status.step = `completed:${matchup.label}`;
       status.progress = completedGames;
-      await saveStatus(status);
+      await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
     }
 
     if (artifacts.length === 1) {
@@ -546,7 +586,13 @@ export async function runPaperPipeline(
     status.progress = totalGames;
     status.done = true;
     status.finishedAt = new Date().toISOString();
-    await saveStatus(status);
+    await saveStatus(status, {
+      runDir,
+      acceptedConfig: config,
+      manifest,
+      preflight,
+      artifacts: packaged
+    });
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
 
     return {
@@ -565,7 +611,7 @@ export async function runPaperPipeline(
     status.done = true;
     status.error = error instanceof Error ? error.message : String(error);
     status.finishedAt = new Date().toISOString();
-    await saveStatus(status);
+    await saveStatus(status, { runDir, acceptedConfig: config });
     await appendPipelineLog(runId, `Pipeline failed: ${status.error}`);
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
     throw error;

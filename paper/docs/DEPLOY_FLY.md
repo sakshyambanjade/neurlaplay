@@ -36,6 +36,12 @@ fly volumes create paper_data --region sin --size 20
 fly secrets set GROQ_API_KEYS="key1,key2,key3"
 ```
 
+If you want the Supabase run index enabled:
+
+```bash
+fly secrets set SUPABASE_DB_URL="postgresql://..."
+```
+
 Optional:
 
 ```bash

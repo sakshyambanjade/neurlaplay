@@ -11,6 +11,7 @@ import {
   resumePaperRun
 } from '../research/PaperPipeline.js';
 import { getPaperConfigsRoot, getPaperRunsRoot } from '../research/PaperPaths.js';
+import { getRunStatusFromStore, listIncompleteRunsFromStore } from '../research/SupabaseRunStore.js';
 
 type PaperPresetKind = 'main' | 'pilot';
 
@@ -29,7 +30,7 @@ function loadPaperPreset(kind: PaperPresetKind) {
 }
 
 
-function getIncompleteRuns(): Array<{
+function getIncompleteRunsFromFs(): Array<{
   runId: string;
   startedAt: string;
   step: string;
@@ -153,14 +154,15 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
     }
   });
 
-  router.get('/incomplete', (_req, res) => {
+  router.get('/incomplete', async (_req, res) => {
+    const runs = await listIncompleteRunsFromStore();
     res.json({
-      runs: getIncompleteRuns()
+      runs: runs.length > 0 ? runs : getIncompleteRunsFromFs()
     });
   });
 
-  router.get('/status/:runId', (req, res) => {
-    const status = getRunStatus(req.params.runId);
+  router.get('/status/:runId', async (req, res) => {
+    const status = getRunStatus(req.params.runId) ?? (await getRunStatusFromStore(req.params.runId));
     if (!status) {
       res.status(404).json({ error: 'Run not found' });
       return;

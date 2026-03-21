@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { PreflightReport, RunConfig } from './types/run.js';
 import { inferProviderFromModel } from './types/provider.js';
 import { getPaperDataRoot, getPaperWorkspaceRoot } from './PaperPaths.js';
+import { checkSupabaseStore } from './SupabaseRunStore.js';
 import { resolveStockfishEnginePath } from './StockfishAnalyzer.js';
 
 async function canWrite(dir: string): Promise<boolean> {
@@ -82,6 +83,13 @@ export async function runPreflightChecks(
     name: 'paper_data_root',
     ok: await canWrite(getPaperDataRoot()),
     detail: getPaperDataRoot()
+  });
+
+  const supabase = await checkSupabaseStore();
+  checks.push({
+    name: 'supabase_run_store',
+    ok: supabase.ok,
+    detail: supabase.detail
   });
 
   return {
