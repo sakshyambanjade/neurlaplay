@@ -1,28 +1,23 @@
-app = "neurlaplay-paper"
-primary_region = "sin"
+# fly.toml app configuration file generated for neurlaplay on 2026-03-21T14:48:42Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'neurlaplay'
+primary_region = 'ams'
 
 [build]
-  dockerfile = "Dockerfile"
-
-[env]
-  NODE_ENV = "production"
-  PORT = "3001"
-  PAPER_WORKSPACE_ROOT = "/app/paper"
-  PAPER_DATA_ROOT = "/data/paper"
 
 [http_service]
-  internal_port = 3001
+  internal_port = 8080
   force_https = true
-  auto_stop_machines = "off"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 1
-  processes = ["app"]
-
-[[mounts]]
-  source = "paper_data"
-  destination = "/data"
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
-  memory = "2gb"
+  memory_mb = 256
