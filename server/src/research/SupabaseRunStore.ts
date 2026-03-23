@@ -30,7 +30,10 @@ let schemaReady: Promise<void> | null = null;
 
 function getConnectionString(): string | null {
   const value = process.env.SUPABASE_DB_URL?.trim() ?? process.env.DATABASE_URL?.trim() ?? '';
-  return value.length > 0 ? value : null;
+  if (!value || value.includes('[YOUR-PASSWORD]')) {
+    return null;
+  }
+  return value;
 }
 
 function isConfigured(): boolean {

@@ -17,10 +17,7 @@ type PaperPresetKind = 'main' | 'pilot';
 
 function paperConfigPath(kind: PaperPresetKind): string {
   const configsRoot = getPaperConfigsRoot();
-  return path.join(
-    configsRoot,
-    kind === 'main' ? 'main/main_1200_games.json' : 'pilot/pilot_300_games.json'
-  );
+  return path.join(configsRoot, kind === 'main' ? 'main/main_300_games.json' : 'debug/smoke_10_games.json');
 }
 
 function loadPaperPreset(kind: PaperPresetKind) {
