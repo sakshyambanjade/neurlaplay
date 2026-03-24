@@ -159,6 +159,18 @@ type HealthState = {
   noProgressMaxStreak: number;
 };
 
+type LiveState = {
+  runId: string;
+  updatedAt: string;
+  currentFen: string;
+  gameInfo: GameInfo;
+  quality: QualityState;
+  eta: EtaState;
+  health: HealthState;
+  status: RunStatus;
+  acceptedConfig?: RunConfig;
+};
+
 type RunStartResponse = {
   runId?: string;
   acceptedConfig?: RunConfig;
@@ -275,23 +287,50 @@ export function usePaperRun() {
     setArtifactZip(data.zipPath ?? null);
   }
 
+  function applyLiveState(snapshot: LiveState): void {
+    setCurrentFen(snapshot.currentFen || START_FEN);
+    setGameInfo(snapshot.gameInfo);
+    setQuality(snapshot.quality);
+    setEta(snapshot.eta);
+    setHealth(snapshot.health);
+    setStatus(snapshot.status);
+    if (snapshot.acceptedConfig) {
+      setAcceptedConfig(snapshot.acceptedConfig);
+    }
+  }
+
+  async function fetchLiveState(id: string, opts?: { quiet?: boolean }): Promise<void> {
+    try {
+      const response = await fetch(`${API}/api/paper/live/${id}`);
+      if (response.status === 404) {
+        return;
+      }
+      const data = await readJsonOrThrow<LiveState>(response);
+      applyLiveState(data);
+    } catch (error) {
+      if (!opts?.quiet) {
+        const message = error instanceof Error ? error.message : String(error);
+        setLogs((current) => [...current.slice(-199), message]);
+      }
+    }
+  }
+
   useEffect(() => {
     void (async () => {
       try {
         const runs = await loadIncompleteRuns();
         const savedRunId = localStorage.getItem('paper_run_id');
-        if (!savedRunId && runs.length > 0) {
-          const latest = runs[0]!;
-          setRunId(latest.runId);
-          await fetchStatus(latest.runId);
-          await fetchArtifacts(latest.runId);
-          return;
-        }
+        const preferredRunId =
+          runs.length > 0
+            ? runs.find((run) => run.runId === savedRunId)?.runId ?? runs[0]!.runId
+            : savedRunId;
 
-        if (savedRunId) {
-          setRunId(savedRunId);
-          await fetchStatus(savedRunId);
-          await fetchArtifacts(savedRunId);
+        if (preferredRunId) {
+          setRunId(preferredRunId);
+          localStorage.setItem('paper_run_id', preferredRunId);
+          await fetchStatus(preferredRunId);
+          await fetchArtifacts(preferredRunId);
+          await fetchLiveState(preferredRunId, { quiet: true });
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -304,6 +343,8 @@ export function usePaperRun() {
     if (!runId) {
       return;
     }
+
+    void fetchLiveState(runId, { quiet: true });
 
     const s = API ? io(API) : io();
     s.emit('join:paper', runId);
@@ -427,6 +468,19 @@ export function usePaperRun() {
     };
   }, [runId]);
 
+  useEffect(() => {
+    if (!runId || status?.done) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void fetchLiveState(runId, { quiet: true });
+      void fetchStatus(runId).catch(() => undefined);
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [runId, status?.done]);
+
   async function startLockedRun(kind: 'main' | 'pilot'): Promise<void> {
     const response = await fetch(`${API}/api/paper/run/${kind}`, {
       method: 'POST'
@@ -447,6 +501,7 @@ export function usePaperRun() {
         localStorage.setItem('paper_run_id', data.runId);
         await fetchStatus(data.runId);
         await fetchArtifacts(data.runId);
+        await fetchLiveState(data.runId, { quiet: true });
         await loadIncompleteRuns();
       }
       throw new Error(
@@ -463,6 +518,7 @@ export function usePaperRun() {
     localStorage.setItem('paper_run_id', data.runId);
     setLogs([`Accepted config received from server. Run ${data.runId} started.`]);
     await fetchStatus(data.runId);
+    await fetchLiveState(data.runId, { quiet: true });
     await loadIncompleteRuns();
   }
 
@@ -484,6 +540,7 @@ export function usePaperRun() {
     ]);
     await fetchStatus(data.runId);
     await fetchArtifacts(data.runId);
+    await fetchLiveState(data.runId, { quiet: true });
     await loadIncompleteRuns();
   }
 

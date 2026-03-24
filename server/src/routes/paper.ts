@@ -7,6 +7,7 @@ import {
   startPaperRun,
   getRunStatus,
   getArtifacts,
+  getLiveState,
   jobEmitter,
   resumePaperRun
 } from '../research/PaperPipeline.js';
@@ -191,6 +192,21 @@ export function createPaperRouter(ollamaBaseUrl: string, io?: SocketIOServer) {
   router.get('/artifacts/:runId', async (req, res) => {
     try {
       res.json(await getArtifacts(req.params.runId));
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  router.get('/live/:runId', async (req, res) => {
+    try {
+      const liveState = await getLiveState(req.params.runId);
+      if (!liveState) {
+        res.status(404).json({ error: 'Live state not found' });
+        return;
+      }
+      res.json(liveState);
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error)

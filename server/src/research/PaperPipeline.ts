@@ -24,7 +24,10 @@ import type {
   RunConfig,
   RunStatus
 } from './types/run.js';
-import type { PaperPipelineResult } from './types/paper.js';
+import type {
+  PaperLiveState,
+  PaperPipelineResult
+} from './types/paper.js';
 
 export type PaperRunConfig = RunConfig;
 
@@ -32,6 +35,9 @@ export const jobEmitter = new EventEmitter();
 
 const activeRuns = new Map<string, RunStatus>();
 const activeRunPromises = new Map<string, Promise<PaperPipelineResult>>();
+const activeLiveStates = new Map<string, PaperLiveState>();
+const liveStateWriteQueues = new Map<string, Promise<void>>();
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 function getGitCommit(): string {
   try {
@@ -53,6 +59,120 @@ function getRunDir(runId: string): string {
 
 function getStatusPath(runId: string): string {
   return path.join(getRunDir(runId), 'status.json');
+}
+
+function getLiveStatePath(runId: string): string {
+  return path.join(getRunDir(runId), 'live_state.json');
+}
+
+function createDefaultLiveState(runId: string, status: RunStatus, acceptedConfig?: RunConfig): PaperLiveState {
+  return {
+    runId,
+    updatedAt: new Date().toISOString(),
+    currentFen: START_FEN,
+    gameInfo: {
+      white: '',
+      black: '',
+      moveNumber: 0,
+      gameNum: 0,
+      totalGames: 0
+    },
+    quality: {
+      illegalSuggestions: 0,
+      correctionsApplied: 0,
+      repeatStateMoves: 0,
+      oscillationRejected: 0,
+      oscillationOverrides: 0,
+      lastMove: '',
+      lastModel: '',
+      lastSide: ''
+    },
+    eta: {
+      completedGames: status.progress,
+      totalGames: status.total,
+      gamesPerHour: 0,
+      etaSec: null
+    },
+    health: {
+      ok: true,
+      warnings: [],
+      completedGames: 0,
+      totalMoves: 0,
+      matchupLabel: '',
+      fallbackMoves: 0,
+      repeatStateMoves: 0,
+      oscillationRejectedCount: 0,
+      collapseDetectedGames: 0,
+      noProgressMaxStreak: 0
+    },
+    status,
+    acceptedConfig
+  };
+}
+
+function queueLiveStateWrite(state: PaperLiveState): void {
+  activeLiveStates.set(state.runId, state);
+  const writeTask = (liveStateWriteQueues.get(state.runId) ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(async () => {
+      const runDir = getRunDir(state.runId);
+      await mkdir(runDir, { recursive: true });
+      await writeFile(getLiveStatePath(state.runId), JSON.stringify(state, null, 2), 'utf-8');
+    });
+
+  liveStateWriteQueues.set(state.runId, writeTask);
+  void writeTask.catch((error) => {
+    console.error(`Failed to persist live state for ${state.runId}:`, error);
+  });
+  void writeTask.finally(() => {
+    if (liveStateWriteQueues.get(state.runId) === writeTask) {
+      liveStateWriteQueues.delete(state.runId);
+    }
+  });
+}
+
+async function readPersistedLiveState(runId: string): Promise<PaperLiveState | null> {
+  const liveStatePath = getLiveStatePath(runId);
+  if (!fs.existsSync(liveStatePath)) {
+    return null;
+  }
+  return JSON.parse(await readFile(liveStatePath, 'utf-8')) as PaperLiveState;
+}
+
+async function patchLiveState(
+  runId: string,
+  patch: Partial<PaperLiveState>,
+  fallbackStatus?: RunStatus
+): Promise<PaperLiveState> {
+  const existing =
+    activeLiveStates.get(runId) ??
+    (await readPersistedLiveState(runId)) ??
+    createDefaultLiveState(
+      runId,
+      fallbackStatus ?? {
+        runId,
+        step: 'initializing',
+        progress: 0,
+        total: 0,
+        done: false,
+        startedAt: new Date().toISOString()
+      }
+    );
+
+  const next: PaperLiveState = {
+    ...existing,
+    ...patch,
+    updatedAt: new Date().toISOString(),
+    gameInfo: patch.gameInfo ?? existing.gameInfo,
+    quality: patch.quality ?? existing.quality,
+    eta: patch.eta ?? existing.eta,
+    health: patch.health ?? existing.health,
+    status: patch.status ?? existing.status,
+    acceptedConfig: patch.acceptedConfig ?? existing.acceptedConfig
+  };
+
+  queueLiveStateWrite(next);
+  return next;
 }
 
 function emit(runId: string, event: string, data: Record<string, unknown>): void {
@@ -89,6 +209,20 @@ async function saveStatus(
     preflight: extras?.preflight,
     artifacts: extras?.artifacts
   });
+  await patchLiveState(
+    status.runId,
+    {
+      status,
+      acceptedConfig: extras?.acceptedConfig,
+      eta: {
+        completedGames: status.progress,
+        totalGames: status.total,
+        gamesPerHour: activeLiveStates.get(status.runId)?.eta.gamesPerHour ?? 0,
+        etaSec: activeLiveStates.get(status.runId)?.eta.etaSec ?? null
+      }
+    },
+    status
+  );
   emit(status.runId, 'paper:status', status as unknown as Record<string, unknown>);
 }
 
@@ -166,6 +300,14 @@ export async function getArtifacts(runId: string): Promise<{ files: string[]; zi
     files: await listFilesRecursive(runDir),
     zipPath: null
   };
+}
+
+export async function getLiveState(runId: string): Promise<PaperLiveState | null> {
+  const inMemory = activeLiveStates.get(runId);
+  if (inMemory) {
+    return inMemory;
+  }
+  return readPersistedLiveState(runId);
 }
 
 async function mergeMatchupPgns(runDir: string): Promise<string | null> {
@@ -310,6 +452,24 @@ async function runMatchup(
 
   let outputFile = path.join(matchupDir, 'paper-research-match-resumed.json');
   if (restoredGames.length < matchup.games) {
+    void patchLiveState(runId, {
+      currentFen: START_FEN,
+      gameInfo: {
+        white: matchup.white,
+        black: matchup.black,
+        moveNumber: 0,
+        gameNum: restoredGames.length + 1,
+        totalGames: matchup.games
+      },
+      quality: {
+        ...(activeLiveStates.get(runId)?.quality ?? createDefaultLiveState(runId, createInitialStatus(runId, config)).quality),
+        illegalSuggestions,
+        correctionsApplied,
+        repeatStateMoves,
+        oscillationRejected: oscillationRejectedCount,
+        oscillationOverrides: oscillationOverrideCount
+      }
+    });
     emit(runId, 'game:start', {
       gameInfo: {
         white: matchup.white,
@@ -346,6 +506,27 @@ async function runMatchup(
         if (point.oscillationOverrideUsed) {
           oscillationOverrideCount += 1;
         }
+
+        void patchLiveState(runId, {
+          currentFen: point.fenAfter,
+          gameInfo: {
+            white: matchup.white,
+            black: matchup.black,
+            moveNumber: point.moveNumber,
+            gameNum: currentGameNum + 1,
+            totalGames: matchup.games
+          },
+          quality: {
+            illegalSuggestions,
+            correctionsApplied,
+            repeatStateMoves,
+            oscillationRejected: oscillationRejectedCount,
+            oscillationOverrides: oscillationOverrideCount,
+            lastMove: point.move,
+            lastModel: point.model,
+            lastSide: point.side
+          }
+        });
 
         emit(runId, 'game:move', {
           fen: point.fenAfter,
@@ -413,13 +594,28 @@ async function runMatchup(
           warnings: health.warnings
         };
         void writeFile(path.join(matchupDir, 'health.json'), JSON.stringify(healthPayload, null, 2), 'utf-8');
-        emit(runId, 'paper:health', healthPayload);
-
         const completedGames = completedGamesSoFar + currentGameNum;
         const elapsedSec = Math.max(1, Math.floor((Date.now() - runStartedAt) / 1000));
         const gamesPerHour = (completedGames / elapsedSec) * 3600;
         const remainingGames = Math.max(0, totalGames - completedGames);
         const etaSec = gamesPerHour > 0 ? Math.round((remainingGames / gamesPerHour) * 3600) : null;
+        void patchLiveState(runId, {
+          gameInfo: {
+            white: matchup.white,
+            black: matchup.black,
+            moveNumber: summary.moveCount,
+            gameNum: currentGameNum,
+            totalGames: matchup.games
+          },
+          eta: {
+            completedGames,
+            totalGames,
+            gamesPerHour,
+            etaSec
+          },
+          health: healthPayload
+        });
+        emit(runId, 'paper:health', healthPayload);
 
         emit(runId, 'paper:eta', {
           completedGames,
