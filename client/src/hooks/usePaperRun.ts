@@ -503,10 +503,12 @@ export function usePaperRun() {
         await fetchArtifacts(data.runId);
         await fetchLiveState(data.runId, { quiet: true });
         await loadIncompleteRuns();
+        setLogs((current) => [
+          ...current.slice(-199),
+          data.error ?? `Attached to unfinished run ${data.runId}. Use Resume Last Run to continue it.`
+        ]);
       }
-      throw new Error(
-        data.error ?? 'An unfinished run already exists. Resume it instead of starting a new one.'
-      );
+      return;
     }
     if (!response.ok || !data.runId || !data.acceptedConfig) {
       throw new Error(data.error ?? `Failed to start ${kind} run.`);
