@@ -31,6 +31,14 @@ function parseRetryAfterMs(response: Response, rawOutput: string): number | null
   return Number.isFinite(seconds) ? Math.round(seconds * 1000) : null;
 }
 
+function isInvalidApiKeyFailure(response: Response, rawOutput: string): boolean {
+  if (response.status !== 401) {
+    return false;
+  }
+
+  return /invalid[_\s-]?api[_\s-]?key/i.test(rawOutput);
+}
+
 export class GroqBackend implements ModelBackend {
   constructor(private readonly apiKeyOrPool: string | GroqKeyPool) {}
 
@@ -72,7 +80,9 @@ export class GroqBackend implements ModelBackend {
         const rawOutput = await response.text();
         const retryAfterMs = response.status === 429 ? parseRetryAfterMs(response, rawOutput) : null;
         if (lease.keyId && this.apiKeyOrPool instanceof GroqKeyPool) {
-          if (response.status === 429) {
+          if (isInvalidApiKeyFailure(response, rawOutput)) {
+            this.apiKeyOrPool.retireKey(lease.keyId);
+          } else if (response.status === 429) {
             this.apiKeyOrPool.releaseRateLimited(lease.keyId, retryAfterMs ?? 2000);
           } else {
             this.apiKeyOrPool.releaseFailure(lease.keyId);

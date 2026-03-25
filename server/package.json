@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "build": "tsc -p .",
     "start": "tsx src/index.ts",
+    "start:built": "node dist/index.js",
     "research:reset": "tsx src/tools/reset-paper-data.ts",
     "research:budget": "tsx src/tools/estimate-paper-budget.ts",
     "research:paper": "tsx src/research/paper-cli.ts --config ../paper/configs/main/main_300_games.json",

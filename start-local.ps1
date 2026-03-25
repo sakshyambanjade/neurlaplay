@@ -5,7 +5,7 @@ $clientDir = Join-Path $root 'client'
 Start-Process powershell -ArgumentList @(
   '-NoExit',
   '-Command',
-  "Set-Location '$serverDir'; npm run dev"
+  "Set-Location '$serverDir'; & '.\\node_modules\\.bin\\tsc.cmd' -p .; if (`$LASTEXITCODE -eq 0) { & 'C:\\Program Files\\nodejs\\node.exe' '.\\dist\\index.js' }"
 )
 
 Start-Sleep -Seconds 2
@@ -13,7 +13,7 @@ Start-Sleep -Seconds 2
 Start-Process powershell -ArgumentList @(
   '-NoExit',
   '-Command',
-  "Set-Location '$clientDir'; npm run dev"
+  "Set-Location '$clientDir'; & '.\\node_modules\\.bin\\vite.cmd'"
 )
 
 Write-Host 'Local backend and frontend launch commands started.'

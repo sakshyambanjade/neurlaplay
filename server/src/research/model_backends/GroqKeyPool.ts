@@ -12,6 +12,7 @@ type KeyState = {
   keyId: string;
   cooldownUntil: number;
   consecutiveFailures: number;
+  retired: boolean;
 };
 
 export class GroqKeyPool {
@@ -24,7 +25,8 @@ export class GroqKeyPool {
         key,
         keyId: `groq-key-${index + 1}`,
         cooldownUntil: 0,
-        consecutiveFailures: 0
+        consecutiveFailures: 0,
+        retired: false
       }))
       .filter((state) => state.key.trim().length > 0);
   }
@@ -39,20 +41,21 @@ export class GroqKeyPool {
   }
 
   hasKeys(): boolean {
-    return this.states.length > 0;
+    return this.states.some((state) => !state.retired);
   }
 
   nextAvailableInMs(): number {
-    if (this.states.length === 0) {
+    const activeStates = this.states.filter((state) => !state.retired);
+    if (activeStates.length === 0) {
       return Number.POSITIVE_INFINITY;
     }
     const now = Date.now();
-    const nextCooldown = Math.min(...this.states.map((state) => Math.max(0, state.cooldownUntil - now)));
+    const nextCooldown = Math.min(...activeStates.map((state) => Math.max(0, state.cooldownUntil - now)));
     return nextCooldown;
   }
 
   async lease(): Promise<GroqKeyLease> {
-    if (this.states.length === 0) {
+    if (!this.hasKeys()) {
       throw new Error('No Groq API keys configured.');
     }
 
@@ -61,7 +64,7 @@ export class GroqKeyPool {
       for (let offset = 0; offset < this.states.length; offset += 1) {
         const index = (this.cursor + offset) % this.states.length;
         const state = this.states[index]!;
-        if (state.cooldownUntil <= now) {
+        if (!state.retired && state.cooldownUntil <= now) {
           this.cursor = (index + 1) % this.states.length;
           return { key: state.key, keyId: state.keyId };
         }
@@ -74,7 +77,7 @@ export class GroqKeyPool {
 
   releaseSuccess(keyId: string): void {
     const state = this.states.find((entry) => entry.keyId === keyId);
-    if (!state) {
+    if (!state || state.retired) {
       return;
     }
     state.consecutiveFailures = 0;
@@ -83,7 +86,7 @@ export class GroqKeyPool {
 
   releaseRateLimited(keyId: string, retryAfterMs: number): void {
     const state = this.states.find((entry) => entry.keyId === keyId);
-    if (!state) {
+    if (!state || state.retired) {
       return;
     }
     state.consecutiveFailures = 0;
@@ -92,11 +95,20 @@ export class GroqKeyPool {
 
   releaseFailure(keyId: string): void {
     const state = this.states.find((entry) => entry.keyId === keyId);
-    if (!state) {
+    if (!state || state.retired) {
       return;
     }
     state.consecutiveFailures += 1;
     const penaltyMs = Math.min(10_000, 1000 * state.consecutiveFailures);
     state.cooldownUntil = Date.now() + penaltyMs;
+  }
+
+  retireKey(keyId: string): void {
+    const state = this.states.find((entry) => entry.keyId === keyId);
+    if (!state) {
+      return;
+    }
+    state.retired = true;
+    state.cooldownUntil = Number.POSITIVE_INFINITY;
   }
 }
