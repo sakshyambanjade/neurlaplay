@@ -66,6 +66,10 @@ function getLiveStatePath(runId: string): string {
   return path.join(getRunDir(runId), 'live_state.json');
 }
 
+function getRunEventsPath(runId: string): string {
+  return path.join(getRunDir(runId), 'run_events.jsonl');
+}
+
 function createDefaultLiveState(runId: string, status: RunStatus, acceptedConfig?: RunConfig): PaperLiveState {
   return {
     runId,
@@ -180,12 +184,29 @@ function emit(runId: string, event: string, data: Record<string, unknown>): void
   jobEmitter.emit(event, { runId, ...data });
 }
 
+async function appendRunEvent(
+  runId: string,
+  type: string,
+  payload: Record<string, unknown> = {}
+): Promise<void> {
+  const runDir = getRunDir(runId);
+  await mkdir(runDir, { recursive: true });
+  const entry = {
+    timestamp: new Date().toISOString(),
+    runId,
+    type,
+    ...payload
+  };
+  await appendFile(getRunEventsPath(runId), JSON.stringify(entry) + '\n', 'utf-8');
+}
+
 async function appendPipelineLog(runId: string, line: string): Promise<void> {
   const runDir = getRunDir(runId);
   await mkdir(runDir, { recursive: true });
   const logFile = path.join(runDir, 'pipeline.log');
   const payload = `[${new Date().toISOString()}] ${line}`;
   await appendFile(logFile, payload + '\n', 'utf-8');
+  await appendRunEvent(runId, 'pipeline_log', { message: line });
   emit(runId, 'paper:log', { msg: payload });
 }
 
@@ -224,6 +245,15 @@ async function saveStatus(
     },
     status
   );
+  await appendRunEvent(status.runId, 'status_saved', {
+    step: status.step,
+    progress: status.progress,
+    total: status.total,
+    done: status.done,
+    startedAt: status.startedAt,
+    finishedAt: status.finishedAt ?? null,
+    error: status.error ?? null
+  });
   emit(status.runId, 'paper:status', status as unknown as Record<string, unknown>);
 }
 
@@ -420,6 +450,48 @@ async function readJsonl<T>(filePath: string): Promise<T[]> {
     .map((line) => JSON.parse(line) as T);
 }
 
+async function rewriteJsonl<T>(filePath: string, entries: T[]): Promise<void> {
+  const payload = entries.map((entry) => JSON.stringify(entry)).join('\n');
+  await writeFile(filePath, payload.length > 0 ? `${payload}\n` : '', 'utf-8');
+}
+
+function dedupeGameSummaries(entries: GamePaperSummary[]): GamePaperSummary[] {
+  const byGameIndex = new Map<number, GamePaperSummary>();
+  for (const entry of entries) {
+    byGameIndex.set(entry.gameIndex, entry);
+  }
+  return Array.from(byGameIndex.values()).sort((a, b) => a.gameIndex - b.gameIndex);
+}
+
+function dedupeDatapoints(entries: PaperDatapoint[]): PaperDatapoint[] {
+  const byMoveKey = new Map<string, PaperDatapoint>();
+  for (const entry of entries) {
+    const key = `${entry.gameIndex}:${entry.moveNumber}:${entry.side}`;
+    byMoveKey.set(key, entry);
+  }
+  return Array.from(byMoveKey.values()).sort((a, b) => {
+    if (a.gameIndex !== b.gameIndex) {
+      return a.gameIndex - b.gameIndex;
+    }
+    if (a.moveNumber !== b.moveNumber) {
+      return a.moveNumber - b.moveNumber;
+    }
+    return a.side.localeCompare(b.side);
+  });
+}
+
+async function getUniqueCompletedGamesForMatchup(matchupDir: string): Promise<number> {
+  return dedupeGameSummaries(await readJsonl<GamePaperSummary>(path.join(matchupDir, 'paper-games.live.jsonl'))).length;
+}
+
+async function getUniqueCompletedGamesForRun(runDir: string, config: RunConfig): Promise<number> {
+  let total = 0;
+  for (const matchup of config.matchups) {
+    total += await getUniqueCompletedGamesForMatchup(path.join(runDir, sanitizeLabel(matchup.label)));
+  }
+  return total;
+}
+
 async function runMatchup(
   runId: string,
   runDir: string,
@@ -436,8 +508,35 @@ async function runMatchup(
   const liveDatapointsPath = path.join(matchupDir, 'paper-datapoints.live.jsonl');
   const liveGamesPath = path.join(matchupDir, 'paper-games.live.jsonl');
 
-  const restoredDatapoints = await readJsonl<PaperDatapoint>(liveDatapointsPath);
-  const restoredGames = await readJsonl<GamePaperSummary>(liveGamesPath);
+  const restoredDatapointsRaw = await readJsonl<PaperDatapoint>(liveDatapointsPath);
+  const restoredGamesRaw = await readJsonl<GamePaperSummary>(liveGamesPath);
+  const restoredDatapoints = dedupeDatapoints(restoredDatapointsRaw);
+  const restoredGames = dedupeGameSummaries(restoredGamesRaw);
+
+  if (restoredDatapoints.length !== restoredDatapointsRaw.length) {
+    await rewriteJsonl(liveDatapointsPath, restoredDatapoints);
+    await appendPipelineLog(
+      runId,
+      `Compacted duplicate datapoints for ${matchup.label}: ${restoredDatapointsRaw.length} -> ${restoredDatapoints.length}.`
+    );
+    await appendRunEvent(runId, 'matchup_datapoints_compacted', {
+      matchupLabel,
+      before: restoredDatapointsRaw.length,
+      after: restoredDatapoints.length
+    });
+  }
+  if (restoredGames.length !== restoredGamesRaw.length) {
+    await rewriteJsonl(liveGamesPath, restoredGames);
+    await appendPipelineLog(
+      runId,
+      `Compacted duplicate game summaries for ${matchup.label}: ${restoredGamesRaw.length} -> ${restoredGames.length}.`
+    );
+    await appendRunEvent(runId, 'matchup_games_compacted', {
+      matchupLabel,
+      before: restoredGamesRaw.length,
+      after: restoredGames.length
+    });
+  }
 
   const runner = new GameRunner(ollamaBaseUrl);
   runner.setRunDirectory(matchupDir);
@@ -465,10 +564,22 @@ async function runMatchup(
       runId,
       `Resuming ${matchup.label} from game ${restoredGames.length + 1} of ${matchup.games}.`
     );
+    await appendRunEvent(runId, 'matchup_resumed', {
+      matchupLabel,
+      restoredGames: restoredGames.length,
+      targetGames: matchup.games
+    });
   }
 
   let outputFile = path.join(matchupDir, 'paper-research-match-resumed.json');
   if (restoredGames.length < matchup.games) {
+    await appendRunEvent(runId, 'matchup_started', {
+      matchupLabel,
+      whiteModel: matchup.white,
+      blackModel: matchup.black,
+      restoredGames: restoredGames.length,
+      targetGames: matchup.games
+    });
     void patchLiveState(runId, {
       currentFen: START_FEN,
       gameInfo: {
@@ -632,6 +743,17 @@ async function runMatchup(
           },
           health: healthPayload
         });
+        void appendRunEvent(runId, 'matchup_checkpoint', {
+          matchupLabel,
+          completedGamesInMatchup: currentGameNum,
+          targetGames: matchup.games,
+          runProgress: completedGames,
+          totalGames,
+          fallbackMoves: healthPayload.fallbackMoves,
+          repeatStateMoves: healthPayload.repeatStateMoves,
+          oscillationRejectedCount: healthPayload.oscillationRejectedCount,
+          collapseDetectedGames: healthPayload.collapseDetectedGames
+        });
         emit(runId, 'paper:health', healthPayload);
 
         emit(runId, 'paper:eta', {
@@ -666,6 +788,11 @@ async function runMatchup(
   await collector.generatePaperArtifacts(matchupDir, {
     enablePostRunCpl: config.settings.enablePostRunCpl ?? true
   });
+  await appendRunEvent(runId, 'matchup_artifacts_written', {
+    matchupLabel,
+    completedGames: collector.getGameSummariesSnapshot().length,
+    outputDir: matchupDir
+  });
   await upsertMatchupRecord({
     runId,
     matchup,
@@ -698,6 +825,11 @@ export async function runPaperPipeline(
   const runDir = getRunDir(runId);
   await mkdir(runDir, { recursive: true });
   const resumeState = await resumeRunIfPossible(runDir);
+  await appendRunEvent(runId, 'pipeline_started', {
+    resumed: resumeState.exists,
+    completedMatchups: resumeState.completedMatchups,
+    incompleteMatchups: resumeState.incompleteMatchups
+  });
 
   const status = createInitialStatus(runId, config);
   await saveStatus(status, { runDir, acceptedConfig: config });
@@ -708,15 +840,33 @@ export async function runPaperPipeline(
 
   try {
     await writeFile(path.join(runDir, 'accepted-config.json'), JSON.stringify(config, null, 2), 'utf-8');
+    await appendRunEvent(runId, 'accepted_config_written', {
+      matchupCount: config.matchups.length,
+      totalGames: status.total,
+      mode: config.mode,
+      paperAngle: config.paperAngle
+    });
     emit(runId, 'paper:accepted_config', { config });
 
     const manifest = createRunManifest(runId, getGitCommit(), config);
     await writeRunManifest(runDir, manifest);
+    await appendRunEvent(runId, 'manifest_written', {
+      acceptedConfigHash: manifest.acceptedConfigHash,
+      gitCommit: manifest.gitCommit
+    });
     await saveStatus(status, { runDir, acceptedConfig: config, manifest });
     await appendPipelineLog(runId, `Manifest written for ${runId}.`);
 
     const preflight = await runPreflightChecks(config, { runDir, ollamaBaseUrl: opts.ollamaBaseUrl });
     await writeFile(path.join(runDir, 'preflight.json'), JSON.stringify(preflight, null, 2), 'utf-8');
+    await appendRunEvent(runId, 'preflight_completed', {
+      ok: preflight.ok,
+      checks: preflight.checks.map((check) => ({
+        name: check.name,
+        ok: check.ok,
+        detail: check.detail
+      }))
+    });
     await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
     if (!preflight.ok) {
       throw new Error(
@@ -730,21 +880,25 @@ export async function runPaperPipeline(
     const totalGames = status.total;
     const artifacts: MatchupRunArtifacts[] = [];
     let completedGames = 0;
-    const completedMatchupLabels = new Set(resumeState.completedMatchups.map((label) => sanitizeLabel(label)));
-
     for (const matchup of config.matchups) {
-      if (completedMatchupLabels.has(sanitizeLabel(matchup.label))) {
+      const matchupLabel = sanitizeLabel(matchup.label);
+      const matchupDir = path.join(runDir, matchupLabel);
+      const restoredGameCount = await getUniqueCompletedGamesForMatchup(matchupDir);
+      const hasFinalArtifacts = fs.existsSync(path.join(matchupDir, 'paper-results.json'));
+
+      if (hasFinalArtifacts && restoredGameCount >= matchup.games) {
         completedGames += matchup.games;
         await appendPipelineLog(runId, `Skipping completed matchup ${matchup.label}.`);
+        await appendRunEvent(runId, 'matchup_skipped_completed', {
+          matchupLabel,
+          completedGames: restoredGameCount,
+          targetGames: matchup.games
+        });
         continue;
       }
 
-      const matchupDir = path.join(runDir, sanitizeLabel(matchup.label));
-      const restoredGameCount = (
-        await readJsonl<GamePaperSummary>(path.join(matchupDir, 'paper-games.live.jsonl'))
-      ).length;
       status.step = `running:${matchup.label}`;
-      status.progress = completedGames + restoredGameCount;
+      status.progress = await getUniqueCompletedGamesForRun(runDir, config);
       await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
       await upsertMatchupRecord({
         runId,
@@ -768,7 +922,7 @@ export async function runPaperPipeline(
         completedGames,
         async (completedGamesInMatchup) => {
           status.step = `running:${matchup.label}`;
-          status.progress = completedGames + completedGamesInMatchup;
+          status.progress = await getUniqueCompletedGamesForRun(runDir, config);
           await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
           await upsertMatchupRecord({
             runId,
@@ -781,9 +935,15 @@ export async function runPaperPipeline(
       );
       artifacts.push(matchupArtifacts);
       completedGames += matchupArtifacts.completedGames;
+      await appendRunEvent(runId, 'matchup_completed', {
+        matchupLabel,
+        completedGames: matchupArtifacts.completedGames,
+        runProgress: completedGames,
+        totalGames
+      });
 
       status.step = `completed:${matchup.label}`;
-      status.progress = completedGames;
+      status.progress = await getUniqueCompletedGamesForRun(runDir, config);
       await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
     }
 
@@ -823,6 +983,10 @@ export async function runPaperPipeline(
 
     const packaged = await packageArtifacts(runDir);
     await appendPipelineLog(runId, `Packaged ${packaged.files.length} artifacts.`);
+    await appendRunEvent(runId, 'artifacts_packaged', {
+      fileCount: packaged.files.length,
+      zipPath: packaged.zipPath ?? null
+    });
 
     status.step = 'completed';
     status.progress = totalGames;
@@ -837,6 +1001,10 @@ export async function runPaperPipeline(
     });
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
     await notifyRunStatus(status, runDir, packaged.zipPath);
+    await appendRunEvent(runId, 'pipeline_completed', {
+      totalGames,
+      zipPath: packaged.zipPath ?? null
+    });
 
     return {
       runId,
@@ -856,6 +1024,9 @@ export async function runPaperPipeline(
     status.finishedAt = new Date().toISOString();
     await saveStatus(status, { runDir, acceptedConfig: config });
     await appendPipelineLog(runId, `Pipeline failed: ${status.error}`);
+    await appendRunEvent(runId, 'pipeline_failed', {
+      error: status.error
+    });
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
     await notifyRunStatus(status, runDir, null);
     throw error;

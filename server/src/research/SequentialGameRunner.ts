@@ -806,6 +806,7 @@ export class SequentialGameRunner {
     const startedAt = new Date();
     rng = mulberry32(config.settings.seed ?? (config as any).seed ?? 42);
     const openingRandomMoves = config.settings.openingRandomMoves ?? 4;
+    const startGameIndex = Math.max(0, Math.min(config.games, Math.floor(config.resumeFromGameIndex ?? 0)));
     this.activeModels = [config.models.white, config.models.black];
     const gameSummaries: GamePaperSummary[] = [];
     const outDir = path.resolve(config.outputDir);
@@ -850,8 +851,11 @@ export class SequentialGameRunner {
     console.log(
       `   - Timeouts: move=${config.settings.moveTimeoutMs}ms, game=${config.settings.gameTimeoutMs}ms, maxMoves=${config.settings.maxMoves}`
     );
+    if (startGameIndex > 0) {
+      console.log(`   - Resume offset: starting from game ${startGameIndex + 1}/${config.games}`);
+    }
 
-    for (let gameIndex = 0; gameIndex < config.games; gameIndex += 1) {
+    for (let gameIndex = startGameIndex; gameIndex < config.games; gameIndex += 1) {
       const gameId = `paper-game-${String(gameIndex + 1).padStart(3, '0')}`;
       const game = await this.runSinglePaperGame(
         gameId,
@@ -876,7 +880,7 @@ export class SequentialGameRunner {
 
       if ((gameIndex + 1) % exportEvery === 0 || gameIndex === config.games - 1) {
         const partialSummary = {
-          completedGames: gameSummaries.length,
+          completedGames: gameIndex + 1,
           totalGames: config.games,
           totalDurationMs: Date.now() - startedAt.getTime(),
           startedAt: startedAt.toISOString(),
@@ -895,7 +899,7 @@ export class SequentialGameRunner {
 
     const endedAt = new Date();
     const summary = {
-      completedGames: gameSummaries.length,
+      completedGames: startGameIndex + gameSummaries.length,
       totalDurationMs: endedAt.getTime() - startedAt.getTime(),
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
@@ -906,7 +910,7 @@ export class SequentialGameRunner {
     await writeFile(outputFile, JSON.stringify({ summary, games: gameSummaries }, null, 2), 'utf-8');
     
     console.log(`\n✅ BATCH COMPLETE!`);
-    console.log(`   Games completed: ${gameSummaries.length}/${config.games}`);
+    console.log(`   Games completed: ${startGameIndex + gameSummaries.length}/${config.games}`);
     console.log(`   Total duration: ${Math.round(summary.totalDurationMs / 1000)}s`);
     console.log(`   Run output: ${outputFile}`);
     if (this.gameLogger) {
