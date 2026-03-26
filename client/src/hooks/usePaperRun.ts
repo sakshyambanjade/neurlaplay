@@ -186,6 +186,7 @@ export function usePaperRun() {
   const [acceptedConfig, setAcceptedConfig] = useState<RunConfig | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [status, setStatus] = useState<RunStatus | null>(null);
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState<string | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [artifacts, setArtifacts] = useState<string[]>([]);
   const [artifactZip, setArtifactZip] = useState<string | null>(null);
@@ -231,6 +232,7 @@ export function usePaperRun() {
   function resetUiState(): void {
     setRunId(null);
     setStatus(null);
+    setLiveUpdatedAt(null);
     setLogs([]);
     setArtifacts([]);
     setArtifactZip(null);
@@ -288,6 +290,7 @@ export function usePaperRun() {
   }
 
   function applyLiveState(snapshot: LiveState): void {
+    setLiveUpdatedAt(snapshot.updatedAt ?? null);
     setCurrentFen(snapshot.currentFen || START_FEN);
     setGameInfo(snapshot.gameInfo);
     setQuality(snapshot.quality);
@@ -590,6 +593,7 @@ export function usePaperRun() {
     socket,
     runId,
     status,
+    liveUpdatedAt,
     acceptedConfig,
     logs,
     artifacts,

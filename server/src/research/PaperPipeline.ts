@@ -38,6 +38,7 @@ const activeRunPromises = new Map<string, Promise<PaperPipelineResult>>();
 const activeLiveStates = new Map<string, PaperLiveState>();
 const liveStateWriteQueues = new Map<string, Promise<void>>();
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+let watchdogStarted = false;
 
 function getGitCommit(): string {
   try {
@@ -300,6 +301,22 @@ export async function getArtifacts(runId: string): Promise<{ files: string[]; zi
     files: await listFilesRecursive(runDir),
     zipPath: null
   };
+}
+
+export function isRunActive(runId: string): boolean {
+  return activeRunPromises.has(runId);
+}
+
+function getLiveStateAgeMs(runId: string): number | null {
+  const liveState = activeLiveStates.get(runId);
+  if (!liveState?.updatedAt) {
+    return null;
+  }
+  const updatedAtMs = Date.parse(liveState.updatedAt);
+  if (!Number.isFinite(updatedAtMs)) {
+    return null;
+  }
+  return Date.now() - updatedAtMs;
 }
 
 export async function getLiveState(runId: string): Promise<PaperLiveState | null> {
@@ -684,6 +701,10 @@ export async function runPaperPipeline(
 
   const status = createInitialStatus(runId, config);
   await saveStatus(status, { runDir, acceptedConfig: config });
+  const heartbeat = setInterval(() => {
+    void patchLiveState(runId, {});
+  }, 30_000);
+  heartbeat.unref?.();
 
   try {
     await writeFile(path.join(runDir, 'accepted-config.json'), JSON.stringify(config, null, 2), 'utf-8');
@@ -718,14 +739,18 @@ export async function runPaperPipeline(
         continue;
       }
 
+      const matchupDir = path.join(runDir, sanitizeLabel(matchup.label));
+      const restoredGameCount = (
+        await readJsonl<GamePaperSummary>(path.join(matchupDir, 'paper-games.live.jsonl'))
+      ).length;
       status.step = `running:${matchup.label}`;
-      status.progress = completedGames;
+      status.progress = completedGames + restoredGameCount;
       await saveStatus(status, { runDir, acceptedConfig: config, manifest, preflight });
       await upsertMatchupRecord({
         runId,
         matchup,
-        matchupDir: path.join(runDir, sanitizeLabel(matchup.label)),
-        completedGames: 0,
+        matchupDir,
+        completedGames: restoredGameCount,
         status: 'running'
       });
       await appendPipelineLog(
@@ -834,6 +859,8 @@ export async function runPaperPipeline(
     emit(runId, 'paper:done', status as unknown as Record<string, unknown>);
     await notifyRunStatus(status, runDir, null);
     throw error;
+  } finally {
+    clearInterval(heartbeat);
   }
 }
 
@@ -900,4 +927,69 @@ export async function resumePaperRun(
 
 export async function waitForRun(runId: string): Promise<PaperPipelineResult | null> {
   return activeRunPromises.get(runId) ?? null;
+}
+
+async function findIncompleteRunIds(): Promise<string[]> {
+  const runsRoot = getPaperRunsRoot();
+  if (!fs.existsSync(runsRoot)) {
+    return [];
+  }
+
+  const entries = await readdir(runsRoot, { withFileTypes: true });
+  const runIds: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const statusPath = path.join(runsRoot, entry.name, 'status.json');
+    if (!fs.existsSync(statusPath)) {
+      continue;
+    }
+    try {
+      const status = JSON.parse(await readFile(statusPath, 'utf-8')) as RunStatus;
+      if (!status.done) {
+        runIds.push(status.runId);
+      }
+    } catch {
+      // ignore unreadable status files
+    }
+  }
+  return runIds.sort();
+}
+
+async function ensureIncompleteRunsRunning(opts: { ollamaBaseUrl: string }): Promise<void> {
+  const staleAfterMs = Number(process.env.PAPER_RUN_STALE_MS ?? 180_000);
+  const incompleteRunIds = await findIncompleteRunIds();
+  for (const runId of incompleteRunIds) {
+    const liveStateAgeMs = getLiveStateAgeMs(runId);
+    const isStale = liveStateAgeMs !== null && liveStateAgeMs > staleAfterMs;
+
+    if (isRunActive(runId) && !isStale) {
+      continue;
+    }
+    if (isStale) {
+      activeRunPromises.delete(runId);
+      console.warn(`Paper run ${runId} looked stale (${Math.round(liveStateAgeMs! / 1000)}s). Restarting it.`);
+    }
+    try {
+      const result = await resumePaperRun(runId, opts);
+      if (result.restarted) {
+        console.log(`Auto-resumed paper run ${runId}.`);
+      }
+    } catch (error) {
+      console.error(`Failed to auto-resume paper run ${runId}:`, error);
+    }
+  }
+}
+
+export function startPaperRunWatchdog(opts: { ollamaBaseUrl: string; intervalMs?: number }): void {
+  if (watchdogStarted) {
+    return;
+  }
+  watchdogStarted = true;
+  void ensureIncompleteRunsRunning({ ollamaBaseUrl: opts.ollamaBaseUrl });
+  const interval = setInterval(() => {
+    void ensureIncompleteRunsRunning({ ollamaBaseUrl: opts.ollamaBaseUrl });
+  }, opts.intervalMs ?? 60_000);
+  interval.unref?.();
 }

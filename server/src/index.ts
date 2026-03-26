@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { Server as SocketIOServer } from 'socket.io';
 import { createResearchRouter } from './routes/research.js';
 import { createPaperRouter } from './routes/paper.js';
+import { startPaperRunWatchdog } from './research/PaperPipeline.js';
 import { getPaperDataRoot } from './research/PaperPaths.js';
 
 dotenv.config();
@@ -64,4 +65,5 @@ io.on('connection', (socket) => {
 
 httpServer.listen(port, host, () => {
   console.log(`Server listening on http://${host}:${port}`);
+  startPaperRunWatchdog({ ollamaBaseUrl });
 });

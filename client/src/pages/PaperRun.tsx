@@ -8,6 +8,7 @@ export default function PaperRun() {
   const {
     runId,
     status,
+    liveUpdatedAt,
     artifacts,
     artifactZipUrl,
     currentFen,
@@ -156,6 +157,8 @@ export default function PaperRun() {
 
         <RunProgress
           status={status}
+          liveUpdatedAt={liveUpdatedAt}
+          gameInfo={gameInfo}
           health={health}
           artifactReady={artifacts.length > 0 || Boolean(artifactZipUrl)}
         />

@@ -1,7 +1,16 @@
+import { useEffect, useState } from 'react';
 import type { RunStatus } from '../../hooks/usePaperRun';
 
 type Props = {
   status: RunStatus | null;
+  liveUpdatedAt: string | null;
+  gameInfo: {
+    white: string;
+    black: string;
+    moveNumber: number;
+    gameNum: number;
+    totalGames: number;
+  };
   health: {
     ok: boolean;
     warnings: string[];
@@ -17,7 +26,30 @@ type Props = {
   artifactReady: boolean;
 };
 
-export function RunProgress({ status, health, artifactReady }: Props) {
+export function RunProgress({ status, liveUpdatedAt, gameInfo, health, artifactReady }: Props) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const liveAgeSec =
+    liveUpdatedAt && !Number.isNaN(Date.parse(liveUpdatedAt))
+      ? Math.max(0, Math.floor((nowMs - Date.parse(liveUpdatedAt)) / 1000))
+      : null;
+  const isActivelyUpdating = liveAgeSec !== null && liveAgeSec <= 45;
+  const currentGameOrdinal =
+    status && !status.done && status.total > 0 ? Math.min(status.progress + 1, status.total) : status?.progress ?? 0;
+  const liveStateLabel =
+    status?.done
+      ? 'Complete'
+      : liveAgeSec === null
+        ? 'Waiting'
+        : isActivelyUpdating
+          ? `Live • ${formatAge(liveAgeSec)}`
+          : `Quiet • ${formatAge(liveAgeSec)}`;
+
   return (
     <div style={{ display: 'grid', gap: 22, marginBottom: 28 }}>
       {status ? (
@@ -48,17 +80,20 @@ export function RunProgress({ status, health, artifactReady }: Props) {
                 {status.step || 'Initializing'}
               </div>
             </div>
-            <div style={status.done ? completeBadgeStyle : activeBadgeStyle}>
-              {status.done ? 'Completed' : 'Running'}
+            <div style={status.done ? completeBadgeStyle : isActivelyUpdating ? activeBadgeStyle : warningBadgeStyle}>
+              {status.done ? 'Completed' : liveStateLabel}
             </div>
           </div>
 
           <div style={metricGridStyle}>
             <MetricCard label="Progress" value={`${status.progress || 0} / ${status.total || 0}`} />
+            <MetricCard label="Current Game" value={String(currentGameOrdinal || 0)} />
+            <MetricCard label="Current Move" value={String(gameInfo.moveNumber || 0)} />
             <MetricCard
               label="Completion"
               value={`${((((status.progress || 0) / (status.total || 1)) * 100) || 0).toFixed(1)}%`}
             />
+            <MetricCard label="Last Activity" value={liveAgeSec === null ? '-' : formatAge(liveAgeSec)} />
             <MetricCard label="Artifacts" value={artifactReady ? 'Ready' : 'Pending'} />
           </div>
 
@@ -158,6 +193,20 @@ export function RunProgress({ status, health, artifactReady }: Props) {
       </section>
     </div>
   );
+}
+
+function formatAge(ageSec: number): string {
+  if (ageSec < 60) {
+    return `${ageSec}s ago`;
+  }
+  const minutes = Math.floor(ageSec / 60);
+  const seconds = ageSec % 60;
+  if (minutes < 60) {
+    return `${minutes}m ${seconds}s ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  return `${hours}h ${remMinutes}m ago`;
 }
 
 function MetricCard({
