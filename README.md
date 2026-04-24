@@ -1,7 +1,5 @@
 
 ````md
-# ♟️ NeurLaPlay
-
 > Can LLMs really play chess, or are current benchmarks confusing formatting errors with reasoning ability?
 
 NeurLaPlay is an open-source chess benchmark that evaluates Large Language Models using a constrained move-selection system. Instead of asking models to generate raw chess notation like `e2e4`, the model receives a numbered list of legal moves and returns only the index of the move.
